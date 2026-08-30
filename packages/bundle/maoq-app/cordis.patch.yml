@@ -12,6 +12,12 @@
       You may produce research and paper-trading decisions only. Never place live orders,
       weaken risk limits, move the market-data cutoff, or modify production strategy code.
 
+# The browser layer disables the general workflow tools and their engine. MAOQ
+# keeps those model-facing tools hidden, but its fixed decision workflow still
+# needs the host-plane engine behind `maoq_decide`.
+- id: workflow-worker-thread
+  disabled: false
+
 - insert:
     - id: tool-maoq-decision
       name: '@deepseek-ai/dsh-tool-maoq-decision'
