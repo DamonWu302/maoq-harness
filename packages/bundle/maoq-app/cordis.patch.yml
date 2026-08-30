@@ -18,6 +18,15 @@
 - id: workflow-worker-thread
   disabled: false
 
+# Register the ChatGPT-backed Codex route for the commander while preserving
+# every API-key provider from the base profile. The optional credential bridge
+# reads the existing local Codex login only for this route.
+- id: llm-pi-ai
+  config:
+    reuseCodexLogin: true
+    providers:
+      openai-codex: {}
+
 - insert:
     - id: subagent-codex
       name: '@deepseek-ai/dsh-subagent-codex'

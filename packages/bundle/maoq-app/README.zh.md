@@ -14,6 +14,7 @@ MAOQ 应用层组合在 `dsh-base` 和 `dsh-web-app` 之上，提供统帅人格
 ## 目录
 
 - [使用本包](#use-this-package)
+- [选择统帅模型](#choose-commander-model)
 - [模型体验](#model-experience)
 - [已知限制与延期工作](#known-limitations-and-deferred-work)
 - [开发备注](#dev-note)
@@ -24,6 +25,11 @@ MAOQ 应用层组合在 `dsh-base` 和 `dsh-web-app` 之上，提供统帅人格
 ## 使用本包
 
 通过 `dsh --profile maoq` 启动。随附模板依次组合 `dsh-base`、`dsh-web-app` 和本策略层，并允许 Profile 补丁热重载。决策议事组通过 Codex app-server 复用本机 Codex/ChatGPT 登录，固定使用 `gpt-5.6-sol`，最多允许四位所选专家，渲染结果上限为 32768 个字符。每位专家、统帅综合和独立风控的 token 用量都会单列，并在结果中汇总输入、缓存、输出、推理与总 token；若 Codex 未返回用量，该调用会计入 `unavailableCalls`，不会伪造估算值。
+
+<a id="choose-commander-model"></a>
+## 选择统帅模型
+
+打开**设置 → 模型 → 统帅模型**，可以在**本机 Codex 登录**和**外部模型 API**之间切换，再选择或输入具体模型。本机路径复用当前 Codex/ChatGPT 登录，不需要第二份 API Key；该能力仅在 Profile 明确开启时生效，并且只读取 `openai-codex` 所需凭证。外部路径完整保留现有 DeepSeek 及其他 API Key 提供方。保存后的选择从新建任务开始生效，已经运行的任务继续使用原模型。这个开关只改变外层统帅：有界决策议事组仍使用固定的 Codex app-server 模型，并继续独立统计 token 用量。
 
 <a id="model-experience"></a>
 ## 模型体验

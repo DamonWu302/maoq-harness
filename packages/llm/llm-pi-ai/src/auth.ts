@@ -9,7 +9,7 @@
  */
 
 import { homedir } from 'node:os'
-import { access } from 'node:fs/promises'
+import { access, readFile } from 'node:fs/promises'
 import { resolve as resolvePath } from 'node:path'
 import type { AuthContext, Credential, CredentialInfo, CredentialStore } from '@earendil-works/pi-ai'
 import type { Context } from '@deepseek-ai/cordis'
@@ -27,6 +27,70 @@ import { LlmError } from '@deepseek-ai/dsh-llm'
  * provider name — that this plugin owns the format inside the record.
  */
 export const RECORD_SCOPE = 'llm-pi-ai'
+
+/** Provider id used by pi-ai's ChatGPT-backed Codex transport. */
+const OPENAI_CODEX_PROVIDER = 'openai-codex'
+
+/** Controls the optional local Codex-login bridge. */
+export interface CredentialStoreOptions {
+  /** Read the current opt-in dynamically so a live settings update can take effect. */
+  reuseCodexLogin?: () => boolean
+  /** Test/deployment override; otherwise `$CODEX_HOME` or `~/.codex` is used. */
+  codexHome?: () => string | undefined
+}
+
+/** Narrow JSON shape written by Codex login. Tokens never leave this module. */
+interface CodexAuthFile {
+  auth_mode?: unknown
+  tokens?: {
+    access_token?: unknown
+    refresh_token?: unknown
+    account_id?: unknown
+  }
+}
+
+/** Decode a JWT expiry without verifying claims; the server still validates the token. */
+function jwtExpiry(accessToken: string): number | undefined {
+  const payload = accessToken.split('.')[1]
+  if (payload === undefined) return undefined
+  try {
+    const parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as { exp?: unknown }
+    return typeof parsed.exp === 'number' && Number.isFinite(parsed.exp) ? parsed.exp * 1000 : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Read a valid local Codex ChatGPT grant. Any absent, unreadable, malformed,
+ * or non-ChatGPT file simply means this fallback is unavailable. In
+ * particular, diagnostics never include the file contents or token values.
+ */
+async function localCodexCredential(ctx: Context, options: CredentialStoreOptions): Promise<Credential | undefined> {
+  if (options.reuseCodexLogin?.() !== true) return undefined
+  const configuredHome = options.codexHome?.()
+    ?? launchEnvironmentOf(ctx).get('CODEX_HOME')?.value
+  const codexHome = configuredHome === undefined || configuredHome.length === 0
+    ? resolvePath(homedir(), '.codex')
+    : configuredHome
+  try {
+    const parsed = JSON.parse(await readFile(resolvePath(codexHome, 'auth.json'), 'utf8')) as CodexAuthFile
+    const accessToken = parsed.tokens?.access_token
+    const refreshToken = parsed.tokens?.refresh_token
+    const accountId = parsed.tokens?.account_id
+    if (
+      parsed.auth_mode !== 'chatgpt'
+      || typeof accessToken !== 'string' || accessToken.length === 0
+      || typeof refreshToken !== 'string' || refreshToken.length === 0
+      || typeof accountId !== 'string' || accountId.length === 0
+    ) return undefined
+    const expires = jwtExpiry(accessToken)
+    if (expires === undefined) return undefined
+    return { type: 'oauth', access: accessToken, refresh: refreshToken, expires, accountId }
+  } catch {
+    return undefined
+  }
+}
 
 /**
  * The record address for one pi-ai provider id.
@@ -138,25 +202,33 @@ function writableStore(ctx: Context): CredentialProvider {
  * @param ctx - the plugin context carrying the optional `ctx.credentials`.
  * @returns the store to hand `createModels()`.
  */
-export function credentialStoreFrom(ctx: Context): CredentialStore {
+export function credentialStoreFrom(ctx: Context, options: CredentialStoreOptions = {}): CredentialStore {
   return {
     async read(providerId) {
       const credentials = ctx.get('credentials')
-      if (credentials === undefined) return undefined
       if (!isCredentialKeySegment(providerId)) return undefined
-      return toPiCredential(await credentials.readRecord(recordKeyFor(providerId)))
+      const stored = credentials === undefined
+        ? undefined
+        : toPiCredential(await credentials.readRecord(recordKeyFor(providerId)))
+      if (stored !== undefined) return stored
+      return providerId === OPENAI_CODEX_PROVIDER ? localCodexCredential(ctx, options) : undefined
     },
     async list(): Promise<readonly CredentialInfo[]> {
       const stored = await ctx.get('credentials')?.listRecords() ?? []
       const mine: CredentialInfo[] = []
+      let hasStoredCodex = false
       for (const entry of stored) {
         // Records another plugin owns are not this collection's to report:
         // their payloads are written in a format pi-ai never agreed to.
         if (credentialKeyScope(entry.key) !== RECORD_SCOPE) continue
+        if (credentialKeyId(entry.key) === OPENAI_CODEX_PROVIDER) hasStoredCodex = true
         mine.push({
           providerId: credentialKeyId(entry.key),
           type: entry.kind === 'api-key' ? 'api_key' : 'oauth',
         })
+      }
+      if (!hasStoredCodex && await localCodexCredential(ctx, options) !== undefined) {
+        mine.push({ providerId: OPENAI_CODEX_PROVIDER, type: 'oauth' })
       }
       return mine
     },
@@ -169,11 +241,18 @@ export function credentialStoreFrom(ctx: Context): CredentialStore {
           'UNSTORABLE_PROVIDER_ID',
         )
       }
+      const fallback = providerId === OPENAI_CODEX_PROVIDER
+        ? await localCodexCredential(ctx, options)
+        : undefined
       const stored = await writableStore(ctx).modifyRecord(recordKeyFor(providerId), async (current) => {
-        const next = await mutate(toPiCredential(current))
+        const currentCredential = toPiCredential(current) ?? fallback
+        const next = await mutate(currentCredential)
         return next === undefined ? undefined : toRecord(next)
       })
-      return toPiCredential(stored)
+      // A declined mutation leaves an absent Harness record absent; continue
+      // serving the local login without copying its token into another file.
+      // A refresh returns a new grant and is durably stored by the branch above.
+      return toPiCredential(stored) ?? fallback
     },
     // `async` so a missing service reaches the caller as a rejection: pi-ai's
     // store contract is promise-returning, and a synchronous throw would

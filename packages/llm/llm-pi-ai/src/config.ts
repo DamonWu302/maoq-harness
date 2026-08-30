@@ -215,6 +215,13 @@ export interface ResolvedPiAiProviderProfile
 /** Plugin configuration: the provider routes this instance owns. */
 export interface Config {
   /**
+   * Let the `openai-codex` route reuse the local Codex CLI/app ChatGPT login
+   * when this adapter has no stored OAuth grant of its own. Disabled by
+   * default so generic deployments never read host-level Codex state unless
+   * their composition explicitly opts in.
+   */
+  reuseCodexLogin?: boolean
+  /**
    * pi-ai provider routes, keyed by provider. An empty (or omitted) dict is
    * the dormant settings-driven posture: the adapter mounts with no routes
    * and registers them the moment a settings section supplies profiles.
@@ -338,6 +345,7 @@ const profile = z.object({
 
 /** Runtime schema for {@link Config}. */
 export const Config: z<Config> = z.object({
+  reuseCodexLogin: z.boolean().default(false),
   providers: z.dict(profile).default({}),
 })
 

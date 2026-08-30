@@ -193,7 +193,10 @@ export function apply(ctx: Context, config: Config): void {
   // One store and one ambient context for the whole plugin instance: both read
   // through `ctx` per call, so they stay correct across the collection rebuilds
   // a configuration change causes, and a sign-in survives one.
-  const auth = { credentials: credentialStoreFrom(ctx), authContext: authContextFrom(ctx) }
+  const auth = {
+    credentials: credentialStoreFrom(ctx, { reuseCodexLogin: () => current().reuseCodexLogin === true }),
+    authContext: authContextFrom(ctx),
+  }
   const adapter = new PiAiAdapter({
     profiles,
     resolveApiKey,

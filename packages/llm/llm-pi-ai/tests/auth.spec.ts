@@ -11,6 +11,17 @@ const CODEX = recordKeyFor('openai-codex')
 
 const dirs: string[] = []
 
+function fakeJwt(exp: number): string {
+  return `header.${Buffer.from(JSON.stringify({ exp })).toString('base64url')}.signature`
+}
+
+async function codexHome(auth: unknown): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), 'dsh-codex-auth-'))
+  dirs.push(dir)
+  await writeFile(join(dir, 'auth.json'), JSON.stringify(auth))
+  return dir
+}
+
 /** A context whose credential records live in a throwaway `$DSH_HOME`. */
 async function stored(): Promise<Context> {
   const dir = await mkdtemp(join(tmpdir(), 'dsh-pi-auth-'))
@@ -30,6 +41,84 @@ describe('pi-ai credential store over harness records', () => {
     const store = credentialStoreFrom(await stored())
 
     await expect(store.read('openai-codex')).resolves.toBeUndefined()
+  })
+
+  it('reuses an opted-in local Codex ChatGPT login for openai-codex only', async () => {
+    const home = await codexHome({
+      auth_mode: 'chatgpt',
+      tokens: {
+        access_token: fakeJwt(2_000_000_000),
+        refresh_token: 'refresh-local',
+        account_id: 'account-local',
+      },
+    })
+    const store = credentialStoreFrom(await stored(), {
+      reuseCodexLogin: () => true,
+      codexHome: () => home,
+    })
+
+    await expect(store.read('openai-codex')).resolves.toEqual({
+      type: 'oauth',
+      access: fakeJwt(2_000_000_000),
+      refresh: 'refresh-local',
+      expires: 2_000_000_000_000,
+      accountId: 'account-local',
+    })
+    await expect(store.read('openai')).resolves.toBeUndefined()
+    await expect(store.list()).resolves.toEqual([{ providerId: 'openai-codex', type: 'oauth' }])
+  })
+
+  it('does not read local Codex auth unless explicitly enabled', async () => {
+    const home = await codexHome({
+      auth_mode: 'chatgpt',
+      tokens: { access_token: fakeJwt(2_000_000_000), refresh_token: 'refresh', account_id: 'account' },
+    })
+    const store = credentialStoreFrom(await stored(), { codexHome: () => home })
+
+    await expect(store.read('openai-codex')).resolves.toBeUndefined()
+    await expect(store.list()).resolves.toEqual([])
+  })
+
+  it('prefers a Harness-owned Codex grant over the local login', async () => {
+    const home = await codexHome({
+      auth_mode: 'chatgpt',
+      tokens: { access_token: fakeJwt(2_000_000_000), refresh_token: 'local', account_id: 'local' },
+    })
+    const ctx = await stored()
+    const store = credentialStoreFrom(ctx, { reuseCodexLogin: () => true, codexHome: () => home })
+    await store.modify('openai-codex', () => Promise.resolve({
+      type: 'oauth', access: 'stored', refresh: 'stored-refresh', expires: 42, accountId: 'stored-account',
+    }))
+
+    await expect(store.read('openai-codex')).resolves.toMatchObject({ access: 'stored', accountId: 'stored-account' })
+    await expect(store.list()).resolves.toEqual([{ providerId: 'openai-codex', type: 'oauth' }])
+  })
+
+  it('does not copy a declined local Codex mutation into Harness storage', async () => {
+    const home = await codexHome({
+      auth_mode: 'chatgpt',
+      tokens: { access_token: fakeJwt(2_000_000_000), refresh_token: 'local', account_id: 'local' },
+    })
+    const ctx = await stored()
+    const store = credentialStoreFrom(ctx, { reuseCodexLogin: () => true, codexHome: () => home })
+
+    await expect(store.modify('openai-codex', () => Promise.resolve(undefined)))
+      .resolves.toMatchObject({ type: 'oauth', accountId: 'local' })
+    await expect(ctx.credentials.readRecord(CODEX)).resolves.toBeUndefined()
+  })
+
+  it('ignores malformed local Codex auth without leaking its contents', async () => {
+    const home = await codexHome({
+      auth_mode: 'chatgpt',
+      tokens: { access_token: 'secret-not-a-jwt', refresh_token: 'secret-refresh', account_id: 'account' },
+    })
+    const store = credentialStoreFrom(await stored(), {
+      reuseCodexLogin: () => true,
+      codexHome: () => home,
+    })
+
+    await expect(store.read('openai-codex')).resolves.toBeUndefined()
+    await expect(store.list()).resolves.toEqual([])
   })
 
   it('round-trips an api-key credential field by field', async () => {

@@ -14,6 +14,7 @@ The MAOQ application layer composes over `dsh-base` and `dsh-web-app`. It suppli
 ## Table of Contents
 
 - [Use this package](#use-this-package)
+- [Choose the commander model](#choose-commander-model)
 - [Model Experience](#model-experience)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
@@ -24,6 +25,11 @@ The MAOQ application layer composes over `dsh-base` and `dsh-web-app`. It suppli
 ## Use this package
 
 Launch with `dsh --profile maoq`. The shipped template composes `dsh-base`, `dsh-web-app`, then this policy layer, and keeps profile patches live-reloadable. The decision council reuses the local Codex/ChatGPT login through Codex app-server, pins `gpt-5.6-sol`, permits at most four selected specialists, and limits rendered results to 32768 characters. Token usage is reported per specialist, commander synthesis, and independent risk review, then aggregated across input, cache, output, reasoning, and total tokens. Calls without provider usage are counted in `unavailableCalls` rather than estimated.
+
+<a id="choose-commander-model"></a>
+## Choose the commander model
+
+Open **Settings → Models → Commander model** to switch the outer commander between **Local Codex login** and **External API**, then select or enter the exact model. The local path reuses the current Codex/ChatGPT sign-in and needs no second API key; it is opt-in and reads only the `openai-codex` credential. The external path retains the existing DeepSeek and other API-key providers unchanged. A saved change applies to newly created tasks; an existing task keeps its selected model. This switch affects the outer commander only: the bounded decision council continues to use its pinned Codex app-server model and continues reporting its own token usage.
 
 <a id="model-experience"></a>
 ## Model Experience

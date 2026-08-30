@@ -15,11 +15,19 @@ describe('@deepseek-ai/dsh-maoq-app', () => {
     const patches = load(readFileSync(patchPath, 'utf8')) as Array<Record<string, unknown>>
     const prompt = patches[0] as { config: { persona: string } }
     const workflowEngine = patches[1] as { id: string; disabled: boolean }
-    const insertion = patches[2] as { insert: Array<{ id: string; name: string }> }
+    const codexRoute = patches[2] as {
+      id: string
+      config: { reuseCodexLogin: boolean; providers: Record<string, unknown> }
+    }
+    const insertion = patches[3] as { insert: Array<{ id: string; name: string }> }
 
     expect(prompt.config.persona).toContain('smallest sufficient specialist council')
     expect(prompt.config.persona).toContain('final veto power')
     expect(workflowEngine).toEqual({ id: 'workflow-worker-thread', disabled: false })
+    expect(codexRoute).toEqual({
+      id: 'llm-pi-ai',
+      config: { reuseCodexLogin: true, providers: { 'openai-codex': {} } },
+    })
     expect(insertion.insert).toContainEqual(expect.objectContaining({
       id: 'subagent-codex',
       name: '@deepseek-ai/dsh-subagent-codex',
