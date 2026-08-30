@@ -58,6 +58,19 @@ function deepSeekNamespace(apiKeyEnv: string | null): SettingsNamespaceView {
   }
 }
 
+function codexNamespace(): SettingsNamespaceView {
+  return {
+    ns: 'llm-pi-ai',
+    schema: {},
+    value: { reuseCodexLogin: true, providers: { 'openai-codex': {} } },
+    base: { reuseCodexLogin: true, providers: { 'openai-codex': {} } },
+    user: {},
+    applies: 'live',
+    secrets: [],
+    revision: 0,
+  }
+}
+
 function harness(options: {
   provider?: boolean
   providerSettingsNs?: string
@@ -70,6 +83,7 @@ function harness(options: {
   settingsWritable?: boolean
   providersFailure?: string
   setFailure?: string
+  codexCliConfigured?: boolean
 } = {}) {
   if (document.getElementById('root') === null) {
     const appRoot = document.createElement('div')
@@ -111,7 +125,9 @@ function harness(options: {
       describe: () => Promise.resolve(remoteOk({
         writable: options.settingsWritable ?? true,
         hasDocument: false,
-        namespaces: options.settingsNamespace === false ? [] : [deepSeekNamespace(apiKeyEnv)],
+        namespaces: options.settingsNamespace === false
+          ? []
+          : [deepSeekNamespace(apiKeyEnv), ...options.codexCliConfigured === true ? [codexNamespace()] : []],
       })),
       mutate,
     },
@@ -263,6 +279,17 @@ describe('DeepSeekOnboardingDialog', () => {
       await waitFor(() => { expect(h.complete).toHaveBeenCalledOnce() })
       view.unmount()
     }
+  })
+
+  it('does not prompt for a DeepSeek API key when the local Codex CLI path is configured', async () => {
+    const h = harness({ codexCliConfigured: true })
+    render(<DeepSeekOnboardingDialog {...h.props} />)
+
+    await act(async () => { await h.controller.load() })
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    await waitFor(() => { expect(h.complete).toHaveBeenCalledOnce() })
+    expect(h.set).not.toHaveBeenCalled()
   })
 
   it('closes when an external credential invalidation refreshes the shared join', async () => {

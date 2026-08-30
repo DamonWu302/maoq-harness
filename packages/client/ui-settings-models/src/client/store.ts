@@ -283,6 +283,23 @@ export type OnboardingReadiness =
   }
 
 /**
+ * Whether this composition explicitly chose the local Codex-login path. This
+ * is a configuration fact, not a credential probe: when it is enabled, a
+ * DeepSeek API-key prompt is the wrong recovery action even while the Codex
+ * route is still registering during startup.
+ * @param state - current shared Models join snapshot.
+ * @returns whether the pi-ai section opts into and declares openai-codex.
+ */
+export function codexCliConfigured(state: ModelsSettingsState): boolean {
+  const value = state.namespaces.get('llm-pi-ai')?.value
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+  const config = value as { reuseCodexLogin?: unknown; providers?: unknown }
+  if (config.reuseCodexLogin !== true) return false
+  if (typeof config.providers !== 'object' || config.providers === null || Array.isArray(config.providers)) return false
+  return Object.hasOwn(config.providers, 'openai-codex')
+}
+
+/**
  * Project first-run readiness from the provider/settings/credential join used
  * by the Models page. The step exists to leave the user with a model to talk
  * to, so ANY usable provider ends it; only when none exists does the official
@@ -302,6 +319,7 @@ export function onboardingReadiness(state: ModelsSettingsState): OnboardingReadi
       reason: 'load-failed',
     }
   }
+  if (codexCliConfigured(state)) return { kind: 'provider-ready' }
   if (state.rows.some(providerUsable)) return { kind: 'provider-ready' }
   const row = state.rows.find(candidate =>
     candidate.entry.provider === 'deepseek-official'

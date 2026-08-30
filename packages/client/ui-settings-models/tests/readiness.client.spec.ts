@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CredentialInfo } from '@deepseek-ai/dsh-api-remotes/client'
 import type { ModelsSettingsState, ProviderRow } from '../src/client/store.ts'
-import { onboardingReadiness, providerUsable } from '../src/client/store.ts'
+import { codexCliConfigured, onboardingReadiness, providerUsable } from '../src/client/store.ts'
 
 const missingCredential: CredentialInfo = { configured: false, writable: true }
 
@@ -91,6 +91,38 @@ describe('onboardingReadiness', () => {
     expect(onboardingReadiness(state({
       rows: [row(), otherRow({ credential: missingCredential })],
     }))).toEqual({ kind: 'credential-missing' })
+  })
+
+  it('never asks for a DeepSeek API key when the local Codex CLI path is configured', () => {
+    const namespaces = new Map(state().namespaces)
+    namespaces.set('llm-pi-ai', {
+      ns: 'llm-pi-ai',
+      schema: {},
+      value: { reuseCodexLogin: true, providers: { 'openai-codex': {} } },
+      applies: 'live',
+      secrets: [],
+      revision: 0,
+    })
+    const configured = state({ namespaces })
+
+    expect(codexCliConfigured(configured)).toBe(true)
+    expect(onboardingReadiness(configured)).toEqual({ kind: 'provider-ready' })
+  })
+
+  it('does not suppress API-key onboarding for incomplete Codex configuration', () => {
+    for (const value of [
+      { providers: { 'openai-codex': {} } },
+      { reuseCodexLogin: true, providers: {} },
+      { reuseCodexLogin: false, providers: { 'openai-codex': {} } },
+    ]) {
+      const namespaces = new Map(state().namespaces)
+      namespaces.set('llm-pi-ai', {
+        ns: 'llm-pi-ai', schema: {}, value, applies: 'live', secrets: [], revision: 0,
+      })
+      const incomplete = state({ namespaces })
+      expect(codexCliConfigured(incomplete)).toBe(false)
+      expect(onboardingReadiness(incomplete)).toEqual({ kind: 'credential-missing' })
+    }
   })
 
   it('accepts file and process-environment credentials without prompting', () => {
