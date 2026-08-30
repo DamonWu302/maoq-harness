@@ -1,0 +1,28 @@
+import { fileURLToPath } from 'node:url'
+import { describe, expect, it } from 'vitest'
+import { LOADER_SMOKE_TEST_TIMEOUT_MS, runLoaderSmoke } from '@deepseek-ai/dsh-loader-smoke'
+
+const driver = fileURLToPath(new URL('./fixtures/loader/driver.ts', import.meta.url))
+const configPath = fileURLToPath(new URL('./fixtures/loader/cordis.yml', import.meta.url))
+const repoTsconfig = fileURLToPath(new URL('../../../../tsconfig.json', import.meta.url))
+
+describe('MAOQ decision through a real Loader composition', () => {
+  it('records dynamic delegation, structured synthesis, and an independent veto', async () => {
+    const { stdout, stderr } = await runLoaderSmoke({
+      label: 'MAOQ decision composition smoke',
+      tempDirPrefix: 'maoq-decision-e2e-',
+      binScript: driver,
+      libBinScript: driver,
+      configPath,
+      tsconfigPath: repoTsconfig,
+    })
+    expect(stderr).not.toContain('UNHANDLED')
+    const recorded = JSON.parse(stdout) as { output: string }
+    const normalized = recorded.output.replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, '<run-id>')
+    expect(normalized).toContain('MAOQ independent risk review vetoed this paper decision.')
+    expect(normalized).toContain('"specialists": [\n    "emotion_cycle",\n    "sector_battlefield"')
+    expect(normalized).toContain('"principalContradiction": "improving risk appetite versus weak broad participation"')
+    expect(normalized).toContain('"verdict": "veto"')
+    expect(normalized).not.toContain('market_regime')
+  }, LOADER_SMOKE_TEST_TIMEOUT_MS)
+})

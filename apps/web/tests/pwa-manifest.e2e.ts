@@ -12,8 +12,8 @@ it('ships install metadata with the built web application', async () => {
   const manifest: unknown = JSON.parse(await readFile(join(DIST_ROOT, 'manifest.webmanifest'), 'utf8'))
   expect(manifest).toEqual({
     id: '/',
-    name: 'DeepSeek Harness',
-    short_name: 'DSH',
+    name: 'MAOQ Agent',
+    short_name: 'MAOQ',
     start_url: '/',
     scope: '/',
     display: 'fullscreen',
@@ -26,10 +26,10 @@ it('ships install metadata with the built web application', async () => {
   })
 })
 
-it('ships a favicon that switches to a light mark under dark color scheme', async () => {
+it('ships the independent MAOQ force-and-route favicon', async () => {
   const favicon = await readFile(join(DIST_ROOT, 'favicon.svg'), 'utf8')
-  // The light fill must live inside the dark-scheme media query, so the icon
-  // stays black in light mode and only turns white under a dark scheme.
-  expect(favicon).toMatch(/@media \(prefers-color-scheme: dark\)\s*{\s*path\s*{[^}]*fill:\s*#fff/i)
-  expect(favicon).toContain('fill="#000"')
+  expect(favicon).toContain('d="M7 39V13l11 15 7-10 7 10 11-15v26"')
+  expect(favicon).toContain('d="M25 18 38 5m0 0h-8m8 0v8"')
+  expect(favicon).toContain('<circle class="point" cx="25" cy="18" r="3.5"/>')
+  expect(favicon).toMatch(/@media \(prefers-color-scheme: dark\)/)
 })
