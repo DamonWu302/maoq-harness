@@ -392,6 +392,7 @@ export class WorkerRun implements WorkflowRun {
           const snapshot = snapshotJsonValue<ChildResult>({
             output: result.output,
             ...result.structured !== undefined ? { structured: result.structured } : {},
+            ...result.usage !== undefined ? { usage: result.usage } : {},
             stopReason: result.stopReason,
           })
           if (snapshot === undefined) throw new TypeError('child result is not losslessly JSON-serializable')

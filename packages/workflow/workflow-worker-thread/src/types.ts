@@ -5,7 +5,7 @@
  * @module @deepseek-ai/dsh-workflow-worker-thread/types
  */
 
-import type { ContentBlock } from '@deepseek-ai/dsh-llm'
+import type { ContentBlock, TokenUsage } from '@deepseek-ai/dsh-llm'
 import type { ObjectJsonSchema } from '@deepseek-ai/dsh-tools'
 import type { WorkflowMeta } from '@deepseek-ai/dsh-workflow'
 
@@ -58,6 +58,8 @@ export interface ChildResult {
   output: ContentBlock[]
   /** The structured value, present iff the request carried a schema AND the provider honored it. */
   structured?: unknown
+  /** Provider-authoritative token accounting, when the backend reports it. */
+  usage?: TokenUsage
   /** Why the child run ended (`'completed'` is the only value the runtime branches on). */
   stopReason: string
 }

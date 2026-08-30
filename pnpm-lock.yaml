@@ -1372,6 +1372,9 @@ importers:
 
   packages/bundle/maoq-app:
     dependencies:
+      '@deepseek-ai/dsh-subagent-codex':
+        specifier: workspace:^
+        version: link:../../subagent/subagent-codex
       '@deepseek-ai/dsh-tool-maoq-decision':
         specifier: workspace:^
         version: link:../../workflow/tool-maoq-decision

@@ -39,6 +39,7 @@
     }
   },
   "dependencies": {
+    "@deepseek-ai/dsh-subagent-codex": "workspace:^",
     "@deepseek-ai/dsh-tool-maoq-decision": "workspace:^"
   },
   "peerDependencies": {

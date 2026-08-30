@@ -438,7 +438,7 @@ describe('task admission and package contracts', () => {
     expect(provider).toMatchObject({
       name: 'codex',
       capabilities: {
-        outputSchema: false,
+        outputSchema: true,
         depthLimit: false,
         toolFilter: false,
         persona: false,
@@ -829,6 +829,57 @@ describe('CodexAppServerWire', () => {
     )
     await expect(result).resolves.toEqual({
       output: [{ type: 'text', text: 'fallback' }],
+      stopReason: 'completed',
+    })
+    wire.close()
+  })
+
+  it('constrains structured output and returns provider token accounting', async () => {
+    const { child, wire } = await initializeWire()
+    const schema = {
+      type: 'object' as const,
+      properties: { verdict: { type: 'string' as const } },
+      required: ['verdict'],
+      additionalProperties: false,
+    }
+    const result = wire.runTurn(['decide'], new AbortController().signal, schema)
+    const turnStart = await child.peer.nextMethod('turn/start')
+    expect(turnStart.params).toMatchObject({ outputSchema: schema })
+    child.peer.respond(turnStart, { turn: { id: 'turn-1' } })
+    child.peer.send(
+      agentMessage('{"verdict":"watch"}', 'final_answer'),
+      {
+        method: 'thread/tokenUsage/updated',
+        params: {
+          threadId: 'thread-1',
+          turnId: 'turn-1',
+          tokenUsage: {
+            total: {
+              inputTokens: 100,
+              cachedInputTokens: 30,
+              cacheWriteInputTokens: 5,
+              outputTokens: 20,
+              reasoningOutputTokens: 7,
+              totalTokens: 120,
+            },
+            last: {},
+            modelContextWindow: 200_000,
+          },
+        },
+      },
+      turnCompleted('completed'),
+    )
+    await expect(result).resolves.toEqual({
+      output: [{ type: 'text', text: '{"verdict":"watch"}' }],
+      structured: { verdict: 'watch' },
+      usage: {
+        inputTokens: 65,
+        outputTokens: 20,
+        totalTokens: 120,
+        cacheReadTokens: 30,
+        cacheWriteTokens: 5,
+        reasoningTokens: 7,
+      },
       stopReason: 'completed',
     })
     wire.close()

@@ -386,7 +386,7 @@ export async function startCodexRun(
     attempt: async () => {
       try {
         const terminal = await Promise.race([
-          wire.runTurn(texts, runAbort.signal),
+          wire.runTurn(texts, runAbort.signal, request.outputSchema),
           publishedProcessFailure,
         ])
         if (terminal.stopReason === 'completed') return terminal

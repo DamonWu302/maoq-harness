@@ -23,7 +23,7 @@ The MAOQ application layer composes over `dsh-base` and `dsh-web-app`. It suppli
 <a id="use-this-package"></a>
 ## Use this package
 
-Launch with `dsh --profile maoq`. The shipped template composes `dsh-base`, `dsh-web-app`, then this policy layer, and keeps profile patches live-reloadable. The decision tool uses the `spawn` provider, permits at most four selected specialists, and limits rendered results to 32768 characters.
+Launch with `dsh --profile maoq`. The shipped template composes `dsh-base`, `dsh-web-app`, then this policy layer, and keeps profile patches live-reloadable. The decision council reuses the local Codex/ChatGPT login through Codex app-server, pins `gpt-5.6-sol`, permits at most four selected specialists, and limits rendered results to 32768 characters. Token usage is reported per specialist, commander synthesis, and independent risk review, then aggregated across input, cache, output, reasoning, and total tokens. Calls without provider usage are counted in `unavailableCalls` rather than estimated.
 
 <a id="model-experience"></a>
 ## Model Experience

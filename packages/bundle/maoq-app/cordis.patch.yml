@@ -19,9 +19,15 @@
   disabled: false
 
 - insert:
+    - id: subagent-codex
+      name: '@deepseek-ai/dsh-subagent-codex'
+      config:
+        model: gpt-5.6-sol
+        permissionMode: never
+
     - id: tool-maoq-decision
       name: '@deepseek-ai/dsh-tool-maoq-decision'
       config:
-        subagentProvider: spawn
+        subagentProvider: codex
         maxSpecialists: 4
         maxResultChars: 32768

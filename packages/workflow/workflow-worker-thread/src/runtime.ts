@@ -37,7 +37,7 @@ export interface ExecutionObserver {
 }
 
 /** The `agent()` options the script may pass; everything else rejects loud. */
-const SUPPORTED_AGENT_OPTIONS = new Set(['label', 'phase', 'schema', 'provider', 'model'])
+const SUPPORTED_AGENT_OPTIONS = new Set(['label', 'phase', 'schema', 'provider', 'model', 'includeUsage'])
 /** Deferred Claude Code options we name explicitly in the rejection message. */
 const DEFERRED_AGENT_OPTIONS = new Set(['effort', 'isolation', 'agentType'])
 
@@ -324,10 +324,13 @@ export class WorkflowExecution {
               return null
             }
             this.observer.agentEnd({ ...info, outcome: 'completed' })
-            return result.structured
+            return opts.includeUsage
+              ? { value: result.structured, usage: result.usage ?? null }
+              : result.structured
           }
           this.observer.agentEnd({ ...info, outcome: 'completed' })
-          return outputText(result.output)
+          const value = outputText(result.output)
+          return opts.includeUsage ? { value, usage: result.usage ?? null } : value
         }
         // A cancelled RUN kills the script; a child that failed for its own
         // reasons resolves null (scripts .filter(Boolean) per the CC contract).
@@ -352,6 +355,7 @@ export class WorkflowExecution {
     provider?: string
     model?: string
     schema?: ObjectJsonSchema
+    includeUsage?: boolean
   } {
     if (rawOpts === undefined) return {}
     let opts: unknown
@@ -369,14 +373,17 @@ export class WorkflowExecution {
     for (const key of Object.keys(record)) {
       if (SUPPORTED_AGENT_OPTIONS.has(key)) continue
       if (DEFERRED_AGENT_OPTIONS.has(key)) {
-        throw new WorkflowError(`agent() option "${key}" is deferred and not supported by this engine (supported: label, phase, schema, provider, model)`, 'UNSUPPORTED_OPTION')
+        throw new WorkflowError(`agent() option "${key}" is deferred and not supported by this engine (supported: label, phase, schema, provider, model, includeUsage)`, 'UNSUPPORTED_OPTION')
       }
-      throw new WorkflowError(`agent() option "${key}" is not recognized (supported: label, phase, schema, provider, model)`, 'UNSUPPORTED_OPTION')
+      throw new WorkflowError(`agent() option "${key}" is not recognized (supported: label, phase, schema, provider, model, includeUsage)`, 'UNSUPPORTED_OPTION')
     }
     for (const key of ['label', 'phase', 'provider', 'model'] as const) {
       if (record[key] !== undefined && typeof record[key] !== 'string') {
         throw new WorkflowError(`agent() option "${key}" must be a string`, 'INVALID_ARGUMENT')
       }
+    }
+    if (record.includeUsage !== undefined && typeof record.includeUsage !== 'boolean') {
+      throw new WorkflowError('agent() option "includeUsage" must be a boolean', 'INVALID_ARGUMENT')
     }
     let schema: ObjectJsonSchema | undefined
     if (record.schema !== undefined) {
@@ -395,6 +402,7 @@ export class WorkflowExecution {
       ...record.provider !== undefined ? { provider: record.provider as string } : {},
       ...record.model !== undefined ? { model: record.model as string } : {},
       ...schema !== undefined ? { schema } : {},
+      ...record.includeUsage !== undefined ? { includeUsage: record.includeUsage as boolean } : {},
     }
   }
 

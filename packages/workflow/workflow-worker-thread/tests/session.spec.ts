@@ -152,6 +152,20 @@ describe('runWorkerSession over an in-process MessageChannel', () => {
     host.close()
   })
 
+  it('agent({includeUsage}) returns the value and provider token accounting together', async () => {
+    const usage = { inputTokens: 65, outputTokens: 20, totalTokens: 120, cacheReadTokens: 30, reasoningTokens: 7 }
+    const host = fakeHost({ reply: () => ({ output: [], structured: { verdict: 'watch' }, usage, stopReason: 'completed' }) })
+    void runWorkerSession(host.port, init(`
+      return await agent('decide', {
+        schema: { type: 'object', properties: { verdict: { type: 'string' } } },
+        includeUsage: true,
+      })
+    `))
+    const result = await host.result()
+    expect(result.value).toEqual({ value: { verdict: 'watch' }, usage })
+    host.close()
+  })
+
   it('a schema child completing WITHOUT a structured value resolves null with a failed outcome', async () => {
     const host = fakeHost({ reply: () => text('prose, no structure') })
     void runWorkerSession(host.port, init("return await agent('p', { schema: { type: 'object' } })"))
@@ -338,7 +352,8 @@ describe('runWorkerSession over an in-process MessageChannel', () => {
       ["return await agent('p', { label: 3 })", '"label" must be a string'],
       ["return await agent('p', { get label() { throw new Error('read failed') } })", 'options must be plain JSON data'],
       ["return await agent('p', { bogus: true })", '"bogus" is not recognized'],
-      ["return await agent('p', { effort: 'high' })", '"effort" is deferred and not supported by this engine (supported: label, phase, schema, provider, model)'],
+      ["return await agent('p', { effort: 'high' })", '"effort" is deferred and not supported by this engine (supported: label, phase, schema, provider, model, includeUsage)'],
+      ["return await agent('p', { includeUsage: 'yes' })", '"includeUsage" must be a boolean'],
       ["return await agent('p', { schema: { type: 'object', oneOf: [] } })", 'outside the supported subset'],
       ['return await parallel([() => 1, () => 2, () => 3])', 'over the per-call cap (2)'],
       ['return await pipeline([1, 2, 3], (x) => x)', 'maxItemsPerCall'],

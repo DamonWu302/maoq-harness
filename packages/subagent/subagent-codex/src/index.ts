@@ -11,7 +11,6 @@ import z from '@deepseek-ai/schemastery'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import {
   assertPositiveFinite,
-  NO_START_CAPABILITIES,
   resolveChildCwd,
   type ResolvedSubagentStartRequest,
   type SubagentCapabilities,
@@ -61,7 +60,13 @@ export const Config: z<Config> = z.object({
 type ResolvedConfig = Omit<Required<Config>, 'model'> & Pick<Config, 'model'>
 
 class CodexProvider implements SubagentProvider {
-  readonly capabilities: SubagentCapabilities = NO_START_CAPABILITIES
+  readonly capabilities: SubagentCapabilities = {
+    agentOptions: false,
+    outputSchema: true,
+    depthLimit: false,
+    toolFilter: false,
+    persona: false,
+  }
   readonly inheritsParentContext = false
 
   constructor(

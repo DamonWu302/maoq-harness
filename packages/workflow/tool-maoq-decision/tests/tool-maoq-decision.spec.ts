@@ -127,6 +127,16 @@ const approved = {
     hardLimits: ['no live execution'],
     invalidationConditions: ['snapshot expires'],
   },
+  tokenUsage: {
+    calls: [
+      { label: 'market_regime', phase: 'Specialist research', usage: { inputTokens: 100, outputTokens: 20, totalTokens: 120 } },
+      { label: 'emotion_cycle', phase: 'Specialist research', usage: { inputTokens: 90, outputTokens: 20, totalTokens: 110 } },
+      { label: 'MAOQ commander synthesis', phase: 'Decision synthesis', usage: { inputTokens: 200, outputTokens: 30, totalTokens: 230 } },
+      { label: 'Independent risk review', phase: 'Independent risk review', usage: { inputTokens: 180, outputTokens: 20, totalTokens: 200 } },
+    ],
+    total: { inputTokens: 570, outputTokens: 90, totalTokens: 660, cacheReadTokens: 0, cacheWriteTokens: 0, reasoningTokens: 0 },
+    unavailableCalls: 0,
+  },
 }
 
 async function settle(

@@ -21,6 +21,11 @@ describe('@deepseek-ai/dsh-maoq-app', () => {
     expect(prompt.config.persona).toContain('final veto power')
     expect(workflowEngine).toEqual({ id: 'workflow-worker-thread', disabled: false })
     expect(insertion.insert).toContainEqual(expect.objectContaining({
+      id: 'subagent-codex',
+      name: '@deepseek-ai/dsh-subagent-codex',
+      config: { model: 'gpt-5.6-sol', permissionMode: 'never' },
+    }))
+    expect(insertion.insert).toContainEqual(expect.objectContaining({
       id: 'tool-maoq-decision',
       name: '@deepseek-ai/dsh-tool-maoq-decision',
     }))

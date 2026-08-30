@@ -255,6 +255,7 @@ describe('real @openai/codex 0.149.1 product', () => {
     })
     await expect(run.result).resolves.toEqual({
       output: [{ type: 'text', text: sentinel }],
+      usage: { inputTokens: 10, outputTokens: 1, totalTokens: 11, cacheReadTokens: 0, reasoningTokens: 0 },
       stopReason: 'completed',
     })
     await run.dispose()
@@ -348,6 +349,7 @@ describe('real @openai/codex 0.149.1 product', () => {
 
     await expect(bypassRun.result).resolves.toEqual({
       output: [{ type: 'text', text: 'NAMED_CODEX_BYPASS_RESULT' }],
+      usage: { inputTokens: 10, outputTokens: 1, totalTokens: 11, cacheReadTokens: 0, reasoningTokens: 0 },
       stopReason: 'completed',
     })
     safeController.abort(new Error('cancel only the published safe run'))
@@ -511,6 +513,7 @@ describe('real @openai/codex 0.149.1 product', () => {
     })
     await expect(run.result).resolves.toEqual({
       output: [{ type: 'text', text: 'bypass complete' }],
+      usage: { inputTokens: 20, outputTokens: 6, totalTokens: 26, cacheReadTokens: 0, reasoningTokens: 0 },
       stopReason: 'completed',
     })
     expect(existsSync(target), JSON.stringify(fixture.requests.at(-1)?.body.input)).toBe(true)

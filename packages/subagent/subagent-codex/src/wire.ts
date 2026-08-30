@@ -8,9 +8,10 @@
  */
 
 import type { Readable, Writable } from 'node:stream'
-import type { ContentBlock } from '@deepseek-ai/dsh-llm'
+import type { ContentBlock, TokenUsage } from '@deepseek-ai/dsh-llm'
 import type { SubagentResult } from '@deepseek-ai/dsh-subagent'
 import { JsonRpcLineTransport } from '@deepseek-ai/dsh-sdk-protocol'
+import { validateJsonSchemaValue, type ObjectJsonSchema } from '@deepseek-ai/dsh-tools'
 import type { CodexPermissionMode } from './run.ts'
 
 type JsonObject = Record<string, unknown>
@@ -73,6 +74,32 @@ function numericHttpStatus(value: unknown): number | undefined {
     && value <= 65_535
     ? value
     : undefined
+}
+
+function tokenCount(value: unknown, label: string): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`subagent-codex: app-server returned invalid ${label}`)
+  }
+  return value
+}
+
+function tokenUsage(value: unknown): TokenUsage {
+  const total = object(value, 'token usage total')
+  const aggregateInput = tokenCount(total.inputTokens, 'input token count')
+  const cacheReadTokens = tokenCount(total.cachedInputTokens, 'cached input token count')
+  const cacheWriteTokens = total.cacheWriteInputTokens === undefined
+    ? 0
+    : tokenCount(total.cacheWriteInputTokens, 'cache-write input token count')
+  const inputTokens = aggregateInput - cacheReadTokens - cacheWriteTokens
+  if (inputTokens < 0) throw new Error('subagent-codex: app-server returned inconsistent input token counts')
+  return {
+    inputTokens,
+    outputTokens: tokenCount(total.outputTokens, 'output token count'),
+    totalTokens: tokenCount(total.totalTokens, 'total token count'),
+    cacheReadTokens,
+    ...cacheWriteTokens === 0 ? {} : { cacheWriteTokens },
+    reasoningTokens: tokenCount(total.reasoningOutputTokens, 'reasoning token count'),
+  }
 }
 
 interface ParsedFailureInfo {
@@ -207,6 +234,7 @@ export class CodexAppServerWire {
   private lastFinalAnswer: string | undefined
   private lastUnphasedAnswer: string | undefined
   private diagnostic: string | undefined
+  private usage: TokenUsage | undefined
   private failure: CodexWireFailureFacts | undefined
   private diagnosticOrder = 0
   private observationOrder = 0
@@ -310,6 +338,7 @@ export class CodexAppServerWire {
   async runTurn(
     texts: readonly string[],
     signal: AbortSignal,
+    outputSchema?: ObjectJsonSchema,
   ): Promise<SubagentResult> {
     const completion = Promise.withResolvers<{
       readonly params: JsonObject
@@ -321,6 +350,7 @@ export class CodexAppServerWire {
       const response = object(await this.guarded(this.transport.request('turn/start', {
         threadId,
         input: texts.map(text => ({ type: 'text', text, text_elements: [] })),
+        ...outputSchema === undefined ? {} : { outputSchema },
       }, signal), signal), 'turn/start response')
       const turn = object(response.turn, 'turn/start turn')
       this.commitTurnId(string(turn.id, 'turn/start turn id'))
@@ -360,7 +390,11 @@ export class CodexAppServerWire {
         )
       }
       if (parsed.maxTokens) {
-        return { output: this.collectOutput(), stopReason: 'max-tokens' }
+        return {
+          output: this.collectOutput(),
+          ...this.usage === undefined ? {} : { usage: this.usage },
+          stopReason: 'max-tokens',
+        }
       }
       const detail = status === 'failed' ? `: ${parsed.category}` : ''
       throw new Error(`subagent-codex: Codex turn ended with status ${String(status)}${detail}`)
@@ -370,7 +404,28 @@ export class CodexAppServerWire {
       this.recordFailure({ stage: 'turn', category: 'invalid-result' })
       throw new Error('subagent-codex: Codex completed without a final answer')
     }
-    return { output, stopReason: 'completed' }
+    let structured: unknown
+    if (outputSchema !== undefined) {
+      const selected = output[0]
+      if (selected?.type !== 'text') {
+        throw new Error('subagent-codex: structured turn completed without text output')
+      }
+      try {
+        structured = JSON.parse(selected.text)
+      } catch (error: unknown) {
+        throw new Error('subagent-codex: structured turn returned invalid JSON', { cause: error })
+      }
+      const violations = validateJsonSchemaValue(outputSchema, structured)
+      if (violations.length > 0) {
+        throw new Error(`subagent-codex: structured turn violated its output schema: ${violations.join('; ')}`)
+      }
+    }
+    return {
+      output,
+      ...structured === undefined ? {} : { structured },
+      ...this.usage === undefined ? {} : { usage: this.usage },
+      stopReason: 'completed',
+    }
   }
 
   /**
@@ -672,6 +727,26 @@ export class CodexAppServerWire {
       } else if (item.phase !== 'commentary') {
         throw new Error(`subagent-codex: app-server returned an unknown agent message phase ${JSON.stringify(item.phase)}`)
       }
+      return
+    }
+    if (method === 'thread/tokenUsage/updated') {
+      const threadId = string(params.threadId, 'token usage thread id')
+      if (threadId !== this.threadId) return
+      const id = string(params.turnId, 'token usage turn id')
+      if (this.turnId === undefined) {
+        if (this.turnCompleted !== undefined) {
+          this.observePendingTurnId(id)
+          this.earlyTurnNotifications.push({
+            method,
+            params,
+            order: this.nextObservationOrder(),
+          })
+        }
+        return
+      }
+      if (id !== this.turnId) return
+      const usage = object(params.tokenUsage, 'token usage')
+      this.usage = tokenUsage(usage.total)
       return
     }
     if (method !== 'turn/completed') return

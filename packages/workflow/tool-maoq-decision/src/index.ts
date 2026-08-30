@@ -61,6 +61,7 @@ interface CouncilResult {
   readonly reports: JsonValue[]
   readonly decision: JsonValue
   readonly risk: JsonValue
+  readonly tokenUsage: JsonValue
 }
 
 const COUNCIL_META = {
@@ -131,8 +132,8 @@ const riskSchema = {
 }
 
 phase('Specialist research')
-const reports = await Promise.all(args.specialists.map(async role => {
-  const report = await agent([
+const reportRuns = await Promise.all(args.specialists.map(async role => {
+  const result = await agent([
     'You are the MAOQ ' + role + ' specialist. Analyze only your assigned domain.',
     'Use reality-first evidence, distinguish facts from inference, identify counter-evidence, and state falsifiable invalidation conditions.',
     'Decision objective: ' + args.objective,
@@ -141,13 +142,16 @@ const reports = await Promise.all(args.specialists.map(async role => {
     label: role,
     phase: 'Specialist research',
     schema: reportSchema,
+    includeUsage: true,
   })
+  const report = result === null ? null : result.value
   if (report === null || report.role !== role) throw new Error('specialist ' + role + ' failed to return its structured report')
-  return report
+  return { report, usage: { label: role, phase: 'Specialist research', usage: result.usage } }
 }))
+const reports = reportRuns.map(run => run.report)
 
 phase('Decision synthesis')
-const decision = await agent([
+const decisionResult = await agent([
   'You are the MAOQ commander. Synthesize the reports into one bounded paper decision.',
   'Identify the principal contradiction, choose the least-resistance battlefield and tactic, and prefer no_trade when evidence is insufficient.',
   'selectedSpecialists must exactly equal: ' + JSON.stringify(args.specialists),
@@ -157,13 +161,15 @@ const decision = await agent([
   label: 'MAOQ commander synthesis',
   phase: 'Decision synthesis',
   schema: decisionSchema,
+  includeUsage: true,
 })
+const decision = decisionResult === null ? null : decisionResult.value
 if (decision === null || JSON.stringify(decision.selectedSpecialists) !== JSON.stringify(args.specialists)) {
   throw new Error('commander failed to preserve the selected specialist set')
 }
 
 phase('Independent risk review')
-const risk = await agent([
+const riskResult = await agent([
   'You are the independent MAOQ risk reviewer. You did not author the proposal and may veto it.',
   'Approve only when evidence, invalidation conditions, and paper-only scope are internally consistent. A veto is final for this run.',
   'Decision objective: ' + args.objective,
@@ -173,9 +179,21 @@ const risk = await agent([
   label: 'Independent risk review',
   phase: 'Independent risk review',
   schema: riskSchema,
+  includeUsage: true,
 })
+const risk = riskResult === null ? null : riskResult.value
 if (risk === null || risk.approved !== (risk.verdict === 'approve')) {
   throw new Error('risk reviewer returned an inconsistent structured verdict')
+}
+
+const usageCalls = reportRuns.map(run => run.usage).concat([
+  { label: 'MAOQ commander synthesis', phase: 'Decision synthesis', usage: decisionResult.usage },
+  { label: 'Independent risk review', phase: 'Independent risk review', usage: riskResult.usage },
+])
+const tokenFields = ['inputTokens', 'outputTokens', 'totalTokens', 'cacheReadTokens', 'cacheWriteTokens', 'reasoningTokens']
+const usageTotal = {}
+for (const field of tokenFields) {
+  usageTotal[field] = usageCalls.reduce((sum, call) => sum + (call.usage === null ? 0 : (call.usage[field] || 0)), 0)
 }
 
 return {
@@ -184,6 +202,11 @@ return {
   reports,
   decision,
   risk,
+  tokenUsage: {
+    calls: usageCalls,
+    total: usageTotal,
+    unavailableCalls: usageCalls.filter(call => call.usage === null).length,
+  },
 }
 `
 
@@ -242,6 +265,9 @@ function readCouncilResult(value: unknown, expected: readonly SpecialistRole[]):
     || !isRecord(value['decision'])
     || !sameStrings(value['decision']['selectedSpecialists'], expected)
     || !isRecord(value['risk'])
+    || !isRecord(value['tokenUsage'])
+    || !Array.isArray(value['tokenUsage']['calls'])
+    || !isRecord(value['tokenUsage']['total'])
     || typeof value['risk']['approved'] !== 'boolean'
     || (value['risk']['verdict'] !== 'approve' && value['risk']['verdict'] !== 'veto')) {
     throw new Error('MAOQ workflow returned inconsistent decision fields')
@@ -260,6 +286,7 @@ function readCouncilResult(value: unknown, expected: readonly SpecialistRole[]):
     reports: value['reports'] as JsonValue[],
     decision: value['decision'] as JsonValue,
     risk: value['risk'] as JsonValue,
+    tokenUsage: value['tokenUsage'] as JsonValue,
   }
 }
 
@@ -333,6 +360,7 @@ export function apply(ctx: Context, config: Config): void {
           reports: { type: 'json', required: true },
           decision: { type: 'json', required: true },
           risk: { type: 'json', required: true },
+          tokenUsage: { type: 'json', required: true },
         },
       },
       render: (_args, value) => [{
@@ -343,6 +371,7 @@ export function apply(ctx: Context, config: Config): void {
           reports: value.reports as JsonValue[],
           decision: value.decision,
           risk: value.risk,
+          tokenUsage: value.tokenUsage,
         }, resolved.maxResultChars),
       }],
     },
@@ -383,6 +412,7 @@ export function apply(ctx: Context, config: Config): void {
           reports: result.reports,
           decision: result.decision,
           risk: result.risk,
+          tokenUsage: result.tokenUsage,
         }
       } finally {
         exec.signal.removeEventListener('abort', onAbort)
