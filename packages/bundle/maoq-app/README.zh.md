@@ -14,6 +14,7 @@ MAOQ 应用层组合在 `dsh-base` 和 `dsh-web-app` 之上，提供统帅人格
 ## 目录
 
 - [使用本包](#use-this-package)
+- [运行与恢复](#operate-and-recover)
 - [选择统帅模型](#choose-commander-model)
 - [模型体验](#model-experience)
 - [已知限制与延期工作](#known-limitations-and-deferred-work)
@@ -25,6 +26,11 @@ MAOQ 应用层组合在 `dsh-base` 和 `dsh-web-app` 之上，提供统帅人格
 ## 使用本包
 
 通过 `dsh --profile maoq` 启动。随附模板依次组合 `dsh-base`、`dsh-web-app` 和本策略层，并允许 Profile 补丁热重载。在受支持的 macOS 与 Node 组合上，如果没有显式代理环境变量，Profile 启动会自动继承已启用的系统 HTTP 和 HTTPS 代理。决策议事组通过 Codex app-server 复用本机 Codex/ChatGPT 登录，固定使用 `gpt-5.6-sol`，最多允许四位所选专家，渲染结果上限为 32768 个字符。每位专家、统帅综合和独立风控的 token 用量都会单列，并在结果中汇总输入、缓存、输出、推理与总 token；若 Codex 未返回用量，该调用会计入 `unavailableCalls`，不会伪造估算值。
+
+<a id="operate-and-recover"></a>
+## 运行与恢复
+
+[MAOQ 运行手册](../../../docs/maoq-operations.zh.md)覆盖前台进程生命周期、服务健康检查、本机 Codex 与外部 API canary、token 检查、P0 证据矩阵，以及提供方目录、认证、模型、传输、结构化输出和风险否决故障的恢复方式。
 
 <a id="choose-commander-model"></a>
 ## 选择统帅模型
@@ -68,6 +74,6 @@ You are the MAOQ commander. Seek truth from current evidence, identify the princ
 <details>
 <summary>维护者工作上下文——点击展开</summary>
 
-下一层 Profile 应先定义一份不可变市场快照，再扩展战术广度。
+P0 已收口。下一层 Profile 应先定义一份不可变市场快照，再扩展战术广度。
 
 </details>

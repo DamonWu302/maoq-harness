@@ -281,10 +281,13 @@ describe('DeepSeekOnboardingDialog', () => {
     }
   })
 
-  it('does not prompt for a DeepSeek API key when the local Codex CLI path is configured', async () => {
+  it('does not prompt for a DeepSeek API key at startup or refresh when the local Codex CLI path is configured', async () => {
     const h = harness({ codexCliConfigured: true })
     render(<DeepSeekOnboardingDialog {...h.props} />)
 
+    await act(async () => { await h.controller.load() })
+
+    expect(screen.queryByRole('dialog')).toBeNull()
     await act(async () => { await h.controller.load() })
 
     expect(screen.queryByRole('dialog')).toBeNull()

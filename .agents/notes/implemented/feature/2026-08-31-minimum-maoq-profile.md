@@ -20,7 +20,7 @@ The browser replaces the user-visible upstream mark with `ui-brand-maoq`. The in
 
 ## Testing
 
-Unit tests cover role selection, parallel specialist launch, child caps, structured approved and vetoed decisions, inconsistent-veto rejection, input bounds, prompt lifecycle, and brand slot lifecycle. A keyless real-Loader test boots the actual Agent loop, tool registry, worker-thread workflow engine, subagent seam, persistence, and a deterministic structured provider. Its recorded result proves that a two-role choice starts no unselected specialist, produces structured synthesis, and returns the independent veto to the parent. Profile and bundle tests pin the shipped composition and paper-only policy.
+Unit tests cover role selection, parallel specialist launch, child caps, structured approved and vetoed decisions, inconsistent-veto rejection, input bounds, prompt lifecycle, and brand slot lifecycle. A keyless real-Loader test boots the actual Agent loop, tool registry, worker-thread workflow engine, subagent seam, persistence, and a deterministic structured provider. Its recorded result proves that a two-role choice starts no unselected specialist, produces structured synthesis, and returns the independent veto to the parent. A delivered source-CLI smoke resolves the shipped `maoq` profile and pins its Codex route, council model, and child ceiling. Browser tests prove that the configured Codex route suppresses DeepSeek API-key onboarding on both initial load and refresh. Profile and bundle tests pin the shipped composition and paper-only policy.
 
 ## Consequences
 

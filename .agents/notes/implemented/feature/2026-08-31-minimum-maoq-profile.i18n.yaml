@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-31-minimum-maoq-profile.md
-2026-08-31-minimum-maoq-profile.md: 1f9a491baed1bc231d0ab4d2ef67bc6c9fe992e3
-2026-08-31-minimum-maoq-profile.zh.md: 1a81dfab891198c857be2e0265429b326f3588ca
+2026-08-31-minimum-maoq-profile.md: 57523373949a5253dd9430c4ccb4a229153c6cc4
+2026-08-31-minimum-maoq-profile.zh.md: dce7daf4b982be2eb9e5e4b4018ba1d67609fbb0

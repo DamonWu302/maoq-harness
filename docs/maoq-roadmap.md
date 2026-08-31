@@ -40,7 +40,7 @@ The immediate next step is **P0: prove one real commander decision end to end**.
 
 ## P0 — Runtime foundation and real decision proof
 
-**Status:** in progress. Local Codex login, model selection, token accounting, macOS system-proxy bootstrap, bounded specialist selection, structured synthesis, and independent risk veto have real-call evidence. External-provider parity and the complete failure matrix remain exit work.
+**Status:** complete. Local Codex login, model selection, token accounting, macOS system-proxy bootstrap, bounded specialist selection, structured synthesis, independent risk veto, external-adapter parity, startup/refresh onboarding behavior, and the failure matrix have automated evidence. The [MAOQ operations runbook](maoq-operations.md) owns the operator canary and recovery procedure.
 
 ### Scope and deliverables
 
@@ -188,4 +188,4 @@ A milestone advances only when its artifact is reproducible, its failures are ex
 
 ## Recommended next action
 
-Finish the remaining P0 exit work with one delivered-profile smoke scenario for each model source and the committed failure matrix. Then start P1 by freezing the `MarketSnapshot` schema and fixture corpus before selecting or integrating a production data vendor.
+Start P1 by freezing the `MarketSnapshot` schema and fixture corpus before selecting or integrating a production data vendor. Keep the [P0 canary](maoq-operations.md#p0-canary) green when changing model routes, prompts, council structure, authentication, or browser onboarding.

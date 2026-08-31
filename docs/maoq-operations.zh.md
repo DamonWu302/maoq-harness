@@ -1,0 +1,74 @@
+# MAOQ 运行手册
+
+[English](maoq-operations.md) | 中文
+
+## 目标
+
+本手册负责 P0 阶段的运行检查，包括启动 MAOQ、选择模型路由、验证一次有界决策、读取 token 用量和从常见故障中恢复。MAOQ 仍是前台运行的研究与模拟交易应用，不具备实盘下单权限。
+
+## 启动、验证与停止
+
+在仓库根目录中，全新 checkout 后或源码变更影响浏览器产物时先构建，再启动交付的 Profile：
+
+```sh
+pnpm run build
+pnpm dsh --profile maoq
+```
+
+保持该终端开启。停止进程或关闭终端会停止本地服务；此前已打开的浏览器随后会报告 `Failed to fetch`，直至重新启动 Profile。按一次 `Ctrl+C` 可干净停止。
+
+启动输出会打印带认证信息的浏览器 URL。直接进行未认证的健康检查应能连接服务器，并通常返回 HTTP 401：
+
+```sh
+curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3080/
+lsof -nP -iTCP:3080 -sTCP:LISTEN
+```
+
+连接被拒绝且没有监听进程，表示 MAOQ 进程没有运行。HTTP 401 表示服务器正在运行并保护浏览器会话，不是模型认证失败。
+
+## 选择模型路由
+
+使用本机 Codex 路由时，先确认共享的 ChatGPT 登录：
+
+```sh
+codex login status
+```
+
+启动 MAOQ，打开**设置 → 模型 → 统帅模型**，选择**本机 Codex 登录**并指定具体模型。随附议事组使用 `gpt-5.6-sol`。配置 Codex 路由后，启动和刷新时都不会出现 DeepSeek API Key 引导。
+
+使用外部 API 路由时，保留现有提供方 Profile 和凭据流程：在模型页面配置提供方，通过凭据字段保存 API Key，再为统帅选择该提供方和模型。绝不能把 Key 写入补丁文件、提示词、日志或提交的 fixture。
+
+保存的模型选择只影响新建任务。现有任务会保留创建时记录的提供方和模型，因此切换路由后需要创建新任务。
+
+## P0 canary
+
+在目标统帅路由上新建任务，要求它调用 `maoq_decide`，只选择 `market_regime` 和 `sector_battlefield`，综合一项模拟决策，并在缺少证据截止点时要求独立审查者否决。只有以下条件同时成立才算通过：只运行这两位专家；综合结果结构化；否决产生 `vetoed`；没有提出实盘行动；每个子 Agent 和总计都报告 token 用量。提供方没有返回用量时必须计入 `unavailableCalls`，绝不能估算。
+
+先使用本机 Codex 登录运行一次 canary。有外部提供方凭据时，再在该路由上新建任务并重复运行。CI 使用本地协议对端验证相同的外部适配器生命周期，因此发布门禁不需要秘密信息；真实外部 canary 用于验证操作者账户、端点、额度和所选模型。
+
+## 故障恢复
+
+| 症状 | 含义 | 恢复方式 |
+|---|---|---|
+| `llm/listProviders failed: Failed to fetch` | 浏览器无法访问本地 MAOQ 服务 | 检查 3080 监听，重新启动 Profile，再刷新带认证信息的浏览器 URL |
+| Codex 登录缺失 | 本机 OAuth 记录不可用 | 运行 `codex login`，确认 `codex login status`，再新建 MAOQ 任务 |
+| `UNKNOWN_MODEL` 或模型无效诊断 | 所选路由不提供该模型 | 选择该提供方公开的模型并新建任务 |
+| `TRANSPORT`、超时或重复重试耗尽 | 提供方端点无法访问或停滞 | 确认本机连接和代理状态；系统代理变化后重启 Profile，再新建任务重试 |
+| 外部凭据缺失 | 所选 API 路由引用的凭据没有值 | 在模型页面保存 Key；不要替换或删除 Codex 路由 |
+| 专家或综合结果结构畸形 | 某个结构化子 Agent 未满足 schema | 将本次运行视为失败，不能把不完整叙事当作决策 |
+| 风险结果为 `vetoed` | 独立审查者停止了这项模拟决策 | 保留否决及其理由，不得根据本次运行采取行动 |
+
+## P0 验收证据
+
+| P0 性质 | 自动化证据 | 操作者证据 |
+|---|---|---|
+| 交付的 `maoq` Profile 能通过源码 CLI 解析 | [`source-launch.compat.spec.ts`](../apps/cli/tests/source-launch.compat.spec.ts) | 上方启动命令及 HTTP／监听检查 |
+| 本机 Codex 认证仅按明确选择用于 `openai-codex` | [`auth.spec.ts`](../packages/llm/llm-pi-ai/tests/auth.spec.ts) | `codex login status` 加一次本机 Codex canary |
+| 外部 API 路由继续可用 | [`adapter.spec.ts`](../packages/llm/llm-pi-ai/tests/adapter.spec.ts) 和 [`dynamic-config.spec.ts`](../packages/llm/llm-pi-ai/tests/dynamic-config.spec.ts) | 操作者凭据可用时运行一次 canary |
+| Codex 配置在启动和刷新时都能关闭 API Key 引导 | [`onboarding-dialog.client.spec.tsx`](../packages/client/ui-settings-models/tests/onboarding-dialog.client.spec.tsx) | 刷新空白 MAOQ 首页，确认不出现 DeepSeek Key 弹窗 |
+| 统帅只选择被请求的专家 | [`loader-composition.spec.ts`](../packages/workflow/tool-maoq-decision/tests/loader-composition.spec.ts) | 检查 canary 的专家列表 |
+| 结构化综合和最终风险否决由宿主强制执行 | [`tool-maoq-decision.spec.ts`](../packages/workflow/tool-maoq-decision/tests/tool-maoq-decision.spec.ts) | 确认被强制设置为不安全的提案最终状态是 `vetoed` |
+| 登录缺失、模型无效、传输故障、结构畸形、取消和否决都明确失败 | 上方链接的适配器、Codex subagent 和 MAOQ 决策测试 | 使用恢复表，绝不能把错误重新解释为批准 |
+| 提供方 token 用量按原值报告且不估算 | [`tool-maoq-decision.spec.ts`](../packages/workflow/tool-maoq-decision/tests/tool-maoq-decision.spec.ts) | 检查 canary 中逐调用总计和 `unavailableCalls` |
+
+自动化证据全部通过且操作者机器上的本机 Codex canary 成功时，P0 即完成。依赖某个外部账户之前必须完成该账户的真实外部 canary，但缺少外部凭据不会阻塞本机 Codex 运行或无 Key 发布门禁。

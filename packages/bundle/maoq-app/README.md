@@ -14,6 +14,7 @@ The MAOQ application layer composes over `dsh-base` and `dsh-web-app`. It suppli
 ## Table of Contents
 
 - [Use this package](#use-this-package)
+- [Operate and recover](#operate-and-recover)
 - [Choose the commander model](#choose-commander-model)
 - [Model Experience](#model-experience)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
@@ -25,6 +26,11 @@ The MAOQ application layer composes over `dsh-base` and `dsh-web-app`. It suppli
 ## Use this package
 
 Launch with `dsh --profile maoq`. The shipped template composes `dsh-base`, `dsh-web-app`, then this policy layer, and keeps profile patches live-reloadable. On a supported macOS and Node combination, profile launch automatically inherits enabled system HTTP and HTTPS proxies when no explicit proxy environment is present. The decision council reuses the local Codex/ChatGPT login through Codex app-server, pins `gpt-5.6-sol`, permits at most four selected specialists, and limits rendered results to 32768 characters. Token usage is reported per specialist, commander synthesis, and independent risk review, then aggregated across input, cache, output, reasoning, and total tokens. Calls without provider usage are counted in `unavailableCalls` rather than estimated.
+
+<a id="operate-and-recover"></a>
+## Operate and recover
+
+The [MAOQ operations runbook](../../../docs/maoq-operations.md) covers foreground process lifetime, server health checks, Local Codex and external API canaries, token inspection, the P0 evidence matrix, and recovery from provider-directory, authentication, model, transport, structured-output, and veto failures.
 
 <a id="choose-commander-model"></a>
 ## Choose the commander model
@@ -66,6 +72,6 @@ Stable while the profile, plugin roster, and live patch text are unchanged. A pr
 <details>
 <summary>Working context for maintainers — click to expand</summary>
 
-The next profile layer should define one immutable market snapshot before adding tactical breadth.
+P0 is closed. The next profile layer should define one immutable market snapshot before adding tactical breadth.
 
 </details>

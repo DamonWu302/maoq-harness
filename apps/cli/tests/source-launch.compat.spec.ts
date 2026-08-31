@@ -1,4 +1,6 @@
-import { readFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execa } from 'execa'
 import { describe, expect, it } from 'vitest'
@@ -38,5 +40,33 @@ describe('dsh SOURCE launcher (node --import tsx/esm)', () => {
     expect(result.exitCode).not.toBe(0)
     expect(result.stderr).toContain('--profile <name> is required')
     expect(result.stdout).toBe('')
+  }, 30_000)
+
+  it('resolves the shipped MAOQ profile through the delivered source CLI', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'dsh-source-maoq-'))
+    try {
+      const result = await execa(process.execPath, [
+        '--import', 'tsx/esm', dshSourceBin, '--profile', 'maoq', '--dump-default-config',
+      ], {
+        cwd: repoRoot,
+        input: '',
+        timeout: 25_000,
+        killSignal: 'SIGKILL',
+        reject: false,
+        env: { ...process.env, DSH_HOME: home },
+      })
+      if (result.timedOut) {
+        throw new Error(`MAOQ source profile dump did not exit within 25s. stdout:\n${result.stdout}\nstderr:\n${result.stderr}`)
+      }
+      expect(result.exitCode).toBe(0)
+      expect(result.stderr).toBe('')
+      expect(result.stdout).toContain('# == @deepseek-ai/dsh-maoq-app')
+      expect(result.stdout).toContain("name: '@deepseek-ai/dsh-tool-maoq-decision'")
+      expect(result.stdout).toContain('reuseCodexLogin: true')
+      expect(result.stdout).toContain('model: gpt-5.6-sol')
+      expect(result.stdout).toContain('maxSpecialists: 4')
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
   }, 30_000)
 })

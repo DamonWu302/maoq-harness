@@ -1,0 +1,74 @@
+# MAOQ Operations Runbook
+
+English | [中文](maoq-operations.zh.md)
+
+## Purpose
+
+This runbook owns the P0 operating checks for launching MAOQ, choosing a model route, proving one bounded decision, reading token usage, and recovering from common failures. MAOQ remains a foreground research and paper-trading application; it has no live-order authority.
+
+## Start, verify, and stop
+
+From the repository root, build after a fresh checkout or source change that affects browser artifacts, then launch the delivered profile:
+
+```sh
+pnpm run build
+pnpm dsh --profile maoq
+```
+
+Keep that terminal open. Stopping the process or closing its terminal stops the local server; an already-open browser then reports `Failed to fetch` until the profile is launched again. Stop cleanly with one `Ctrl+C`.
+
+The launch output prints the authenticated browser URL. A direct unauthenticated health probe should reach the server and normally return HTTP 401:
+
+```sh
+curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3080/
+lsof -nP -iTCP:3080 -sTCP:LISTEN
+```
+
+Connection refusal and no listener mean the MAOQ process is not running. HTTP 401 means the server is running and protecting the browser session; it is not a model-authentication failure.
+
+## Choose a model route
+
+For the local Codex route, first confirm the shared ChatGPT login:
+
+```sh
+codex login status
+```
+
+Launch MAOQ, open **Settings → Models → Commander model**, choose **Local Codex login**, and select the exact model. The shipped council uses `gpt-5.6-sol`. A configured Codex route suppresses the DeepSeek API-key onboarding at startup and after refresh.
+
+For an external API route, keep the existing provider profile and credential flow: configure the provider on the Models page, store its API key through the credential field, then select that provider and model for the commander. Never put a key in a patch file, prompt, log, or committed fixture.
+
+A saved model selection applies to newly created tasks. An existing task retains the provider and model recorded when it was created, so create a new task after switching routes.
+
+## P0 canary
+
+Create a new task on the intended commander route and ask it to call `maoq_decide` with only `market_regime` and `sector_battlefield`, synthesize one paper decision, and require the independent reviewer to veto the decision when the evidence cutoff is missing. The result passes when only those two specialists run, synthesis is structured, the veto produces `vetoed`, no live action is proposed, and token usage is reported per child plus a total. Missing provider usage must appear in `unavailableCalls`; it must never be estimated.
+
+Run the canary once with Local Codex login. When an external provider credential is available, repeat it in a new task on that route. CI validates the same external-adapter lifecycle against a local protocol peer so the release gate needs no secret; the live external canary validates the operator's account, endpoint, quota, and chosen model.
+
+## Failure recovery
+
+| Symptom | Meaning | Recovery |
+|---|---|---|
+| `llm/listProviders failed: Failed to fetch` | Browser cannot reach the local MAOQ server | Check the 3080 listener, relaunch the profile, then reload the authenticated browser URL |
+| Codex login is missing | The local OAuth record is unavailable | Run `codex login`, confirm `codex login status`, then create a new MAOQ task |
+| `UNKNOWN_MODEL` or invalid-model diagnostic | The selected route does not offer that model | Select a model advertised for that provider and create a new task |
+| `TRANSPORT`, timeout, or repeated retry exhaustion | The provider endpoint is unreachable or stalled | Confirm local connectivity and proxy state, restart the profile after a system-proxy change, then retry a new task |
+| Missing external credential | The selected API route names an unset credential reference | Store the key on the Models page; do not replace or remove the Codex route |
+| Malformed specialist or synthesis output | A structured child failed its schema | Treat the run as failed; do not use its partial narrative as a decision |
+| Risk result is `vetoed` | The independent reviewer stopped this paper decision | Preserve the veto and its reasons; start no action from that run |
+
+## P0 acceptance evidence
+
+| P0 property | Automated evidence | Operator evidence |
+|---|---|---|
+| Delivered `maoq` Profile resolves through the source CLI | [`source-launch.compat.spec.ts`](../apps/cli/tests/source-launch.compat.spec.ts) | Launch command and HTTP/listener checks above |
+| Local Codex auth is opt-in and isolated to `openai-codex` | [`auth.spec.ts`](../packages/llm/llm-pi-ai/tests/auth.spec.ts) | `codex login status` plus one Local Codex canary |
+| External API routing remains available | [`adapter.spec.ts`](../packages/llm/llm-pi-ai/tests/adapter.spec.ts) and [`dynamic-config.spec.ts`](../packages/llm/llm-pi-ai/tests/dynamic-config.spec.ts) | One canary when an operator credential is available |
+| Codex configuration suppresses API-key onboarding at startup and refresh | [`onboarding-dialog.client.spec.tsx`](../packages/client/ui-settings-models/tests/onboarding-dialog.client.spec.tsx) | Reload the empty MAOQ home and confirm no DeepSeek-key modal appears |
+| Commander selects only the requested specialists | [`loader-composition.spec.ts`](../packages/workflow/tool-maoq-decision/tests/loader-composition.spec.ts) | Inspect the canary's specialist list |
+| Structured synthesis and final risk veto are host-enforced | [`tool-maoq-decision.spec.ts`](../packages/workflow/tool-maoq-decision/tests/tool-maoq-decision.spec.ts) | Confirm a forced unsafe proposal ends as `vetoed` |
+| Missing login, invalid model, transport failure, malformed output, cancellation, and veto fail explicitly | Adapter, Codex subagent, and MAOQ decision tests linked above | Use the recovery table; never reinterpret an error as approval |
+| Provider token usage is reported without estimates | [`tool-maoq-decision.spec.ts`](../packages/workflow/tool-maoq-decision/tests/tool-maoq-decision.spec.ts) | Inspect per-call totals and `unavailableCalls` in the canary |
+
+P0 is complete when the automated evidence is green and the Local Codex canary passes on the operator machine. A live external canary is required before relying on that external account, but the absence of an external credential does not block Local Codex operation or the keyless release gate.

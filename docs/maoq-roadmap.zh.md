@@ -40,7 +40,7 @@
 
 ## P0 — 运行基础与真实决策验证
 
-**状态：** 进行中。本机 Codex 登录、模型选择、token 用量统计、macOS 系统代理引导、有界专家选择、结构化综合和独立风险否决已有真实调用证据。外部提供方对等验证和完整失败矩阵仍是退出前工作。
+**状态：** 已完成。本机 Codex 登录、模型选择、token 用量统计、macOS 系统代理引导、有界专家选择、结构化综合、独立风险否决、外部适配器对等性、启动／刷新引导行为和失败矩阵都有自动化证据。[MAOQ 运行手册](maoq-operations.zh.md)负责操作者 canary 和故障恢复流程。
 
 ### 范围与交付物
 
@@ -188,4 +188,4 @@ MAOQ 继续作为由普通 Cordis 插件组装的 Profile；不 fork Agent 循�
 
 ## 建议的下一步行动
 
-先用两种模型来源各完成一条交付 Profile 冒烟场景，并补齐已提交的失败矩阵，结束剩余 P0 工作。随后从冻结 `MarketSnapshot` schema 和 fixture 语料开始 P1，再选择或接入生产数据供应商。
+从冻结 `MarketSnapshot` schema 和 fixture 语料开始 P1，再选择或接入生产数据供应商。模型路由、提示词、议事组结构、认证或浏览器引导发生变化时，必须保持 [P0 canary](maoq-operations.zh.md#p0-canary) 通过。
