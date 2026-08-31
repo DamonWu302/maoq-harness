@@ -19,6 +19,7 @@ const HASH_PATTERN = /^[a-f0-9]{64}$/
 
 /** Failure to establish one complete, internally consistent point-in-time fact set. */
 export class MarketSnapshotValidationError extends Error {
+  /** Stable programmatic category for rejected market evidence. */
   readonly code = 'MARKET_SNAPSHOT_INVALID' as const
 
   constructor(message: string) {
@@ -183,7 +184,11 @@ function normalizeNews(news: readonly NewsEvidence[], cutoff: number): NewsEvide
   return eligible
 }
 
-/** Serialize JSON with recursively sorted object keys and no insignificant whitespace. */
+/**
+ * Serialize JSON with recursively sorted object keys and no insignificant whitespace.
+ * @param value - JSON-compatible value to serialize.
+ * @returns Canonical JSON bytes represented as a string.
+ */
 export function canonicalJson(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value)
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`
@@ -191,12 +196,29 @@ export function canonicalJson(value: unknown): string {
   return `{${Object.keys(record).sort().map(key => `${JSON.stringify(key)}:${canonicalJson(record[key])}`).join(',')}}`
 }
 
-/** Compute the lowercase SHA-256 content address for canonical JSON. */
+/**
+ * Compute the lowercase SHA-256 content address for canonical JSON.
+ * @param value - JSON-compatible value whose canonical representation is addressed.
+ * @returns Lowercase hexadecimal SHA-256 digest.
+ */
 export function contentHash(value: unknown): string {
   return createHash('sha256').update(canonicalJson(value)).digest('hex')
 }
 
-/** Build one immutable snapshot, rejecting incomplete or conflicting facts. */
+/**
+ * Compute the stable address used to locate one exact versioned draft identity.
+ * @param identity - Complete versioned identity without a content hash.
+ * @returns Lowercase hexadecimal SHA-256 digest with source versions normalized.
+ */
+export function marketSnapshotIdentityHash(identity: MarketSnapshotIdentityInput): string {
+  return contentHash({ ...identity, sourceVersions: [...identity.sourceVersions].sort() })
+}
+
+/**
+ * Build one immutable snapshot, rejecting incomplete or conflicting facts.
+ * @param draft - Provider-neutral observations for one exact decision cutoff.
+ * @returns Deeply frozen canonical snapshot carrying its content hash.
+ */
 export function buildMarketSnapshot(draft: MarketSnapshotDraft): MarketSnapshot {
   const cutoff = validateIdentity(draft.identity)
   const stocks = draft.stocks
@@ -223,7 +245,10 @@ export function buildMarketSnapshot(draft: MarketSnapshotDraft): MarketSnapshot 
   return deepFreeze(snapshot)
 }
 
-/** Verify that parsed persisted bytes still match their declared content address. */
+/**
+ * Verify that parsed persisted bytes still match their declared content address.
+ * @param snapshot - Parsed persisted snapshot to verify.
+ */
 export function verifyMarketSnapshot(snapshot: MarketSnapshot): void {
   const persistedVersion = (snapshot as { schemaVersion: number }).schemaVersion
   if (persistedVersion !== MARKET_SNAPSHOT_SCHEMA_VERSION) {

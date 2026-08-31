@@ -63,6 +63,8 @@ describe('dsh SOURCE launcher (node --import tsx/esm)', () => {
       expect(result.stdout).toContain('# == @deepseek-ai/dsh-maoq-app')
       expect(result.stdout).toContain("name: '@deepseek-ai/dsh-market-snapshot'")
       expect(result.stdout).toContain('root: .maoq/snapshots')
+      expect(result.stdout).toContain("name: '@deepseek-ai/dsh-market-snapshot-json'")
+      expect(result.stdout).toContain('root: .maoq/imports')
       expect(result.stdout).toContain("name: '@deepseek-ai/dsh-tool-maoq-decision'")
       expect(result.stdout).toContain('reuseCodexLogin: true')
       expect(result.stdout).toContain('model: gpt-5.6-sol')

@@ -67,7 +67,7 @@ The immediate next step is **P0: prove one real commander decision end to end**.
 
 ## P1 — Immutable daily market snapshot
 
-**Status:** In progress. `MarketSnapshot` v1, deterministic construction, cutoff and point-in-time validation, source lineage, content-addressed persistence, exact-identity reads, and the offline risk fixture suite are implemented in [`dsh-market-snapshot`](../packages/market/market-snapshot/README.md). Production daily, sector, and news adapters remain before P1 closes.
+**Status:** In progress. [`dsh-market-snapshot`](../packages/market/market-snapshot/README.md) implements `MarketSnapshot` v1, deterministic construction, cutoff and point-in-time validation, source lineage, content-addressed persistence, exact-identity reads, and the offline risk fixture suite. A named adapter registry and [`dsh-market-snapshot-json`](../packages/market/market-snapshot-json/README.md) provide deterministic audited imports. Production daily, sector, and news acquisition remain before P1 closes.
 
 P1 applies “seek truth from facts” by keeping acquired observations separate from interpretation, “no investigation, no right to speak” by failing on missing critical facts, and “concrete analysis of concrete conditions” by versioning the exact date, cutoff, adjustment, calendar, sector classification, and sources. The [market snapshot decision](../.agents/notes/implemented/architecture/2026-08-31-maoq-market-snapshot.md) owns this mapping.
 
@@ -171,7 +171,7 @@ Evaluation uses walk-forward splits, point-in-time membership, transaction costs
 MAOQ remains a profile assembled from ordinary Cordis plugins; it does not fork the Agent loop and does not become one monolithic plugin. `dsh-maoq-app` remains the deployment bundle that selects and configures capabilities, while owned runtime behavior lives in focused packages with tests and explicit services.
 
 - **P0 orchestration:** keep `dsh-tool-maoq-decision` as the model-facing council Consumer. It coordinates selected subagents and enforces the final veto, but it does not fetch market data or calculate indicators.
-- **P1 market facts:** add one MAOQ market-snapshot Cordis plugin package that initially owns the snapshot types, deterministic builder, validation, persistence interface, and read-only service. Keep normalization adapters inside this package until a second real data source or independent release cadence proves a separate provider package is needed.
+- **P1 market facts:** the MAOQ market-snapshot service owns snapshot types, deterministic construction, validation, persistence, read-only queries, and a named adapter registry. Source-specific or independently deployed acquisition belongs in separate provider packages.
 - **P2 strategic state:** add one MAOQ strategic-state Cordis plugin package that consumes the snapshot service, computes deterministic features, and exposes the versioned strategic-state result. Its model interpretation uses the existing subagent capability; specialist roles remain runtime agents, not Cordis plugins.
 - **Later UI:** add a separate Client Cordis plugin only when snapshot and strategic-state records have a stable presentation contract. The current bundle mounts it; domain packages do not import browser components.
 - **Later data vendors:** split a vendor adapter into its own Service Provider package only when replacement, credentials, dependencies, or lifecycle genuinely differ. The snapshot schema and downstream decisions never depend on vendor field names.

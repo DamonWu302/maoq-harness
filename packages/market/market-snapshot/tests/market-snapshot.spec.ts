@@ -188,10 +188,31 @@ describe('immutable persistence and service', () => {
       name: 'offline-fixture',
       load: requested => Promise.resolve({ ...normalDraft(), identity: requested }),
     }
-    const snapshot = await ctx.marketSnapshots.build(adapter, identity)
+    const disposeAdapter = ctx.marketSnapshots.register(adapter)
+    expect(ctx.marketSnapshots.listAdapters()).toEqual(['offline-fixture'])
+    const snapshot = await ctx.marketSnapshots.build('offline-fixture', identity)
     const loaded = await ctx.marketSnapshots.getByHash(snapshot.identity.contentHash)
     expect(loaded).toEqual(snapshot)
     expect(Object.isFrozen(loaded)).toBe(true)
+    disposeAdapter()
+    expect(ctx.marketSnapshots.listAdapters()).toEqual([])
+    await fiber.dispose()
+  })
+
+  it('refuses duplicate, missing, and identity-changing adapters', async () => {
+    const ctx = new Context()
+    const fiber = ctx.plugin(MarketSnapshotService, { root: await temporaryRoot() })
+    await fiber
+    const adapter: MarketSnapshotAdapter = {
+      name: 'fixture',
+      load: () => Promise.resolve(normalDraft()),
+    }
+    const dispose = ctx.marketSnapshots.register(adapter)
+    expect(() => ctx.marketSnapshots.register(adapter)).toThrow(/already registered/)
+    await expect(ctx.marketSnapshots.build('missing', identity)).rejects.toThrow(/not registered/)
+    const changedIdentity = { ...identity, cutoffTime: '2026-08-28T15:31:00+08:00' }
+    await expect(ctx.marketSnapshots.build('fixture', changedIdentity)).rejects.toThrow(/different identity/)
+    dispose()
     await fiber.dispose()
   })
 })

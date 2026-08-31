@@ -25,7 +25,7 @@ The MAOQ application layer composes over `dsh-base` and `dsh-web-app`. It suppli
 <a id="use-this-package"></a>
 ## Use this package
 
-Launch with `dsh --profile maoq`. The shipped template composes `dsh-base`, `dsh-web-app`, then this policy layer, and keeps profile patches live-reloadable. The market snapshot service stores immutable artifacts under `.maoq/snapshots` relative to the launch directory. On a supported macOS and Node combination, profile launch automatically inherits enabled system HTTP and HTTPS proxies when no explicit proxy environment is present. The decision council reuses the local Codex/ChatGPT login through Codex app-server, pins `gpt-5.6-sol`, permits at most four selected specialists, and limits rendered results to 32768 characters. Token usage is reported per specialist, commander synthesis, and independent risk review, then aggregated across input, cache, output, reasoning, and total tokens. Calls without provider usage are counted in `unavailableCalls` rather than estimated.
+Launch with `dsh --profile maoq`. The shipped template composes `dsh-base`, `dsh-web-app`, then this policy layer, and keeps profile patches live-reloadable. The market snapshot service stores immutable artifacts under `.maoq/snapshots` and reads audited provider-neutral imports from `.maoq/imports`, both relative to the launch directory. On a supported macOS and Node combination, profile launch automatically inherits enabled system HTTP and HTTPS proxies when no explicit proxy environment is present. The decision council reuses the local Codex/ChatGPT login through Codex app-server, pins `gpt-5.6-sol`, permits at most four selected specialists, and limits rendered results to 32768 characters. Token usage is reported per specialist, commander synthesis, and independent risk review, then aggregated across input, cache, output, reasoning, and total tokens. Calls without provider usage are counted in `unavailableCalls` rather than estimated.
 
 <a id="operate-and-recover"></a>
 ## Operate and recover
@@ -62,7 +62,7 @@ Stable while the profile, plugin roster, and live patch text are unchanged. A pr
 
 ## Known Limitations and Deferred Work
 
-- **Not a data product** — this layer does not yet define market-data connectors, daily snapshot semantics, or news-source ranking.
+- **No direct market acquisition** — this layer mounts snapshot semantics and audited JSON import, but production daily, sector, and news adapters remain separate work.
 - **No portfolio executor** — decisions stop at research and paper-trading output.
 - **One generic risk reviewer** — numeric exposure, liquidity, and drawdown engines remain future independent services.
 
@@ -72,6 +72,6 @@ Stable while the profile, plugin roster, and live patch text are unchanged. A pr
 <details>
 <summary>Working context for maintainers — click to expand</summary>
 
-P0 is closed. The next profile layer should define one immutable market snapshot before adding tactical breadth.
+P1 establishes immutable market facts before P2 adds strategic interpretation or tactical breadth.
 
 </details>

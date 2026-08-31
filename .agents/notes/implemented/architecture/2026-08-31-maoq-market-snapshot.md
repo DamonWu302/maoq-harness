@@ -10,11 +10,11 @@ MAOQ cannot identify a principal market contradiction from mutable live response
 
 ## Decision
 
-`@deepseek-ai/dsh-market-snapshot` owns `MarketSnapshot` version 1, its provider-neutral adapter input, deterministic builder, append-only local persistence, and read-only query service. The shipped `maoq` bundle mounts the service at `.maoq/snapshots`.
+`@deepseek-ai/dsh-market-snapshot` owns `MarketSnapshot` version 1, its named provider-neutral adapter registry, deterministic builder, append-only local persistence, and read-only query service. The shipped `maoq` bundle mounts the service at `.maoq/snapshots` and the audited JSON import adapter at `.maoq/imports`.
 
 The identity combines trading date, cutoff, trading-calendar version, adjustment version, sector-classification version, and source versions. The builder validates record dates and source retrieval times, filters news by both publication and fetch time, checks point-in-time sector membership, rejects conflicting or missing critical facts, sorts unordered collections, and hashes canonical JSON. Every acquired record carries source lineage and named deterministic transforms.
 
-The local store addresses artifacts by SHA-256 and writes a separate reference for the exact versioned identity. It permits an idempotent rewrite of identical bytes and refuses a different content hash for an existing identity. Reads verify the declared hash and return a deeply frozen value. There is deliberately no latest-snapshot query.
+The local store addresses artifacts by SHA-256 and writes a separate reference for the exact versioned identity. It permits an idempotent rewrite of identical bytes and refuses a different content hash for an existing identity. Reads verify the declared hash and return a deeply frozen value. There is deliberately no latest-snapshot query. Every adapter registers by a unique lowercase-hyphenated name, and the service rejects any returned draft whose identity differs from the request.
 
 ## Maoist method mapping
 
@@ -30,4 +30,4 @@ The local store addresses artifacts by SHA-256 and writes a separate reference f
 
 ## Consequences
 
-P2 and later stages receive a stable, inspectable fact set and must request it by exact identity or content hash. Adding a production supplier requires an adapter that returns `MarketSnapshotDraft`; supplier fields cannot enter persisted types. The current local store assumes one coordinated writer, while conflict detection keeps accidental identity rebinding visible. Offline tests cover deterministic replay, trading-state cases, point-in-time membership, missing and conflicting data, news cutoffs, immutable reads, and identity conflicts.
+P2 and later stages receive a stable, inspectable fact set and must request it by exact identity or content hash. Adding a production supplier requires an adapter that returns `MarketSnapshotDraft`; supplier fields cannot enter persisted types. The JSON adapter gives externally acquired evidence a deterministic no-credential import path without claiming that imported facts are complete or valid. The current local store assumes one coordinated writer, while conflict detection keeps accidental identity rebinding visible. Offline tests cover deterministic replay, trading-state cases, point-in-time membership, missing and conflicting data, news cutoffs, immutable reads, identity conflicts, adapter disposal, and exact-identity JSON replay.

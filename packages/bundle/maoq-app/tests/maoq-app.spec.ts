@@ -34,6 +34,11 @@ describe('@deepseek-ai/dsh-maoq-app', () => {
       config: { root: '.maoq/snapshots' },
     }))
     expect(insertion.insert).toContainEqual(expect.objectContaining({
+      id: 'market-snapshot-json',
+      name: '@deepseek-ai/dsh-market-snapshot-json',
+      config: { root: '.maoq/imports' },
+    }))
+    expect(insertion.insert).toContainEqual(expect.objectContaining({
       id: 'subagent-codex',
       name: '@deepseek-ai/dsh-subagent-codex',
       config: { model: 'gpt-5.6-sol', permissionMode: 'never' },

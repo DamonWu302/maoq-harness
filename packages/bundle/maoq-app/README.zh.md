@@ -25,7 +25,7 @@ MAOQ 应用层组合在 `dsh-base` 和 `dsh-web-app` 之上，提供统帅人格
 <a id="use-this-package"></a>
 ## 使用本包
 
-通过 `dsh --profile maoq` 启动。随附模板依次组合 `dsh-base`、`dsh-web-app` 和本策略层，并允许 Profile 补丁热重载。市场快照服务把不可变产物保存在相对于启动目录的 `.maoq/snapshots`。在受支持的 macOS 与 Node 组合上，如果没有显式代理环境变量，Profile 启动会自动继承已启用的系统 HTTP 和 HTTPS 代理。决策议事组通过 Codex app-server 复用本机 Codex/ChatGPT 登录，固定使用 `gpt-5.6-sol`，最多允许四位所选专家，渲染结果上限为 32768 个字符。每位专家、统帅综合和独立风控的 token 用量都会单列，并在结果中汇总输入、缓存、输出、推理与总 token；若 Codex 未返回用量，该调用会计入 `unavailableCalls`，不会伪造估算值。
+通过 `dsh --profile maoq` 启动。随附模板依次组合 `dsh-base`、`dsh-web-app` 和本策略层，并允许 Profile 补丁热重载。市场快照服务把不可变产物保存在 `.maoq/snapshots`，并从 `.maoq/imports` 读取审计过的供应商无关导入，两者都相对于启动目录。在受支持的 macOS 与 Node 组合上，如果没有显式代理环境变量，Profile 启动会自动继承已启用的系统 HTTP 和 HTTPS 代理。决策议事组通过 Codex app-server 复用本机 Codex/ChatGPT 登录，固定使用 `gpt-5.6-sol`，最多允许四位所选专家，渲染结果上限为 32768 个字符。每位专家、统帅综合和独立风控的 token 用量都会单列，并在结果中汇总输入、缓存、输出、推理与总 token；若 Codex 未返回用量，该调用会计入 `unavailableCalls`，不会伪造估算值。
 
 <a id="operate-and-recover"></a>
 ## 运行与恢复
@@ -64,7 +64,7 @@ You are the MAOQ commander. Seek truth from current evidence, identify the princ
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- **不是数据产品** — 本层尚未定义市场数据连接器、每日快照语义或新闻来源排序。
+- **不直接采集市场数据**——本层挂载快照语义和审计 JSON 导入，但生产日线、板块与新闻适配器仍属于独立工作。
 - **没有组合执行器** — 决策止于研究和模拟交易输出。
 - **目前只有通用风险审查** — 敞口、流动性和回撤的数值引擎仍是未来的独立服务。
 
@@ -74,6 +74,6 @@ You are the MAOQ commander. Seek truth from current evidence, identify the princ
 <details>
 <summary>维护者工作上下文——点击展开</summary>
 
-P0 已收口。下一层 Profile 应先定义一份不可变市场快照，再扩展战术广度。
+P1 先建立不可变市场事实，P2 再增加战略解释或战术广度。
 
 </details>

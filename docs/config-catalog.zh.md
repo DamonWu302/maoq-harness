@@ -1461,6 +1461,24 @@ export interface Config {
 
 来源：[`packages/market/market-snapshot/src/index.ts:14`](../packages/market/market-snapshot/src/index.ts)
 
+<a id="deepseek-aidsh-market-snapshot-json"></a>
+
+## `@deepseek-ai/dsh-market-snapshot-json`
+
+需要：`marketSnapshots`
+
+```ts config-catalog
+/** Adapter name and directory containing identity-addressed JSON drafts. */
+export interface Config {
+  /** Directory containing `<identity-sha256>.json` draft files. */
+  readonly root: string
+  /** Registry name used by snapshot build requests; defaults to `json-file`. */
+  readonly adapterName?: string
+}
+```
+
+来源：[`packages/market/market-snapshot-json/src/index.ts:15`](../packages/market/market-snapshot-json/src/index.ts)
+
 <a id="deepseek-aidsh-mcp-client"></a>
 
 ## `@deepseek-ai/dsh-mcp-client`

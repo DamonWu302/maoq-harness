@@ -24,6 +24,6 @@
 
 ## 适配器与查询规则
 
-`MarketSnapshotAdapter.load()` 返回供应商无关的 `MarketSnapshotDraft`；供应商响应字段名不会进入持久化类型。`MarketSnapshotService.build()` 校验并持久化该草稿。`getByHash()` 和 `getByIdentity()` 验证存储的内容哈希，并返回深度冻结值。
+`MarketSnapshotAdapter.load()` 返回供应商无关的 `MarketSnapshotDraft`；供应商响应字段名不会进入持久化类型。适配器在 Cordis effect 生命周期内以唯一小写连字符名称注册。`MarketSnapshotService.build()` 解析一个名称，拒绝改变请求身份的草稿，再校验并持久化它。审计 JSON 适配器按完整身份哈希寻址一个草稿文件。`getByHash()` 和 `getByIdentity()` 验证存储的内容哈希，并返回深度冻结值。
 
 服务不公开“最新快照”查询。消费者必须指定精确身份或哈希，因此回放不能悄悄移动证据截止点。

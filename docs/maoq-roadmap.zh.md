@@ -67,7 +67,7 @@
 
 ## P1 — 不可变日级市场快照
 
-**状态：** 进行中。[`dsh-market-snapshot`](../packages/market/market-snapshot/README.zh.md)已经实现 `MarketSnapshot` v1、确定性构建、截止点及时点校验、来源谱系、内容寻址持久化、精确身份读取和离线风险 fixture 集。P1 收口前仍需完成生产日线、板块和新闻适配器。
+**状态：** 进行中。[`dsh-market-snapshot`](../packages/market/market-snapshot/README.zh.md)已经实现 `MarketSnapshot` v1、确定性构建、截止点及时点校验、来源谱系、内容寻址持久化、精确身份读取和离线风险 fixture 集。具名适配器注册表和 [`dsh-market-snapshot-json`](../packages/market/market-snapshot-json/README.zh.md)提供确定性的审计导入。P1 收口前仍需完成生产日线、板块和新闻采集。
 
 P1 以“实事求是”要求取得的观察与解释分离，以“没有调查，没有发言权”要求关键事实缺失时失败，以“具体问题具体分析”要求为精确日期、截止点、复权、日历、板块分类和来源设置版本。[市场快照决策](../.agents/notes/implemented/architecture/2026-08-31-maoq-market-snapshot.zh.md)负责这份映射。
 
@@ -171,7 +171,7 @@ daily snapshot
 MAOQ 继续作为由普通 Cordis 插件组装的 Profile；不 fork Agent 循环，也不演变为单体大插件。`dsh-maoq-app` 继续作为选择和配置能力的部署 bundle，真正的运行行为放入职责聚焦、具备测试和显式服务的包中。
 
 - **P0 编排：** 保留 `dsh-tool-maoq-decision` 作为面向模型的议事组消费方。它协调所选 subagent 并强制执行最终否决，但不抓取市场数据，也不计算指标。
-- **P1 市场事实：** 增加一个 MAOQ 市场快照 Cordis 插件包，初期统一拥有快照类型、确定性构建器、校验、持久化接口和只读服务。只有当出现第二个真实数据源或独立发布节奏时，才把规范化适配器拆成单独的提供方包。
+- **P1 市场事实：** MAOQ 市场快照服务负责快照类型、确定性构建、校验、持久化、只读查询和具名适配器注册表。来源专用或独立部署的采集属于单独提供方包。
 - **P2 战略状态：** 增加一个 MAOQ 战略状态 Cordis 插件包，消费快照服务、计算确定性特征并暴露带版本的战略状态结果。模型解释复用现有 subagent 能力；专家角色是运行时 agent，不是 Cordis 插件。
 - **后续 UI：** 只有当快照和战略状态记录形成稳定展示约定时，才增加独立的 Client Cordis 插件。当前 bundle 负责挂载它，领域包不导入浏览器组件。
 - **后续数据供应商：** 只有当替换、凭据、依赖或生命周期确实不同，才把供应商适配器拆成独立 Service Provider 包。快照 schema 和下游决策永远不依赖供应商字段名。

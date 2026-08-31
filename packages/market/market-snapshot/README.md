@@ -25,7 +25,7 @@ This package freezes one A-share trading day's daily bars, point-in-time sectors
 <a id="use-this-package"></a>
 ## Use this package
 
-Mount one store, then pass a provider-neutral adapter and a complete versioned identity to `ctx.marketSnapshots.build()`.
+Mount one store, register one or more provider-neutral adapters, then pass an adapter name and complete versioned identity to `ctx.marketSnapshots.build()`.
 
 ### When to choose it
 
@@ -53,7 +53,7 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-An adapter removes supplier field names before returning a draft. The builder checks the trading date, source retrieval times, point-in-time memberships, data conflicts, and trading-state semantics; sorts every unordered collection; excludes news published or fetched after the cutoff; and hashes canonical JSON. The append-only store writes one artifact per content hash and one reference per exact versioned identity, verifies hashes on reads, and deep-freezes returned objects.
+An adapter removes supplier field names before returning a draft. The service registers each adapter by a unique lowercase-hyphenated name and rejects a draft that changes the requested identity. The builder checks the trading date, source retrieval times, point-in-time memberships, data conflicts, and trading-state semantics; sorts every unordered collection; excludes news published or fetched after the cutoff; and hashes canonical JSON. The append-only store writes one artifact per content hash and one reference per exact versioned identity, verifies hashes on reads, and deep-freezes returned objects.
 
 </details>
 
@@ -83,7 +83,7 @@ None. Snapshot reads remain host-side until a later consumer explicitly logs and
 
 The package owns canonical facts, not acquisition credentials or trading-calendar discovery.
 
-- **Adapter deployment** — production daily, sector, and news providers must map their fields into `MarketSnapshotDraft`; this package intentionally ships only the provider-neutral interface and offline fixtures.
+- **Adapter deployment** — production daily, sector, and news providers must map their fields into `MarketSnapshotDraft`; the [JSON adapter](../market-snapshot-json/README.md) supports audited imports but does not acquire vendor data.
 - **Single-process writer** — append-only files detect identity conflicts, but coordinated multi-process publication requires a transactional backend.
 
 <a id="dev-note"></a>

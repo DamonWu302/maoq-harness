@@ -33,6 +33,11 @@
       config:
         root: .maoq/snapshots
 
+    - id: market-snapshot-json
+      name: '@deepseek-ai/dsh-market-snapshot-json'
+      config:
+        root: .maoq/imports
+
     - id: subagent-codex
       name: '@deepseek-ai/dsh-subagent-codex'
       config:

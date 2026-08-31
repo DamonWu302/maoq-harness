@@ -1375,6 +1375,9 @@ importers:
       '@deepseek-ai/dsh-market-snapshot':
         specifier: workspace:^
         version: link:../../market/market-snapshot
+      '@deepseek-ai/dsh-market-snapshot-json':
+        specifier: workspace:^
+        version: link:../../market/market-snapshot-json
       '@deepseek-ai/dsh-subagent-codex':
         specifier: workspace:^
         version: link:../../subagent/subagent-codex
@@ -6929,6 +6932,22 @@ importers:
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
+
+  packages/market/market-snapshot-json:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@deepseek-ai/dsh-market-snapshot':
+        specifier: workspace:^
+        version: link:../market-snapshot
 
   packages/mcp/mcp-client:
     dependencies:

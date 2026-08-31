@@ -24,6 +24,6 @@ The builder rejects empty stock or sector sets, duplicate source versions, dupli
 
 ## Adapter and query rules
 
-`MarketSnapshotAdapter.load()` returns the provider-neutral `MarketSnapshotDraft`; supplier response names never enter the persisted types. `MarketSnapshotService.build()` validates and persists that draft. `getByHash()` and `getByIdentity()` verify the stored content hash and return a deeply frozen value.
+`MarketSnapshotAdapter.load()` returns the provider-neutral `MarketSnapshotDraft`; supplier response names never enter the persisted types. Adapters register under unique lowercase-hyphenated names for their Cordis effect lifetime. `MarketSnapshotService.build()` resolves one name, rejects a draft that changes the requested identity, then validates and persists it. The audited JSON adapter addresses one draft file by the complete identity hash. `getByHash()` and `getByIdentity()` verify the stored content hash and return a deeply frozen value.
 
 The service does not expose a latest-snapshot query. Consumers must name the exact identity or hash so a replay cannot silently move its evidence cutoff.

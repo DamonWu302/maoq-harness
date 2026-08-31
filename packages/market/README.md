@@ -25,6 +25,7 @@ The market group turns acquired A-share daily, sector, breadth, emotion, and new
 | Package | Role | ctx key |
 |---|---|---|
 | [`market-snapshot`](market-snapshot/README.md) | Builds, persists, and queries canonical daily market snapshots | `ctx.marketSnapshots` |
+| [`market-snapshot-json`](market-snapshot-json/README.md) | Imports audited provider-neutral drafts by exact snapshot identity | registered adapter |
 
 -----
 

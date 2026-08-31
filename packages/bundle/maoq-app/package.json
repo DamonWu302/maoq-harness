@@ -40,6 +40,7 @@
   },
   "dependencies": {
     "@deepseek-ai/dsh-market-snapshot": "workspace:^",
+    "@deepseek-ai/dsh-market-snapshot-json": "workspace:^",
     "@deepseek-ai/dsh-subagent-codex": "workspace:^",
     "@deepseek-ai/dsh-tool-maoq-decision": "workspace:^"
   },

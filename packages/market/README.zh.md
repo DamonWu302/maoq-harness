@@ -25,6 +25,7 @@ market 组把取得的 A 股日线、板块、宽度、情绪和新闻事实转�
 | 包 | 职责 | ctx 键 |
 |---|---|---|
 | [`market-snapshot`](market-snapshot/README.zh.md) | 构建、持久化和查询规范日级市场快照 | `ctx.marketSnapshots` |
+| [`market-snapshot-json`](market-snapshot-json/README.zh.md) | 按精确快照身份导入审计过的供应商无关草稿 | 注册适配器 |
 
 -----
 
