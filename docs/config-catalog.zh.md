@@ -1447,6 +1447,22 @@ export interface LspLocalServerConfig {
 
 来源：[`packages/lsp/lsp-stdio/src/index.ts:82`](../packages/lsp/lsp-stdio/src/index.ts)
 
+<a id="deepseek-aidsh-market-news-web"></a>
+
+## `@deepseek-ai/dsh-market-news-web`
+
+需要：`web`
+
+```ts config-catalog
+/** Filesystem location for immutable evidence batches. */
+export interface Config {
+  /** Directory containing content-addressed web evidence batches. */
+  readonly root: string
+}
+```
+
+来源：[`packages/market/market-news-web/src/index.ts:27`](../packages/market/market-news-web/src/index.ts)
+
 <a id="deepseek-aidsh-market-snapshot"></a>
 
 ## `@deepseek-ai/dsh-market-snapshot`

@@ -33,3 +33,9 @@ The service does not expose a latest-snapshot query. Consumers must name the exa
 The opt-in MySQL adapter consumes the existing quality-gated `long_short_stock` pipeline. It issues parameterized, session-read-only queries and verifies exact source versions before and after acquisition. A build fails when the dated quality row is unusable, below either row threshold, missing a required reference dataset, later than the cutoff, changed during acquisition, or inconsistent with the joined stock count.
 
 Raw OHLC is multiplied by the same-day adjustment factor for HFQ; volume and amount stay unchanged; turnover percent is divided by 100. Sector facts use the latest effective SW L1 membership for each symbol and a deterministic equal-weight `raw price / pre-close` index. Breadth and emotion fields are observations derived from close, high, previous close, and price-limit rows. No strategy label, principal-contradiction judgment, sector rank, or stock rank enters P1 acquisition.
+
+## Web policy and news evidence
+
+`dsh-market-news-web` executes versioned questions through the existing `ctx.web` seam before the decision cutoff. Acquisition must both start and finish by that cutoff, and every accepted result must carry a URL, title, and provider-supplied publication timestamp no later than the cutoff. It freezes the batch under a canonical content hash; replay reads only that hash and performs no network call.
+
+The MySQL adapter merges a batch only when `sourceVersions` contains its exact `news:<sha256>` token and the batch trading date and cutoff equal the requested identity. Search results do not overwrite price or sector facts. Query-owned sector mappings and confidence remain versioned acquisition policy; later models may interpret the evidence but cannot alter its source, publication time, retrieval time, or cutoff eligibility.

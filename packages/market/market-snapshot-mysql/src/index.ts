@@ -3,6 +3,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
+import type {} from '@deepseek-ai/dsh-market-news-web'
 import type {} from '@deepseek-ai/dsh-market-snapshot'
 import mysql from 'mysql2/promise'
 import { LongShortStockMysqlAdapter, type MarketSnapshotQuery } from './adapter.ts'
@@ -74,6 +75,13 @@ export function apply(ctx: Context, config: Config): void {
       }
     },
   }
-  const adapter = new LongShortStockMysqlAdapter(query, config)
+  const adapter = new LongShortStockMysqlAdapter(query, {
+    ...config,
+    readNewsBatch: async (hash) => {
+      const news = ctx.get('marketNews')
+      if (news === undefined) throw new Error('market news evidence service is not mounted')
+      return news.get(hash)
+    },
+  })
   ctx.effect(() => ctx.marketSnapshots.register(adapter))
 }

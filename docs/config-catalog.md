@@ -1445,6 +1445,22 @@ export interface LspLocalServerConfig {
 
 Source: [`packages/lsp/lsp-stdio/src/index.ts:82`](../packages/lsp/lsp-stdio/src/index.ts)
 
+<a id="deepseek-aidsh-market-news-web"></a>
+
+## `@deepseek-ai/dsh-market-news-web`
+
+Requires: `web`
+
+```ts config-catalog
+/** Filesystem location for immutable evidence batches. */
+export interface Config {
+  /** Directory containing content-addressed web evidence batches. */
+  readonly root: string
+}
+```
+
+Source: [`packages/market/market-news-web/src/index.ts:27`](../packages/market/market-news-web/src/index.ts)
+
 <a id="deepseek-aidsh-market-snapshot"></a>
 
 ## `@deepseek-ai/dsh-market-snapshot`
@@ -1507,7 +1523,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/market/market-snapshot-mysql/src/index.ts:14`](../packages/market/market-snapshot-mysql/src/index.ts)
+Source: [`packages/market/market-snapshot-mysql/src/index.ts:15`](../packages/market/market-snapshot-mysql/src/index.ts)
 
 <a id="deepseek-aidsh-mcp-client"></a>
 

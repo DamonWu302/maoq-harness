@@ -39,6 +39,7 @@
     }
   },
   "dependencies": {
+    "@deepseek-ai/dsh-market-news-web": "workspace:^",
     "@deepseek-ai/dsh-market-snapshot": "workspace:^",
     "@deepseek-ai/dsh-market-snapshot-json": "workspace:^",
     "@deepseek-ai/dsh-subagent-codex": "workspace:^",

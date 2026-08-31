@@ -370,6 +370,8 @@
       "@deepseek-ai/dsh-lsp-stdio/invariant": ["./packages/lsp/lsp-stdio/src/invariant.ts"],
       "@deepseek-ai/dsh-maoq-app": ["./packages/bundle/maoq-app/src"],
       "@deepseek-ai/dsh-maoq-app/invariant": ["./packages/bundle/maoq-app/src/invariant.ts"],
+      "@deepseek-ai/dsh-market-news-web": ["./packages/market/market-news-web/src"],
+      "@deepseek-ai/dsh-market-news-web/invariant": ["./packages/market/market-news-web/src/invariant.ts"],
       "@deepseek-ai/dsh-market-snapshot": ["./packages/market/market-snapshot/src"],
       "@deepseek-ai/dsh-market-snapshot/invariant": ["./packages/market/market-snapshot/src/invariant.ts"],
       "@deepseek-ai/dsh-market-snapshot-json": ["./packages/market/market-snapshot-json/src"],

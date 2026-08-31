@@ -1372,6 +1372,9 @@ importers:
 
   packages/bundle/maoq-app:
     dependencies:
+      '@deepseek-ai/dsh-market-news-web':
+        specifier: workspace:^
+        version: link:../../market/market-news-web
       '@deepseek-ai/dsh-market-snapshot':
         specifier: workspace:^
         version: link:../../market/market-snapshot
@@ -6917,6 +6920,28 @@ importers:
         specifier: workspace:^
         version: link:../../core/tools
 
+  packages/market/market-news-web:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@deepseek-ai/dsh-market-snapshot':
+        specifier: workspace:^
+        version: link:../market-snapshot
+      '@deepseek-ai/dsh-util-values':
+        specifier: workspace:^
+        version: link:../../util/values
+      '@deepseek-ai/dsh-web':
+        specifier: workspace:^
+        version: link:../../web/web
+
   packages/market/market-snapshot:
     dependencies:
       '@deepseek-ai/dsh-util-values':
@@ -6967,6 +6992,9 @@ importers:
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
+      '@deepseek-ai/dsh-market-news-web':
+        specifier: workspace:^
+        version: link:../market-news-web
       '@deepseek-ai/dsh-market-snapshot':
         specifier: workspace:^
         version: link:../market-snapshot

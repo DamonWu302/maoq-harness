@@ -8,6 +8,7 @@ import type {
   SectorDailySnapshot,
   StockDailyBar,
 } from '@deepseek-ai/dsh-market-snapshot'
+import type { MarketNewsBatch } from '@deepseek-ai/dsh-market-news-web'
 
 /** Minimal SELECT executor used by production MySQL and deterministic tests. */
 export interface MarketSnapshotQuery {
@@ -175,6 +176,14 @@ function sameIdentity(left: MarketSnapshotIdentityInput, right: MarketSnapshotId
     && sameStrings(left.sourceVersions, right.sourceVersions)
 }
 
+function newsHashOf(sourceVersions: readonly string[]): string | undefined {
+  const hashes = sourceVersions.filter(value => value.startsWith('news:')).map(value => value.slice('news:'.length))
+  if (hashes.length > 1) throw new MarketSnapshotMysqlError('identity contains more than one news batch')
+  const [hash] = hashes
+  if (hash !== undefined && !/^[a-f0-9]{64}$/.test(hash)) throw new MarketSnapshotMysqlError('news batch hash is not SHA-256')
+  return hash
+}
+
 function latest(...values: string[]): string {
   return [...values].sort().at(-1) ?? ''
 }
@@ -219,18 +228,29 @@ export class LongShortStockMysqlAdapter implements MarketSnapshotAdapter {
 
   constructor(
     private readonly query: MarketSnapshotQuery,
-    options: { readonly adapterName?: string; readonly minimumStocks?: number; readonly historySessions?: number } = {},
+    options: {
+      readonly adapterName?: string
+      readonly minimumStocks?: number
+      readonly historySessions?: number
+      readonly readNewsBatch?: (hash: string) => Promise<MarketNewsBatch>
+    } = {},
   ) {
     this.name = options.adapterName ?? 'long-short-stock-mysql'
     this.minimumStocks = options.minimumStocks ?? 3000
     this.historySessions = options.historySessions ?? 20
+    this.readNewsBatch = options.readNewsBatch
   }
 
   private readonly minimumStocks: number
   private readonly historySessions: number
+  private readonly readNewsBatch: ((hash: string) => Promise<MarketNewsBatch>) | undefined
 
   /** Discover the exact versions required to request a reproducible snapshot. */
-  async discoverIdentity(tradingDate: string, cutoffTime: string): Promise<MarketSnapshotIdentityInput> {
+  async discoverIdentity(
+    tradingDate: string,
+    cutoffTime: string,
+    newsBatchHash?: string,
+  ): Promise<MarketSnapshotIdentityInput> {
     const [quality] = await this.query.rows<QualityRow>(QUALITY_SQL, [tradingDate])
     if (quality === undefined) throw new MarketSnapshotMysqlError(`no quality decision for ${tradingDate}`)
     if (quality.trade_date !== tradingDate) throw new MarketSnapshotMysqlError(`quality date ${quality.trade_date} does not match ${tradingDate}`)
@@ -264,28 +284,31 @@ export class LongShortStockMysqlAdapter implements MarketSnapshotAdapter {
         `limit:${limit}`,
         `index:${index}`,
         `emotion:${price}+${limit}`,
+        ...newsBatchHash === undefined ? [] : [`news:${newsBatchHash}`],
       ],
     }
   }
 
   /** Load one exact identity and reject drift, incompleteness, or post-cutoff evidence. */
   async load(identity: MarketSnapshotIdentityInput): Promise<MarketSnapshotDraft> {
-    const observed = await this.discoverIdentity(identity.tradingDate, identity.cutoffTime)
+    const newsBatchHash = newsHashOf(identity.sourceVersions)
+    const observed = await this.discoverIdentity(identity.tradingDate, identity.cutoffTime, newsBatchHash)
     if (!sameIdentity(identity, observed)) {
       throw new MarketSnapshotMysqlError('requested identity does not match the current audited source versions')
     }
-    const [daily, sectorRows, indices, history, qualityRows] = await Promise.all([
+    const [daily, sectorRows, indices, history, qualityRows, newsBatch] = await Promise.all([
       this.query.rows<DailyRow>(DAILY_SQL, [identity.tradingDate]),
       this.query.rows<SectorRow>(SECTOR_SQL, [identity.tradingDate, identity.tradingDate]),
       this.query.rows<IndexRow>(INDEX_SQL, [identity.tradingDate]),
       this.query.rows<LimitHistoryRow>(HISTORY_SQL, [identity.tradingDate, this.historySessions]),
       this.query.rows<QualityRow>(QUALITY_SQL, [identity.tradingDate]),
+      newsBatchHash === undefined ? Promise.resolve(undefined) : this.loadNewsBatch(newsBatchHash, identity),
     ])
     if (daily.length < this.minimumStocks) throw new MarketSnapshotMysqlError(`joined daily facts contain only ${String(daily.length)} stocks`)
     if (daily.length !== qualityRows[0]?.observed_rows) throw new MarketSnapshotMysqlError(`joined daily facts contain ${String(daily.length)} stocks but quality observed ${String(qualityRows[0]?.observed_rows ?? 'none')}`)
     if (sectorRows.length === 0) throw new MarketSnapshotMysqlError('point-in-time SW L1 membership is empty')
     if (indices.length === 0) throw new MarketSnapshotMysqlError('major index facts are empty')
-    const finalObserved = await this.discoverIdentity(identity.tradingDate, identity.cutoffTime)
+    const finalObserved = await this.discoverIdentity(identity.tradingDate, identity.cutoffTime, newsBatchHash)
     if (!sameIdentity(identity, finalObserved)) throw new MarketSnapshotMysqlError('source versions changed while facts were being read')
     const stocks = this.stocks(identity, daily)
     return {
@@ -294,8 +317,19 @@ export class LongShortStockMysqlAdapter implements MarketSnapshotAdapter {
       sectors: this.sectors(identity, daily, sectorRows),
       breadth: this.breadth(identity, daily, indices),
       emotion: this.emotion(identity, daily, history),
-      news: [],
+      news: newsBatch?.evidence ?? [],
     }
+  }
+
+  private async loadNewsBatch(hash: string, identity: MarketSnapshotIdentityInput): Promise<MarketNewsBatch> {
+    if (this.readNewsBatch === undefined) throw new MarketSnapshotMysqlError('a news batch was requested but no evidence store is mounted')
+    const batch = await this.readNewsBatch(hash)
+    if (batch.contentHash !== hash
+      || batch.tradingDate !== identity.tradingDate
+      || batch.cutoffTime !== identity.cutoffTime) {
+      throw new MarketSnapshotMysqlError('news batch identity does not match the requested market snapshot')
+    }
+    return batch
   }
 
   private stocks(identity: MarketSnapshotIdentityInput, rows: readonly DailyRow[]): StockDailyBar[] {

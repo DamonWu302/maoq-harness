@@ -7,8 +7,8 @@
     { "path": "../../../vendor/cordis" },
     { "path": "../../../vendor/schemastery" },
     { "path": "../market-snapshot" },
-    { "path": "../market-news-web" },
-    { "path": "../../credentials/credentials" },
+    { "path": "../../util/values" },
+    { "path": "../../web/web" },
     { "path": "../../runtime-diagnostics/invariants" }
   ]
 }

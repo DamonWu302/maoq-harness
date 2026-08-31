@@ -38,6 +38,11 @@
       config:
         root: .maoq/imports
 
+    - id: market-news-web
+      name: '@deepseek-ai/dsh-market-news-web'
+      config:
+        root: .maoq/news
+
     - id: subagent-codex
       name: '@deepseek-ai/dsh-subagent-codex'
       config:

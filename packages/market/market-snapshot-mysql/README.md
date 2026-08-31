@@ -86,7 +86,7 @@ None. It produces host-side evidence for later bounded consumers.
 - **Priced universe** — the stock list is the quality-approved daily-price population. Suspension reference coverage must become dated and quality-gated before this adapter may claim a complete listed-security universe.
 - **HFQ only** — price adjustment is fixed to raw price multiplied by the same-day factor. A QFQ mode needs an explicit base-date factor in the identity.
 - **Lifecycle lag** — a priced new listing missing from `security_lifecycle` stays visible with `lifecycle-inferred-from-observed-bar`; it is never silently dropped.
-- **No news merge yet** — cutoff-controlled policy and news evidence is a separate P1 acquisition boundary.
+- **Explicit news batch** — news is merged only when the identity names a frozen `news:<sha256>` batch from `dsh-market-news-web`.
 
 <a id="dev-note"></a>
 ### Dev Note

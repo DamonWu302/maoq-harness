@@ -115,4 +115,51 @@ describe('long_short_stock MySQL adapter', () => {
     expect(draft.stocks[0]?.qualityFlags).toEqual(['lifecycle-inferred-from-observed-bar'])
     expect(draft.stocks[0]?.tradingStatus).toBe('trading')
   })
+
+  it('merges only the exact frozen news batch named by the snapshot identity', async () => {
+    const hash = 'a'.repeat(64)
+    const batch = {
+      schemaVersion: 1 as const,
+      tradingDate: DATE,
+      cutoffTime: CUTOFF,
+      queryVersion: 'queries-v1',
+      fetchedAt: FETCHED,
+      contentHash: hash,
+      evidence: [{
+        id: 'policy-1',
+        title: '政策事实',
+        url: 'https://www.gov.cn/policy-1',
+        publisher: 'www.gov.cn',
+        publishedAt: '2026-08-28T09:00:00+08:00',
+        fetchedAt: FETCHED,
+        eventAt: '2026-08-28T09:00:00+08:00',
+        affectedSectors: ['801780.SI'],
+        confidence: 0.8,
+        provenance: {
+          source: {
+            adapter: 'web-search',
+            dataset: 'policy query',
+            version: 'queries-v1',
+            retrievedAt: FETCHED,
+            recordId: 'policy-1',
+          },
+          transforms: ['event-time=publication-time'],
+        },
+      }],
+    }
+    const adapter = new LongShortStockMysqlAdapter(fixture().query, {
+      minimumStocks: 1,
+      readNewsBatch: () => Promise.resolve(batch),
+    })
+    const identity = await adapter.discoverIdentity(DATE, CUTOFF, hash)
+    const snapshot = buildMarketSnapshot(await adapter.load(identity))
+    expect(identity.sourceVersions).toContain(`news:${hash}`)
+    expect(snapshot.news).toHaveLength(1)
+
+    const wrongDate = new LongShortStockMysqlAdapter(fixture().query, {
+      minimumStocks: 1,
+      readNewsBatch: () => Promise.resolve({ ...batch, tradingDate: '2026-08-27' }),
+    })
+    await expect(wrongDate.load(await wrongDate.discoverIdentity(DATE, CUTOFF, hash))).rejects.toThrow(/does not match/)
+  })
 })

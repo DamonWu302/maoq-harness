@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-31-maoq-market-snapshot.md
-2026-08-31-maoq-market-snapshot.md: f08110ea3ab7375b49ff06120f7abd5ef9712750
-2026-08-31-maoq-market-snapshot.zh.md: c3a31cf6c9ce084e031e3218ab094c707dd52b4a
+2026-08-31-maoq-market-snapshot.md: 21fba323be830f98f9d66a21d2351d86aa9a4171
+2026-08-31-maoq-market-snapshot.zh.md: 752853cd2426c12aa0fbe0298c375854a356c71c

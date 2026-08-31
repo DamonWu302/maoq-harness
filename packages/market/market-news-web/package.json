@@ -1,12 +1,12 @@
 {
-  "name": "@deepseek-ai/dsh-market-snapshot-mysql",
-  "description": "Quality-gated read-only MySQL adapter for MAOQ market snapshots",
+  "name": "@deepseek-ai/dsh-market-news-web",
+  "description": "Cutoff-safe immutable web news evidence for MAOQ market snapshots",
   "version": "0.1.2-alpha.2",
   "publishConfig": { "access": "public" },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
-    "directory": "packages/market/market-snapshot-mysql"
+    "directory": "packages/market/market-news-web"
   },
   "type": "module",
   "main": "lib/index.js",
@@ -21,20 +21,17 @@
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-credentials": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-market-news-web": "workspace:^",
-    "@deepseek-ai/dsh-market-snapshot": "workspace:^"
+    "@deepseek-ai/dsh-market-snapshot": "workspace:^",
+    "@deepseek-ai/dsh-util-values": "workspace:^",
+    "@deepseek-ai/dsh-web": "workspace:^"
   },
-  "dependencies": {
-    "@deepseek-ai/schemastery": "workspace:^",
-    "mysql2": "^3.24.2"
-  },
+  "dependencies": { "@deepseek-ai/schemastery": "workspace:^" },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-credentials": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-market-news-web": "workspace:^",
-    "@deepseek-ai/dsh-market-snapshot": "workspace:^"
+    "@deepseek-ai/dsh-market-snapshot": "workspace:^",
+    "@deepseek-ai/dsh-util-values": "workspace:^",
+    "@deepseek-ai/dsh-web": "workspace:^"
   }
 }
