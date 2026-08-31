@@ -27,3 +27,9 @@ The builder rejects empty stock or sector sets, duplicate source versions, dupli
 `MarketSnapshotAdapter.load()` returns the provider-neutral `MarketSnapshotDraft`; supplier response names never enter the persisted types. Adapters register under unique lowercase-hyphenated names for their Cordis effect lifetime. `MarketSnapshotService.build()` resolves one name, rejects a draft that changes the requested identity, then validates and persists it. The audited JSON adapter addresses one draft file by the complete identity hash. `getByHash()` and `getByIdentity()` verify the stored content hash and return a deeply frozen value.
 
 The service does not expose a latest-snapshot query. Consumers must name the exact identity or hash so a replay cannot silently move its evidence cutoff.
+
+## Production daily acquisition
+
+The opt-in MySQL adapter consumes the existing quality-gated `long_short_stock` pipeline. It issues parameterized, session-read-only queries and verifies exact source versions before and after acquisition. A build fails when the dated quality row is unusable, below either row threshold, missing a required reference dataset, later than the cutoff, changed during acquisition, or inconsistent with the joined stock count.
+
+Raw OHLC is multiplied by the same-day adjustment factor for HFQ; volume and amount stay unchanged; turnover percent is divided by 100. Sector facts use the latest effective SW L1 membership for each symbol and a deterministic equal-weight `raw price / pre-close` index. Breadth and emotion fields are observations derived from close, high, previous close, and price-limit rows. No strategy label, principal-contradiction judgment, sector rank, or stock rank enters P1 acquisition.

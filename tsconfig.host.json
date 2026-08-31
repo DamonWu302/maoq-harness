@@ -269,6 +269,7 @@
     { "path": "./packages/bundle/maoq-app" },
     { "path": "./packages/market/market-snapshot" },
     { "path": "./packages/market/market-snapshot-json" },
+    { "path": "./packages/market/market-snapshot-mysql" },
     { "path": "./packages/bundle/base" },
     { "path": "./packages/bundle/headless" },
     { "path": "./packages/bundle/sdk-app" },

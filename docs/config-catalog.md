@@ -1477,6 +1477,38 @@ export interface Config {
 
 Source: [`packages/market/market-snapshot-json/src/index.ts:15`](../packages/market/market-snapshot-json/src/index.ts)
 
+<a id="deepseek-aidsh-market-snapshot-mysql"></a>
+
+## `@deepseek-ai/dsh-market-snapshot-mysql`
+
+Requires: `marketSnapshots`
+
+```ts config-catalog
+/** Read-only database endpoint and quality thresholds. */
+export interface Config {
+  /** Registry name used by snapshot build requests. */
+  readonly adapterName?: string
+  /** MySQL TCP host when no Unix socket is selected. */
+  readonly host?: string
+  /** MySQL TCP port when no Unix socket is selected. */
+  readonly port?: number
+  /** Optional Unix-domain socket path, which takes precedence over TCP. */
+  readonly socketPath?: string
+  /** Database account restricted to SELECT access. */
+  readonly user: string
+  /** Database containing the upstream quality-gated market tables. */
+  readonly database?: string
+  /** Credential reference for the database password; literal passwords are unsupported. */
+  readonly passwordEnv?: string
+  /** Local stock-count floor applied in addition to the upstream quality threshold. */
+  readonly minimumStocks?: number
+  /** Number of usable sessions read to derive consecutive-board facts. */
+  readonly historySessions?: number
+}
+```
+
+Source: [`packages/market/market-snapshot-mysql/src/index.ts:14`](../packages/market/market-snapshot-mysql/src/index.ts)
+
 <a id="deepseek-aidsh-mcp-client"></a>
 
 ## `@deepseek-ai/dsh-mcp-client`

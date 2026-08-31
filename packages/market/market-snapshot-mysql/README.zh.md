@@ -1,0 +1,99 @@
+---
+description: "把 long_short_stock 中经过质量门控的 A 股日线事实读入不可变 MAOQ 快照。"
+kind: "package-reference"
+---
+
+# `@deepseek-ai/dsh-market-snapshot-mysql`
+
+[English](README.md) | 中文
+
+## 概述
+
+本适配器读取既有 `long_short_stock` MySQL 质量管线，而不重复调用 Tushare。它把原始日线与复权、换手、涨跌停、生命周期、指数和时点有效的申万一级行业证据连接起来，只推导确定性的市场宽度、板块和情绪事实，并拒绝陈旧、不完整、晚于截点或版本漂移的请求。
+
+## 目录
+
+- [使用本包](#use-this-package)
+- [理解实现](#understand-the-implementation)
+- [进一步探索](#further-exploration)
+- [模型体验](#model-experience)
+- [已知限制与延期工作](#known-limitations-and-deferred-work)
+- [开发备注](#dev-note)
+
+-----
+
+<a id="use-this-package"></a>
+## 使用本包
+
+只在能访问审计数据库的环境挂载。MAOQ 默认 bundle 仍有意使用无需凭据的 JSON 适配器。
+
+```yaml
+- name: '@deepseek-ai/dsh-market-snapshot-mysql'
+  config:
+    socketPath: /tmp/mysql.sock
+    user: root
+    database: long_short_stock
+```
+
+| 字段 | 默认值 | 含义 |
+|---|---|---|
+| `adapterName` | `long-short-stock-mysql` | 快照适配器注册名。 |
+| `host` / `port` | `127.0.0.1` / `3306` | 未选择 socket 时的 TCP 端点。 |
+| `socketPath` | 未设置 | 可选 Unix-domain socket。 |
+| `user` | 必填 | 只读数据库用户。 |
+| `database` | `long_short_stock` | 既有生产事实数据库。 |
+| `passwordEnv` | 未设置 | 每次操作解析的凭据引用；绝不接受明文密码。 |
+| `minimumStocks` | `3000` | 在会话质量阈值之外的本地底线。 |
+| `historySessions` | `20` | 推导连续板事实使用的可用交易日数。 |
+
+生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-market-snapshot-mysql)是穷尽式配置来源。
+
+-----
+
+<a id="understand-the-implementation"></a>
+## 理解实现
+
+<details>
+<summary>实现内部——点击展开</summary>
+
+`discoverIdentity()` 读取指定日期的质量结论与精确最大抓取版本。`load()` 再次检查版本，只执行参数化 SELECT，要求连接后的价格行数等于质量行数，把换手百分数转成比率，并只对价格做后复权。板块日线是在最新有效申万一级归属上计算的等权 `原价 / 昨收` 指数。情绪事实来自可用交易日上的收盘涨停；本包不加入模型标签，也不排序选股。
+
+</details>
+
+-----
+
+<a id="further-exploration"></a>
+## 进一步探索
+
+- [市场快照服务](../market-snapshot/README.zh.md)——校验和不可变存储。
+- [市场快照子系统](../../../docs/subsystems/market-snapshot.zh.md)——时间语义和来源规则。
+
+-----
+
+<a id="model-experience"></a>
+## 模型体验
+
+无，因为本包不增加模型可见上下文或工具。
+
+#### KV Cache 影响
+
+无。它为后续受约束消费者生成宿主侧证据。
+
+## 已知限制与延期工作
+
+<a id="known-limitations-and-deferred-work"></a>
+
+- **有价格的股票范围**——股票列表是通过质量门控的每日价格总体。停牌参考数据具备按日质量门控前，本适配器不会声称覆盖完整上市证券总体。
+- **仅后复权**——价格固定为原价乘当日因子。前复权模式需要在身份中明确基准日因子。
+- **生命周期延迟**——有价格但 `security_lifecycle` 暂缺的新股会保留并标记 `lifecycle-inferred-from-observed-bar`，绝不静默丢弃。
+- **尚未合并新闻**——受截点控制的政策与新闻证据是独立的 P1 采集边界。
+
+<a id="dev-note"></a>
+### 开发备注
+
+<details>
+<summary>维护者的工作上下文——点击展开</summary>
+
+适配器有意为每次查询建立新的只读连接，使轮换后的凭据立即生效。它会在读取全部事实前后检查来源版本，拒绝与采集重叠的更新。只有在仍能保持逐操作解析凭据和相同版本检查时，才可把查询合并成一次 repeatable-read 事务。
+
+</details>
