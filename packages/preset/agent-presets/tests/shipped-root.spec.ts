@@ -58,7 +58,7 @@ describe('the shipped preset root', () => {
     const ctx = await roster({ includeUserRoot: false })
 
     const listed = await ctx.agentPresets.list()
-    expect(listed.map(preset => preset.id).sort()).toEqual(['cordis', 'minimal', 'ptc', 'standard'])
+    expect(listed.map(preset => preset.id).sort()).toEqual(['cordis', 'maoq', 'minimal', 'ptc', 'standard'])
     expect(listed.every(preset => preset.trust === 'system')).toBe(true)
     // Not `broken === undefined`: health asks whether each row's package is
     // installed above the base, and the shipped rows name packages the
@@ -98,7 +98,7 @@ describe('the shipped preset root', () => {
   })
 
   it('enables web_fetch in each tool-bearing Web app preset', async () => {
-    for (const id of ['cordis', 'ptc', 'standard']) {
+    for (const id of ['cordis', 'maoq', 'ptc', 'standard']) {
       const source = await readFile(join(SHIPPED_PRESET_ROOT, id, 'agent.cordis.yml'), 'utf8')
       const entries: unknown = yaml.load(source, { schema: entryListSchema })
       if (!Array.isArray(entries)) throw new TypeError(`${id} preset must contain a Cordis entry list`)
@@ -110,5 +110,22 @@ describe('the shipped preset root', () => {
       }
       expect(toolWeb.config.fetch, id).toBe(true)
     }
+  })
+
+  it('keeps MAOQ market mode off the generic coding-tool path', async () => {
+    const source = await readFile(join(SHIPPED_PRESET_ROOT, 'maoq', 'agent.cordis.yml'), 'utf8')
+    const entries: unknown = yaml.load(source, { schema: entryListSchema })
+    if (!Array.isArray(entries)) throw new TypeError('maoq preset must contain a Cordis entry list')
+    const ids = entries.map((entry: unknown) => {
+      if (typeof entry !== 'object' || entry === null || !('id' in entry)) return undefined
+      return entry.id
+    })
+    expect(ids).toContain('tool-web')
+    expect(ids).toContain('tool-ask-user')
+    expect(ids).not.toContain('tool-todo')
+    expect(ids).not.toContain('tool-fs')
+    expect(ids).not.toContain('tool-fs-search')
+    expect(ids).not.toContain('tool-bash')
+    expect(ids).not.toContain('delegation')
   })
 })

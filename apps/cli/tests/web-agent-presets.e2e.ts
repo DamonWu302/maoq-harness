@@ -25,6 +25,9 @@ const REPO_ROOT = fileURLToPath(new URL('../../..', import.meta.url))
 /** The shipped Web surface: the dsh-base and dsh-web-app bundle patches over an empty preset root. */
 const BASE_PATCH = join(REPO_ROOT, 'packages/bundle/base/cordis.patch.yml')
 const WEB_PATCH = join(REPO_ROOT, 'packages/bundle/web-app/cordis.patch.yml')
+const BASE_BUNDLE_DIR = join(REPO_ROOT, 'packages/bundle/base')
+const WEB_BUNDLE_DIR = join(REPO_ROOT, 'packages/bundle/web-app')
+const MAOQ_BUNDLE_DIR = join(REPO_ROOT, 'packages/bundle/maoq-app')
 const CODEX_PACKAGE_DIR = join(REPO_ROOT, 'packages/subagent/subagent-codex')
 const CLAUDE_CODE_PACKAGE_DIR = join(REPO_ROOT, 'packages/subagent/subagent-claude-code')
 /** The installation anchor whose dependency surface the preset module fallback mirrors. */
@@ -215,7 +218,7 @@ describe('the shipped Web composition', () => {
   it('supplies both shipped presets, and only those, from the system root', async () => {
     const listed = await ctx.agentPresets.list()
 
-    expect(listed.map(preset => preset.id).sort()).toEqual(['cordis', 'minimal', 'ptc', 'standard'])
+    expect(listed.map(preset => preset.id).sort()).toEqual(['cordis', 'maoq', 'minimal', 'ptc', 'standard'])
     expect(listed.every(preset => preset.trust === 'system')).toBe(true)
     expect(ctx.agentPresets.defaultId).toBe('standard')
   })
@@ -238,6 +241,26 @@ describe('the shipped Web composition', () => {
         'workflow', 'write',
       ])
       expect(ctx.commands.find(handle.agent, 'goal')).toBeDefined()
+    } finally {
+      await handle.dispose()
+    }
+  })
+
+  it('composes MAOQ mode as a narrow market surface without coding tools', async () => {
+    const handle = await ctx.agents.create({
+      sessionId: SessionId('preset-maoq'),
+      setup: agentCtx => ctx.agentPresets.mount(agentCtx, 'maoq').then(() => undefined),
+    })
+    try {
+      expect(toolNames(ctx, handle.agent)).toEqual([
+        'ask_user_question', 'web_fetch', 'web_search',
+      ])
+      const assembly = await ctx.systemPrompt.assemble({ scope: handle.agent })
+      expect(assembly.sections.find(section => section.name === 'deployment:persona')?.text)
+        .toContain('Use the shortest sufficient path')
+      expect(assembly.tools.map(tool => tool.name)).not.toContain('todo_write')
+      expect(assembly.tools.map(tool => tool.name)).not.toContain('glob')
+      expect(assembly.tools.map(tool => tool.name)).not.toContain('bash')
     } finally {
       await handle.dispose()
     }
@@ -728,6 +751,45 @@ describe('a delegated child', () => {
   })
 })
 
+describe('the shipped MAOQ market-mode composition', () => {
+  let maoqCtx: Context
+
+  beforeAll(async () => {
+    const settingsFile = join(await mkdtemp(join(tmpdir(), 'dsh-maoq-preset-')), 'settings.yaml')
+    await writeFile(settingsFile, '{}\n')
+    maoqCtx = await bootWeb(
+      settingsFile,
+      [],
+      [BASE_BUNDLE_DIR, WEB_BUNDLE_DIR, MAOQ_BUNDLE_DIR],
+      ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@deepseek-ai/dsh-maoq-app'],
+    )
+  }, 120_000)
+
+  afterAll(async () => { await maoqCtx.fiber.dispose() })
+
+  it('adds only MAOQ domain tools to the narrow preset', async () => {
+    const handle = await maoqCtx.agents.create({
+      sessionId: SessionId('profile-maoq-market-mode'),
+      setup: agentCtx => maoqCtx.agentPresets.mount(agentCtx, 'maoq').then(() => undefined),
+    })
+    try {
+      expect(toolNames(maoqCtx, handle.agent)).toEqual([
+        'ask_user_question',
+        'maoq_analyze_strategy',
+        'maoq_decide',
+        'maoq_snapshot_generate',
+        'maoq_snapshot_inspect',
+        'maoq_snapshot_list',
+        'maoq_snapshot_sources',
+        'web_fetch',
+        'web_search',
+      ])
+    } finally {
+      await handle.dispose()
+    }
+  })
+})
+
 describe('a launcher that configures no writable root', () => {
   // The claim this default exists for, asserted through the real shipped
   // bundles rather than a hand-built context: `apps/cli` patches in only the
@@ -947,7 +1009,7 @@ describe('a composition that configures its own preset roots', () => {
     ])
 
     const listed = await rootsCtx.agentPresets.list()
-    expect(listed.map(preset => preset.id).sort()).toEqual(['cordis', 'minimal', 'ptc', 'standard', 'team-spec'])
+    expect(listed.map(preset => preset.id).sort()).toEqual(['cordis', 'maoq', 'minimal', 'ptc', 'standard', 'team-spec'])
     expect(listed.every(preset => preset.broken === undefined)).toBe(true)
     // The shipped root comes first: a configured directory claiming a shipped
     // id is shadowed, never the other way around.

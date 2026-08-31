@@ -40,6 +40,10 @@ codex login status
 
 保存的模型选择只影响新建任务。现有任务会保留创建时记录的提供方和模型，因此切换路由后需要创建新任务。
 
+## 选择任务模式
+
+市场任务发送第一条消息前，在预设开关中选择 **MAOQ 市场模式**。任务开始后预设不可变，所以修改默认值不会把既有标准模式任务转换过去。在 MAOQ 市场模式中，快照请求应显示专属快照卡片，并且不得调用 `todo_write`、`glob`、`grep`、`bash` 或文件编辑工具。只有开发 harness 仓库本身时才使用**标准模式**。
+
 ## P0 canary
 
 在目标统帅路由上新建任务，要求它调用 `maoq_decide`，只选择 `market_regime` 和 `sector_battlefield`，综合一项模拟决策，并在缺少证据截止点时要求独立审查者否决。只有以下条件同时成立才算通过：只运行这两位专家；综合结果结构化；否决产生 `vetoed`；没有提出实盘行动；每个子 Agent 和总计都报告 token 用量。提供方没有返回用量时必须计入 `unavailableCalls`，绝不能估算。
@@ -66,6 +70,8 @@ codex login status
 | 本机 Codex 认证仅按明确选择用于 `openai-codex` | [`auth.spec.ts`](../packages/llm/llm-pi-ai/tests/auth.spec.ts) | `codex login status` 加一次本机 Codex canary |
 | 外部 API 路由继续可用 | [`adapter.spec.ts`](../packages/llm/llm-pi-ai/tests/adapter.spec.ts) 和 [`dynamic-config.spec.ts`](../packages/llm/llm-pi-ai/tests/dynamic-config.spec.ts) | 操作者凭据可用时运行一次 canary |
 | Codex 配置在启动和刷新时都能关闭 API Key 引导 | [`onboarding-dialog.client.spec.tsx`](../packages/client/ui-settings-models/tests/onboarding-dialog.client.spec.tsx) | 刷新空白 MAOQ 首页，确认不出现 DeepSeek Key 弹窗 |
+| MAOQ 市场模式可选择且排除编码绕行 | [`web-agent-presets.e2e.ts`](../apps/cli/tests/web-agent-presets.e2e.ts) 和 [`shipped-root.spec.ts`](../packages/preset/agent-presets/tests/shipped-root.spec.ts) | 新建 MAOQ 模式任务，确认快照问题不创建任务清单、不搜索文件 |
+| MAOQ 工具显示业务语义明确的专属行 | [`tool-rows.client.spec.tsx`](../packages/client/ui-maoq-tools/tests/tool-rows.client.spec.tsx) | 确认会话记录显示“查看快照目录”等当前语言名称 |
 | 统帅只选择被请求的专家 | [`loader-composition.spec.ts`](../packages/workflow/tool-maoq-decision/tests/loader-composition.spec.ts) | 检查 canary 的专家列表 |
 | 结构化综合和最终风险否决由宿主强制执行 | [`tool-maoq-decision.spec.ts`](../packages/workflow/tool-maoq-decision/tests/tool-maoq-decision.spec.ts) | 确认被强制设置为不安全的提案最终状态是 `vetoed` |
 | 登录缺失、模型无效、传输故障、结构畸形、取消和否决都明确失败 | 上方链接的适配器、Codex subagent 和 MAOQ 决策测试 | 使用恢复表，绝不能把错误重新解释为批准 |

@@ -40,6 +40,10 @@ For an external API route, keep the existing provider profile and credential flo
 
 A saved model selection applies to newly created tasks. An existing task retains the provider and model recorded when it was created, so create a new task after switching routes.
 
+## Choose the task mode
+
+Before the first message of a market task, select **MAOQ Market mode** in the preset switch. Presets are immutable after a task starts, so changing the default does not convert an existing Standard-mode task. In MAOQ Market mode, a snapshot request should show a dedicated snapshot card and must not call `todo_write`, `glob`, `grep`, `bash`, or file-editing tools. Use **Standard mode** only when working on the harness repository itself.
+
 ## P0 canary
 
 Create a new task on the intended commander route and ask it to call `maoq_decide` with only `market_regime` and `sector_battlefield`, synthesize one paper decision, and require the independent reviewer to veto the decision when the evidence cutoff is missing. The result passes when only those two specialists run, synthesis is structured, the veto produces `vetoed`, no live action is proposed, and token usage is reported per child plus a total. Missing provider usage must appear in `unavailableCalls`; it must never be estimated.
@@ -66,6 +70,8 @@ Run the canary once with Local Codex login. When an external provider credential
 | Local Codex auth is opt-in and isolated to `openai-codex` | [`auth.spec.ts`](../packages/llm/llm-pi-ai/tests/auth.spec.ts) | `codex login status` plus one Local Codex canary |
 | External API routing remains available | [`adapter.spec.ts`](../packages/llm/llm-pi-ai/tests/adapter.spec.ts) and [`dynamic-config.spec.ts`](../packages/llm/llm-pi-ai/tests/dynamic-config.spec.ts) | One canary when an operator credential is available |
 | Codex configuration suppresses API-key onboarding at startup and refresh | [`onboarding-dialog.client.spec.tsx`](../packages/client/ui-settings-models/tests/onboarding-dialog.client.spec.tsx) | Reload the empty MAOQ home and confirm no DeepSeek-key modal appears |
+| MAOQ Market mode is selectable and excludes coding detours | [`web-agent-presets.e2e.ts`](../apps/cli/tests/web-agent-presets.e2e.ts) and [`shipped-root.spec.ts`](../packages/preset/agent-presets/tests/shipped-root.spec.ts) | Start a new MAOQ-mode task and confirm a snapshot question does not create todos or search files |
+| MAOQ tools display business-language rows | [`tool-rows.client.spec.tsx`](../packages/client/ui-maoq-tools/tests/tool-rows.client.spec.tsx) | Confirm the transcript says “Browse snapshot catalog” or the active locale equivalent |
 | Commander selects only the requested specialists | [`loader-composition.spec.ts`](../packages/workflow/tool-maoq-decision/tests/loader-composition.spec.ts) | Inspect the canary's specialist list |
 | Structured synthesis and final risk veto are host-enforced | [`tool-maoq-decision.spec.ts`](../packages/workflow/tool-maoq-decision/tests/tool-maoq-decision.spec.ts) | Confirm a forced unsafe proposal ends as `vetoed` |
 | Missing login, invalid model, transport failure, malformed output, cancellation, and veto fail explicitly | Adapter, Codex subagent, and MAOQ decision tests linked above | Use the recovery table; never reinterpret an error as approval |

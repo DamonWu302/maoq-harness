@@ -183,6 +183,7 @@
       "@deepseek-ai/dsh-client-ui-sidebar": ["./packages/client/ui-sidebar/src"],
       "@deepseek-ai/dsh-client-ui-brand-official": ["./packages/client/ui-brand-official/src"],
       "@deepseek-ai/dsh-client-ui-brand-maoq": ["./packages/client/ui-brand-maoq/src"],
+      "@deepseek-ai/dsh-client-ui-maoq-tools": ["./packages/client/ui-maoq-tools/src"],
       "@deepseek-ai/dsh-client-ui-approval": ["./packages/client/ui-approval/src"],
       "@deepseek-ai/dsh-client-ui-approval/client": ["./packages/client/ui-approval/src/client/index.ts"],
       "@deepseek-ai/dsh-client-ui-chat": ["./packages/client/ui-chat/src"],

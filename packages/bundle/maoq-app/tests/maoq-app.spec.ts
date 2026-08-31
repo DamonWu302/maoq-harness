@@ -19,7 +19,8 @@ describe('@deepseek-ai/dsh-maoq-app', () => {
       id: string
       config: { reuseCodexLogin: boolean; providers: Record<string, unknown> }
     }
-    const insertion = patches[3] as { insert: Array<{ id: string; name: string }> }
+    const clientInsertion = patches[3] as { insert: Array<{ id: string; name: string }> }
+    const insertion = patches[4] as { insert: Array<{ id: string; name: string }> }
 
     expect(prompt.config.persona).toContain('smallest sufficient specialist council')
     expect(prompt.config.persona).toContain('final veto power')
@@ -27,6 +28,10 @@ describe('@deepseek-ai/dsh-maoq-app', () => {
     expect(codexRoute).toEqual({
       id: 'llm-pi-ai',
       config: { reuseCodexLogin: true, providers: { 'openai-codex': {} } },
+    })
+    expect(clientInsertion.insert).toContainEqual({
+      id: 'ui-maoq-tools',
+      name: '@deepseek-ai/dsh-client-ui-maoq-tools',
     })
     expect(insertion.insert).toContainEqual(expect.objectContaining({
       id: 'market-snapshot',

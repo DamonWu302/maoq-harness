@@ -29,6 +29,10 @@ MAOQ 应用层组合在 `dsh-base` 和 `dsh-web-app` 之上，提供统帅人格
 
 Profile 还会挂载延迟连接的 `long-short-stock-mysql` 适配器。如果默认值与既有日线数据库不一致，可配置 `MAOQ_MYSQL_HOST`、`MAOQ_MYSQL_PORT`、`MAOQ_MYSQL_SOCKET`、`MAOQ_MYSQL_USER` 和 `MAOQ_MYSQL_DATABASE`。`MAOQ_MYSQL_PASSWORD_CREDENTIAL` 应指向保存密码的凭据存储键；密码本身不会进入补丁或工具参数。统帅每次前台调用最多生成十个交易日。
 
+进行市场任务时，在新任务发送第一条消息前，通过模式开关选择 **MAOQ 市场模式**。任务一旦开始，预设即固定。该模式保留 MAOQ 快照、决策、联网研究和用户问询能力，同时不装载 Shell、文件搜索／编辑、任务清单、目标及通用子 Agent 控制，因此快照问题会直接查询快照目录，不再绕行工作区搜索。仓库开发仍可选择**标准模式**。
+
+MAOQ Profile 还会挂载专属浏览器工具行，用“查看快照目录”“生成交易日快照”“MAOQ 战略研判”等业务名称替代通用的技术工具调用回退。
+
 <a id="operate-and-recover"></a>
 ## 运行与恢复
 

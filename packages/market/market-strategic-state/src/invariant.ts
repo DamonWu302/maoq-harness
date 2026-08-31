@@ -8,7 +8,7 @@ const PACKAGE_NAME = '@deepseek-ai/dsh-market-strategic-state'
 export const name = 'market-strategic-state-invariant'
 export const inject = ['invariants']
 
-// Public constructors enforce deterministic input and interpretation boundaries directly.
+// No runtime invariant: public constructors enforce deterministic input and interpretation boundaries directly.
 const install: InvariantInstaller = () => {}
 
 /** Register the package's empty, explained invariant contribution. */

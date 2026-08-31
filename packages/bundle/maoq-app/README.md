@@ -29,6 +29,10 @@ Launch with `dsh --profile maoq`. The shipped template composes `dsh-base`, `dsh
 
 The profile also mounts the lazy `long-short-stock-mysql` adapter. Configure `MAOQ_MYSQL_HOST`, `MAOQ_MYSQL_PORT`, `MAOQ_MYSQL_SOCKET`, `MAOQ_MYSQL_USER`, and `MAOQ_MYSQL_DATABASE` when their defaults do not match the existing daily-data database. Set `MAOQ_MYSQL_PASSWORD_CREDENTIAL` to the credential-store key that holds the password; the password itself never enters the patch or tool arguments. The commander may generate at most ten sessions per foreground call.
 
+For market work, choose **MAOQ Market mode** in the new-task preset switch before sending the first message. The preset is fixed after a task starts. This mode keeps the MAOQ snapshot and decision tools plus web research and user questions, while omitting shell, filesystem search/editing, todo, goal, and generic delegation controls. Snapshot questions therefore go directly to the snapshot catalog instead of searching the workspace. **Standard mode** remains available for repository development.
+
+The MAOQ profile also mounts dedicated browser rows that show business names such as “Browse snapshot catalog”, “Generate trading-day snapshots”, and “MAOQ strategic analysis” instead of the generic tool-call fallback.
+
 <a id="operate-and-recover"></a>
 ## Operate and recover
 

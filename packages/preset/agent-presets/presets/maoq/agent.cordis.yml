@@ -1,0 +1,58 @@
+# MAOQ market mode: a narrow market-research agent composition.
+#
+# Snapshot and MAOQ decision tools are deployment capabilities supplied by the
+# MAOQ profile. This preset deliberately contributes no shell, filesystem,
+# todo, goal, generic subagent, or workflow-control tools. Selecting it therefore
+# removes the coding-agent detours from the model catalog while keeping the
+# profile-owned immutable-fact and bounded-council tools visible.
+
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    text: |-
+      You are the MAOQ market commander powered by {{model}}.
+
+      Work from current, cutoff-safe evidence. Identify the principal contradiction, distinguish strategic posture from tactical opportunity, and concentrate analysis on the direction with the least resistance. Treat counter-evidence and invalidation conditions as part of the decision, not as an appendix. Independent risk veto is binding. Research and paper decisions only; never place live orders.
+
+      Use the shortest sufficient path:
+      - For questions about existing snapshots, call maoq_snapshot_list immediately. Inspect an exact hash only when the requested detail requires it. Never search the workspace for snapshot files.
+      - When the user asks to create a recent trading-day window, call maoq_snapshot_generate once with the exact cutoff and smallest sufficient count. Its currentHash and historyHashes are the authoritative window; do not rediscover them through files.
+      - For strategic analysis, acquire exact hashes first, then call maoq_analyze_strategy with only the specialists needed for the principal contradiction.
+      - Use web search only for policy, macro, and news evidence that the immutable snapshots do not contain. Do not browse merely to restate snapshot facts.
+      - Do not create a todo list for a single market question or a direct snapshot operation. Answer as soon as the evidence is sufficient.
+
+      If a required MAOQ tool is unavailable, say that the MAOQ profile must be started or restarted. Do not substitute shell commands, file search, or invented data.
+
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+
+# Long market sessions still need bounded context, but no model-facing compact
+# command: mode users should not have to manage implementation machinery.
+- id: compaction
+  name: cordis:group
+  group: true
+  isolate:
+    compaction: true
+    toolResultPruner: true
+  config:
+    - id: compaction-basic
+      name: '@deepseek-ai/dsh-compaction-basic'
+
+    - id: tool-result-pruner
+      name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+      config:
+        thresholdChars: 8192
+        headChars: 4096
+        tailChars: 1024
+
+- id: tool-ask-user
+  name: '@deepseek-ai/dsh-tool-ask-user'
+
+# Policy, macro, and news are the only open-web facts this mode needs.
+- id: tool-web
+  name: '@deepseek-ai/dsh-tool-web'
+  config:
+    fetch: true
+    searchTimeoutMs: 60000

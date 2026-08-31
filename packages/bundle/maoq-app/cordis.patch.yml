@@ -27,6 +27,11 @@
     providers:
       openai-codex: {}
 
+# Replace generic technical tool rows with MAOQ business-language cards.
+- insert:
+    - id: ui-maoq-tools
+      name: '@deepseek-ai/dsh-client-ui-maoq-tools'
+
 - insert:
     - id: market-snapshot
       name: '@deepseek-ai/dsh-market-snapshot'
