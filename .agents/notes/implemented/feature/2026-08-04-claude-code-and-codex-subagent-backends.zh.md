@@ -34,9 +34,9 @@ configured tool -> dsh-tool-subagent -> ctx.subagents -> product provider -> pro
 
 ## Codex 提供方
 
-`@deepseek-ai/dsh-subagent-codex` 注册由 Profile 选择、默认值为 `codex` 的提供方名称，解析锁定的 `@openai/codex@0.149.1` 包所声明的 `codex` bin，并使用当前 Node 可执行文件加 `app-server --stdio` 启动该 wrapper。Wrapper 会选择私有原生平台载荷；提供方既不解析也不回退宿主 `codex`。其公开配置包含非空的 `providerName`、可选的非空 `model`、显式的 `env` 覆盖项、须为正有限值且不得大于仓库共享 `MAX_TIMER_DELAY_MS` 的 `disposeGraceMs`，以及默认使用 `never` 的三值原生 `permissionMode`。每个命名实例会为自己的运行保留这些已解析值。显式模型会原样传给每个临时 `thread/start`；省略时仍以 Codex 原生设置为权威。安装、登录、`CODEX_HOME`、模型发现或 fallback、基础 URL 和产品会话设置仍由 Codex 原生机制或部署环境负责；所选模式只拥有非交互权限决策中描述的线程 approval／reviewer／sandbox 字段。
+`@deepseek-ai/dsh-subagent-codex` 注册由 Profile 选择、默认值为 `codex` 的提供方名称，解析锁定的 `@openai/codex@0.149.1` 包所声明的 `codex` bin，并使用当前 Node 可执行文件加 `app-server --stdio` 启动该 wrapper。Wrapper 会选择私有原生平台载荷；提供方既不解析也不回退宿主 `codex`。其公开配置包含非空的 `providerName`、可选的非空 `model` 与 `reasoningEffort`、默认值为 `native` 的 `responsesTransport`、显式的 `env` 覆盖项、须为正有限值且不得大于仓库共享 `MAX_TIMER_DELAY_MS` 的 `disposeGraceMs`，以及默认使用 `never` 的三值原生 `permissionMode`。每个命名实例会为自己的运行保留这些已解析值。显式模型会原样传给每个临时 `thread/start`，显式推理强度会原样传给每个 `turn/start`；省略时仍以对应的 Codex 原生设置为权威。`responsesTransport: native` 保留 Codex 的传输选择；`responsesTransport: http` 会在子进程 argv 中添加一个私有自定义 Responses 提供方，将其标记为使用现有 OpenAI 身份验证、禁用 WebSocket，并在 `thread/start` 选择它；这既不会覆盖保留的内置提供方，也不需要第二个 API Key。安装、登录、`CODEX_HOME`、模型发现或 fallback、通用基础 URL 和产品会话设置仍由 Codex 原生机制或部署环境负责；所选模式只拥有非交互权限决策中描述的线程 approval／reviewer／sandbox 字段。
 
-发布前，提供方会验证非空的纯文本任务，在父级工作区中启动受管的 app-server，完成 `initialize` → `initialized` 握手，把可选模型与已解析模式映射为官方 `thread/start` 字段，并创建一个 `ephemeral: true` 线程。固定 app-server argv 不包含模型、模式或任务文本。已发布的运行只拥有一次 `turn/start`；其线程 ID 与轮次 ID 保持私有，绝不会持久化到父会话。
+发布前，提供方会验证非空的纯文本任务，在父级工作区中启动受管的 app-server，完成 `initialize` → `initialized` 握手，把可选模型、可选私有 HTTP 提供方与已解析模式映射为官方 `thread/start` 字段，并创建一个 `ephemeral: true` 线程。app-server argv 不包含模型、权限模式或任务文本，只有显式选择的私有 HTTP 提供方定义会添加到这里。已发布的运行只拥有一次 `turn/start`，可选推理强度会在这里应用；其线程 ID 与轮次 ID 保持私有，绝不会持久化到父会话。
 
 `turn/completed` 是权威的远端终止事实。以最后一条带有 `phase: "final_answer"` 的 `agentMessage` 为准，且选中的消息必须包含非空白文本。若产品没有发出明确的最终阶段，则以最后一条 `phase: null` 的消息作为兼容性回退，该消息也必须包含非空白文本；过程说明绝不会取代上述任一答案。[最小诊断决策](../simplification/2026-08-21-product-subagent-minimal-diagnostics.zh.md)负责 Codex 行动类别、HTTP status、生命周期阶段、进程结果与终止原因保持。本地取消仍是 `aborted` 且不附带失败诊断。
 

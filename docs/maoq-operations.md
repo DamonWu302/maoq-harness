@@ -34,7 +34,7 @@ For the local Codex route, first confirm the shared ChatGPT login:
 codex login status
 ```
 
-Launch MAOQ, open **Settings → Models → Commander model**, choose **Local Codex login**, and select the exact model. The shipped council uses `gpt-5.6-sol`. A configured Codex route suppresses the DeepSeek API-key onboarding at startup and after refresh.
+Launch MAOQ, open **Settings → Models → Commander model**, choose **Local Codex login**, and select the exact model. The shipped council uses `gpt-5.6-luna` at low reasoning over an HTTPS Responses route; it still reuses the same Codex login. A configured Codex route suppresses the DeepSeek API-key onboarding at startup and after refresh.
 
 For an external API route, keep the existing provider profile and credential flow: configure the provider on the Models page, store its API key through the credential field, then select that provider and model for the commander. Never put a key in a patch file, prompt, log, or committed fixture.
 

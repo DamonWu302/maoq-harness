@@ -168,6 +168,7 @@ describe('maoq_analyze_strategy', () => {
     const features = (engine.requests[0]!.args as Record<string, unknown>)['features'] as StrategicFeatureRecord
     expect(features.eligibleForInterpretation).toBe(true)
     expect(engine.requests[0]!.script).toContain('do not invent quotations')
+    expect(engine.requests[0]!.script).toContain('enum: evidenceRefs')
     engine.settle({ value: workflowValue(features), stopReason: 'completed', agentsStarted: 3 })
     const result = await pending
     expect(result.isError).toBe(false)

@@ -253,6 +253,8 @@ export class CodexAppServerWire {
     output: Writable,
     private readonly permissionMode: CodexPermissionMode,
     private readonly model?: string,
+    private readonly modelProvider?: string,
+    private readonly reasoningEffort?: string,
   ) {
     this.transport = new JsonRpcLineTransport(input, output)
     // Fatal protocol state can arrive after the current guarded operation has
@@ -318,6 +320,7 @@ export class CodexAppServerWire {
       cwd,
       ephemeral: true,
       ...this.model === undefined ? {} : { model: this.model },
+      ...this.modelProvider === undefined ? {} : { modelProvider: this.modelProvider },
       ...THREAD_PERMISSION_PARAMS[this.permissionMode],
     }, signal), signal), 'thread/start response')
     const thread = object(response.thread, 'thread/start thread')
@@ -333,6 +336,7 @@ export class CodexAppServerWire {
    * terminal notification.
    * @param texts - already validated task text blocks.
    * @param signal - local cancellation for the published run.
+   * @param outputSchema - optional structured-output schema for this turn.
    * @returns the shared subagent result.
    */
   async runTurn(
@@ -350,6 +354,7 @@ export class CodexAppServerWire {
       const response = object(await this.guarded(this.transport.request('turn/start', {
         threadId,
         input: texts.map(text => ({ type: 'text', text, text_elements: [] })),
+        ...this.reasoningEffort === undefined ? {} : { effort: this.reasoningEffort },
         ...outputSchema === undefined ? {} : { outputSchema },
       }, signal), signal), 'turn/start response')
       const turn = object(response.turn, 'turn/start turn')

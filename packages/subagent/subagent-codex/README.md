@@ -45,6 +45,8 @@ Removing the package withdraws the provider and its private runtime closure on t
 |---|---|---|
 | `providerName` | `codex` | Non-empty registry name on `ctx.subagents`; each mounted instance needs a unique value |
 | `model` | native Codex settings | Optional non-empty model name fixed for every thread from this provider instance; omission sends no app-server override |
+| `reasoningEffort` | native Codex settings | Optional non-empty reasoning effort sent on every child turn; omission preserves native selection |
+| `responsesTransport` | `native` | `native` preserves Codex transport selection; `http` creates a private Responses provider that reuses OpenAI login and disables WebSockets |
 | `env` | `{}` | Explicit child environment layered over the credential-scrubbed parent environment |
 | `permissionMode` | `never` | Native non-interactive approval and sandbox mode fixed for every thread from this provider instance |
 | `disposeGraceMs` | `3000` | Grace between the shared process-tree owner's termination tiers |
@@ -55,7 +57,7 @@ Removing the package withdraws the provider and its private runtime closure on t
 | `approve-for-me` | `approvalPolicy: on-request`, `approvalsReviewer: auto_review`, `sandbox: workspace-write` | Route permission requests through Codex automatic review without a human |
 | `dangerously-bypass-approvals-and-sandbox` | `approvalPolicy: never`, `sandbox: danger-full-access` | Skip approval and sandbox enforcement; this value must be selected explicitly |
 
-The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-subagent-codex) is the exhaustive source for every accepted field and its JSDoc. A configured `model` passes unchanged on each ephemeral `thread/start`; omission leaves native model selection in force. The provider does not discover models, rewrite aliases, select `modelProvider` or `serviceTier`, or set a fallback. Credential-shaped ambient variables are removed before the explicit `env` overlay, so an API key intended for the child must be supplied there.
+The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-subagent-codex) is the exhaustive source for every accepted field and its JSDoc. A configured `model` passes unchanged on each ephemeral `thread/start`, and `reasoningEffort` passes unchanged on each `turn/start`; omission leaves the corresponding native selection in force. The provider does not discover models, rewrite aliases, select `serviceTier`, or set a fallback. `responsesTransport: http` selects a private custom Responses provider with WebSockets disabled while retaining the existing Codex/OpenAI authentication; it neither replaces the built-in provider nor requires another API key. Credential-shaped ambient variables are removed before the explicit `env` overlay, so a separate API key intended for the child must still be supplied there.
 
 ### Exposing the tool
 
@@ -98,7 +100,7 @@ This section explains how the provider drives a real Codex app-server and where 
 ### Design concept
 
 - **One fresh process, thread, and turn per run.** Every run spawns a fresh app-server, creates one ephemeral thread, and executes exactly one turn; there is no continuation, resume, or pooling.
-- **Native configuration is authoritative.** Codex configuration and authentication stay native through the parent cwd, `HOME`, and `CODEX_HOME`; the provider overrides only the optional model and the thread's approval, reviewer, and sandbox fields.
+- **Native configuration is authoritative.** Codex configuration and authentication stay native through the parent cwd, `HOME`, and `CODEX_HOME`; the provider may override the optional model, reasoning effort, Responses transport, and the thread's approval, reviewer, and sandbox fields.
 - **Unattended by design.** Approval, user-input, and MCP requests are answered or declined without a human; unknown server requests fail the run.
 
 ### Source map

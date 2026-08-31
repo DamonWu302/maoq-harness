@@ -34,7 +34,7 @@ lsof -nP -iTCP:3080 -sTCP:LISTEN
 codex login status
 ```
 
-启动 MAOQ，打开**设置 → 模型 → 统帅模型**，选择**本机 Codex 登录**并指定具体模型。随附议事组使用 `gpt-5.6-sol`。配置 Codex 路由后，启动和刷新时都不会出现 DeepSeek API Key 引导。
+启动 MAOQ，打开**设置 → 模型 → 统帅模型**，选择**本机 Codex 登录**并指定具体模型。随附议事组使用低推理强度的 `gpt-5.6-luna`，通过 HTTPS Responses 路径运行，并继续复用同一份 Codex 登录。配置 Codex 路由后，启动和刷新时都不会出现 DeepSeek API Key 引导。
 
 使用外部 API 路由时，保留现有提供方 Profile 和凭据流程：在模型页面配置提供方，通过凭据字段保存 API Key，再为统帅选择该提供方和模型。绝不能把 Key 写入补丁文件、提示词、日志或提交的 fixture。
 

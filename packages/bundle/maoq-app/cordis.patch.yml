@@ -61,7 +61,9 @@
     - id: subagent-codex
       name: '@deepseek-ai/dsh-subagent-codex'
       config:
-        model: gpt-5.6-sol
+        model: gpt-5.6-luna
+        reasoningEffort: low
+        responsesTransport: http
         permissionMode: never
 
     - id: tool-maoq-decision

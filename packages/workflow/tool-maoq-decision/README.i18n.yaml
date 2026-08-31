@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/workflow/tool-maoq-decision/README.md
-README.md: b55d8297a1c7e4a00f66947ded7c369867232886
-README.zh.md: 554f1efd35dfb0b45f3051f137dd1cce9c539dc9
+README.md: 8158309e4be574103fccfedae573a3d3f3bee233
+README.zh.md: 992a44565e6e5cdd3e1f85a28e5a171023e85828

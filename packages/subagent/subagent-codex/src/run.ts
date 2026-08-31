@@ -35,6 +35,14 @@ import {
 /** Default POSIX grace between subprocess termination tiers. */
 export const DEFAULT_DISPOSE_GRACE_MS = 3_000
 
+/** Profile-selectable Responses transports for one-shot Codex children. */
+export const CODEX_RESPONSES_TRANSPORTS = ['native', 'http'] as const
+/** A Responses transport accepted by the Codex provider config. */
+export type CodexResponsesTransport = typeof CODEX_RESPONSES_TRANSPORTS[number]
+/** Preserve Codex's native transport selection unless the Profile opts into HTTP. */
+export const DEFAULT_CODEX_RESPONSES_TRANSPORT: CodexResponsesTransport = 'native'
+const HTTP_MODEL_PROVIDER = 'dsh-openai-http'
+
 interface CodexPackageManifest {
   readonly bin: {
     readonly codex: string
@@ -130,10 +138,21 @@ export function codexStartupFailure(cause: unknown): Error {
 
 /**
  * Fixed package-local app-server command, independent of the host `PATH`.
+ * @param responsesTransport - Responses transport selected by the Profile.
  * @returns Node, the official wrapper, and the fixed app-server arguments.
  */
-export function codexAppServerArgv(): string[] {
-  return [process.execPath, CODEX_PACKAGE_BIN, 'app-server', '--stdio']
+export function codexAppServerArgv(
+  responsesTransport: CodexResponsesTransport = DEFAULT_CODEX_RESPONSES_TRANSPORT,
+): string[] {
+  const argv = [process.execPath, CODEX_PACKAGE_BIN, 'app-server', '--stdio']
+  if (responsesTransport === 'native') return argv
+  return argv.concat([
+    '-c', `model_provider="${HTTP_MODEL_PROVIDER}"`,
+    '-c', `model_providers.${HTTP_MODEL_PROVIDER}.name="DSH OpenAI HTTP"`,
+    '-c', `model_providers.${HTTP_MODEL_PROVIDER}.requires_openai_auth=true`,
+    '-c', `model_providers.${HTTP_MODEL_PROVIDER}.supports_websockets=false`,
+    '-c', `model_providers.${HTTP_MODEL_PROVIDER}.wire_api="responses"`,
+  ])
 }
 
 /** Fully resolved inputs for one Codex app-server run. */
@@ -142,6 +161,10 @@ export interface CodexRunSpec {
   readonly cwd: string
   /** Profile-selected native model; omitted to preserve Codex settings. */
   readonly model?: string
+  /** Profile-selected native reasoning effort; omitted to preserve Codex settings. */
+  readonly reasoningEffort?: string
+  /** Profile-selected Responses transport for this private app-server. */
+  readonly responsesTransport: CodexResponsesTransport
   /** Profile-selected native non-interactive permission mode. */
   readonly permissionMode: CodexPermissionMode
   /** Explicit deployment/test environment layered after the shared scrub. */
@@ -239,7 +262,7 @@ export async function startCodexRun(
   let child: SubprocessHandle
   try {
     child = spec.spawn({
-      argv: codexAppServerArgv(),
+      argv: codexAppServerArgv(spec.responsesTransport),
       cwd: spec.cwd,
       stdio: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
       graceMs: spec.disposeGraceMs,
@@ -257,6 +280,8 @@ export async function startCodexRun(
     child.stdin as NonNullable<SubprocessHandle['stdin']>,
     spec.permissionMode,
     spec.model,
+    spec.responsesTransport === 'http' ? HTTP_MODEL_PROVIDER : undefined,
+    spec.reasoningEffort,
   )
   const onStderr = (chunk: Buffer | string): void => {
     const bytes = typeof chunk === 'string' ? Buffer.from(chunk) : chunk

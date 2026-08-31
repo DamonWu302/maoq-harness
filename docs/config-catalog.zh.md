@@ -1475,7 +1475,7 @@ export interface Config {
 }
 ```
 
-来源：[`packages/market/market-snapshot/src/index.ts:14`](../packages/market/market-snapshot/src/index.ts)
+来源：[`packages/market/market-snapshot/src/index.ts:20`](../packages/market/market-snapshot/src/index.ts)
 
 <a id="deepseek-aidsh-market-snapshot-json"></a>
 
@@ -2508,6 +2508,10 @@ export interface Config {
   providerName?: string
   /** Native Codex model fixed for this instance; omitted to inherit Codex settings. */
   model?: string
+  /** Native Codex reasoning effort fixed for each child turn; omitted to inherit Codex settings. */
+  reasoningEffort?: string
+  /** Responses transport used by each child process (default `native`). */
+  responsesTransport?: CodexResponsesTransport
   /**
    * Explicit environment entries layered over the subprocess seam's
    * credential-scrubbed parent environment.
@@ -2519,6 +2523,9 @@ export interface Config {
   disposeGraceMs?: number
 }
 
+/** A Responses transport accepted by the Codex provider config. */
+export type CodexResponsesTransport = typeof CODEX_RESPONSES_TRANSPORTS[number]
+
 /** Profile-selectable non-interactive Codex permission mode. */
 export type CodexPermissionMode =
   | 'never'
@@ -2526,7 +2533,7 @@ export type CodexPermissionMode =
   | 'dangerously-bypass-approvals-and-sandbox'
 ```
 
-来源：[`packages/subagent/subagent-codex/src/index.ts:36`](../packages/subagent/subagent-codex/src/index.ts)
+来源：[`packages/subagent/subagent-codex/src/index.ts:38`](../packages/subagent/subagent-codex/src/index.ts)
 
 <a id="deepseek-aidsh-subagent-dsh-sdk"></a>
 
@@ -2940,6 +2947,30 @@ export interface Config {
 ```
 
 来源：[`packages/workflow/tool-maoq-decision/src/index.ts:32`](../packages/workflow/tool-maoq-decision/src/index.ts)
+
+<a id="deepseek-aidsh-tool-maoq-snapshot"></a>
+
+## `@deepseek-ai/dsh-tool-maoq-snapshot`
+
+需要：`tools` · `marketSnapshots` · `systemPrompt`
+
+```ts config-catalog
+/** Deployment limits and source allowlist for model-triggered acquisition. */
+export interface Config {
+  /** Adapters the model may invoke for generation. */
+  allowedAdapters?: string[]
+  /** Largest number of snapshots one generation call may build. */
+  maxGenerateCount?: number
+  /** Largest number of summaries one list call may return. */
+  maxListCount?: number
+  /** Largest number of local content files a list call may verify. */
+  maxScanFiles?: number
+  /** Tool pipeline timeout budget for one generation call. */
+  generateTimeoutMs?: number
+}
+```
+
+来源：[`packages/market/tool-maoq-snapshot/src/index.ts:19`](../packages/market/tool-maoq-snapshot/src/index.ts)
 
 <a id="deepseek-aidsh-tool-pwsh"></a>
 
@@ -3541,6 +3572,7 @@ export interface Config {
 - `@deepseek-ai/dsh-client-ui-input-trigger`（[`packages/client/ui-input-trigger/src/index.ts`](../packages/client/ui-input-trigger/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-jobs`（[`packages/client/ui-jobs/src/index.ts`](../packages/client/ui-jobs/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-layout`（[`packages/client/ui-layout/src/index.ts`](../packages/client/ui-layout/src/index.ts)）
+- `@deepseek-ai/dsh-client-ui-maoq-tools`（[`packages/client/ui-maoq-tools/src/index.ts`](../packages/client/ui-maoq-tools/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-message-feedback`（[`packages/client/ui-message-feedback/src/index.ts`](../packages/client/ui-message-feedback/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-model-selection`（[`packages/client/ui-model-selection/src/index.ts`](../packages/client/ui-model-selection/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-permission-presets`（[`packages/client/ui-permission-presets/src/index.ts`](../packages/client/ui-permission-presets/src/index.ts)）

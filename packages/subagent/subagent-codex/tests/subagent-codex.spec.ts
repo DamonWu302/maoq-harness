@@ -251,6 +251,7 @@ function runSpec(
   return {
     cwd: process.cwd(),
     permissionMode: DEFAULT_CODEX_PERMISSION_MODE,
+    responsesTransport: 'native',
     env: {},
     disposeGraceMs: DEFAULT_DISPOSE_GRACE_MS,
     spawn: () => child.handle,
@@ -394,6 +395,22 @@ describe('task admission and package contracts', () => {
       resolve(dirname(codexPackageJson), codexManifest.bin.codex),
       'app-server',
       '--stdio',
+    ])
+    expect(codexAppServerArgv('http')).toEqual([
+      process.execPath,
+      resolve(dirname(codexPackageJson), codexManifest.bin.codex),
+      'app-server',
+      '--stdio',
+      '-c',
+      'model_provider="dsh-openai-http"',
+      '-c',
+      'model_providers.dsh-openai-http.name="DSH OpenAI HTTP"',
+      '-c',
+      'model_providers.dsh-openai-http.requires_openai_auth=true',
+      '-c',
+      'model_providers.dsh-openai-http.supports_websockets=false',
+      '-c',
+      'model_providers.dsh-openai-http.wire_api="responses"',
     ])
 
     const lockfile = readFileSync(resolve(root, '../../../pnpm-lock.yaml'), 'utf8')
@@ -580,7 +597,7 @@ describe('task admission and package contracts', () => {
     await ctx.fiber.dispose()
   })
 
-  it('accepts an optional non-empty model and the three fixed permission modes', () => {
+  it('accepts explicit model, reasoning, transport, and the three fixed permission modes', () => {
     expect(codex.Config({}).providerName).toBe('codex')
     expect(codex.Config({}).model).toBeUndefined()
     expect(codex.Config({ providerName: 'codex-safe' }).providerName)
@@ -588,6 +605,11 @@ describe('task admission and package contracts', () => {
     expect(() => codex.Config({ providerName: '' })).toThrow()
     expect(codex.Config({ model: 'gpt-codex' }).model).toBe('gpt-codex')
     expect(() => codex.Config({ model: '' })).toThrow()
+    expect(codex.Config({ reasoningEffort: 'low' }).reasoningEffort).toBe('low')
+    expect(() => codex.Config({ reasoningEffort: '' })).toThrow()
+    expect(codex.Config({}).responsesTransport).toBe('native')
+    expect(codex.Config({ responsesTransport: 'http' }).responsesTransport).toBe('http')
+    expect(() => codex.Config({ responsesTransport: 'future' } as never)).toThrow()
     expect(codex.Config({}).permissionMode).toBe(DEFAULT_CODEX_PERMISSION_MODE)
     for (const permissionMode of CODEX_PERMISSION_MODES) {
       expect(codex.Config({ permissionMode }).permissionMode).toBe(permissionMode)
@@ -689,6 +711,45 @@ describe('task admission and package contracts', () => {
     })
     child.peer.respond(threadStart, { thread: { id: 'thread-1', ephemeral: true } })
     await starting
+    wire.close()
+  })
+
+  it('selects the HTTP provider and reasoning effort on the native protocol', async () => {
+    const child = fakeChild()
+    const wire = new CodexAppServerWire(
+      child.handle.stdout!,
+      child.handle.stdin!,
+      'never',
+      'gpt-5.6-luna',
+      'dsh-openai-http',
+      'low',
+    )
+    wire.start()
+    const initializing = wire.initialize(new AbortController().signal)
+    const initialize = await child.peer.nextMethod('initialize')
+    child.peer.respond(initialize, { userAgent: 'codex-cli 0.149.1' })
+    await initializing
+    await child.peer.nextMethod('initialized')
+    const starting = wire.startThread('/workspace', new AbortController().signal)
+    const threadStart = await child.peer.nextMethod('thread/start')
+    expect(threadStart.params).toEqual({
+      cwd: '/workspace',
+      ephemeral: true,
+      model: 'gpt-5.6-luna',
+      modelProvider: 'dsh-openai-http',
+      approvalPolicy: 'never',
+    })
+    child.peer.respond(threadStart, { thread: { id: 'thread-1', ephemeral: true } })
+    await starting
+    const running = wire.runTurn(['analyze'], new AbortController().signal)
+    const turnStart = await child.peer.nextMethod('turn/start')
+    expect(turnStart.params).toMatchObject({ threadId: 'thread-1', effort: 'low' })
+    child.peer.send(
+      { id: turnStart.id, result: { turn: { id: 'turn-1' } } },
+      agentMessage('answer', 'final_answer'),
+      turnCompleted('completed'),
+    )
+    await expect(running).resolves.toMatchObject({ stopReason: 'completed' })
     wire.close()
   })
 
@@ -1928,6 +1989,7 @@ describe('run lifecycle and quiescence', () => {
       request(undefined, controller.signal),
       {
         cwd: process.cwd(),
+        responsesTransport: 'native',
         permissionMode: DEFAULT_CODEX_PERMISSION_MODE,
         env: {},
         disposeGraceMs: 10,
@@ -1938,6 +2000,7 @@ describe('run lifecycle and quiescence', () => {
 
     const spawnFailure = startCodexRun(request(), {
       cwd: process.cwd(),
+      responsesTransport: 'native',
       permissionMode: DEFAULT_CODEX_PERMISSION_MODE,
       env: {},
       disposeGraceMs: 10,

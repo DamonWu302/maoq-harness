@@ -51,12 +51,14 @@ const METHOD_IDS = Object.keys(MAO_METHOD_CATALOG) as MaoMethodId[]
 
 const STRATEGIC_SCRIPT = String.raw`
 const methodIds = ${JSON.stringify(METHOD_IDS)}
+const evidenceRefs = args.features.evidence.map(item => item.ref)
+const evidenceRefSchema = { type: 'string', enum: evidenceRefs }
 const methodSchema = {
   type: 'object',
   properties: {
     methodId: { type: 'string', enum: methodIds },
     application: { type: 'string' },
-    evidenceRefs: { type: 'array', items: { type: 'string' } },
+    evidenceRefs: { type: 'array', items: evidenceRefSchema },
     limitation: { type: 'string' },
   },
   required: ['methodId', 'application', 'evidenceRefs', 'limitation'],
@@ -67,8 +69,8 @@ const reportSchema = {
   properties: {
     role: { type: 'string', enum: ${JSON.stringify(STRATEGIC_SPECIALISTS)} },
     conclusion: { type: 'string' },
-    supportingEvidenceRefs: { type: 'array', items: { type: 'string' } },
-    counterEvidenceRefs: { type: 'array', items: { type: 'string' } },
+    supportingEvidenceRefs: { type: 'array', items: evidenceRefSchema },
+    counterEvidenceRefs: { type: 'array', items: evidenceRefSchema },
     transitionConditions: { type: 'array', items: { type: 'string' } },
     confidence: { type: 'number' },
     maoMethodApplications: { type: 'array', items: methodSchema },
@@ -83,8 +85,8 @@ const decisionSchema = {
     emotionCycle: { type: 'string', enum: ['startup', 'acceleration', 'climax', 'divergence', 'ebb', 'repair', 'unavailable'] },
     principalContradiction: { type: 'string' },
     leastResistanceBattlefield: { type: 'string' },
-    supportingEvidenceRefs: { type: 'array', items: { type: 'string' } },
-    counterEvidenceRefs: { type: 'array', items: { type: 'string' } },
+    supportingEvidenceRefs: { type: 'array', items: evidenceRefSchema },
+    counterEvidenceRefs: { type: 'array', items: evidenceRefSchema },
     transitionConditions: { type: 'array', items: { type: 'string' } },
     confidence: { type: 'number' },
     eligiblePosture: { type: 'string', enum: ['no_trade', 'risk_off', 'watch', 'probe', 'paper_position'] },
@@ -100,7 +102,7 @@ const riskSchema = {
     approved: { type: 'boolean' },
     verdict: { type: 'string', enum: ['approve', 'veto'] },
     reasons: { type: 'array', items: { type: 'string' } },
-    evidenceRefs: { type: 'array', items: { type: 'string' } },
+    evidenceRefs: { type: 'array', items: evidenceRefSchema },
     hardLimits: { type: 'array', items: { type: 'string' } },
   },
   required: ['approved', 'verdict', 'reasons', 'evidenceRefs', 'hardLimits'],

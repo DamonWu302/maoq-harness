@@ -38,7 +38,7 @@ The strategic result stores deterministic features separately from interpretatio
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 
-The orchestration script, schemas, provider route, and child cap are deployment-owned. The strategic path loads snapshots by exact hash and computes versioned features before any child runs. Selected specialists run with `Promise.all`; synthesis and risk review run afterward as distinct fresh children. The host rejects role drift, rewritten deterministic labels, unknown evidence refs, unrecognized method IDs, inconsistent risk fields, and any attempt to make stale or incomplete inputs actionable.
+The orchestration script, schemas, provider route, and child cap are deployment-owned. The strategic path loads snapshots by exact hash and computes versioned features before any child runs. Selected specialists run with `Promise.all`; synthesis and risk review run afterward as distinct fresh children. Each child schema enumerates the exact evidence refs available in that feature record, while the host still rejects role drift, rewritten deterministic labels, unknown evidence refs, unrecognized method IDs, inconsistent risk fields, and any attempt to make stale or incomplete inputs actionable.
 
 The Loader composition fixture proves both tools load with the profile services. Focused workflow fixtures prove that selected roles remain bounded, evidence references close over the deterministic catalog, resolved answers name the Mao source work, and an independent veto remains final.
 
