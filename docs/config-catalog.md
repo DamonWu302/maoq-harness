@@ -1445,6 +1445,20 @@ export interface LspLocalServerConfig {
 
 Source: [`packages/lsp/lsp-stdio/src/index.ts:82`](../packages/lsp/lsp-stdio/src/index.ts)
 
+<a id="deepseek-aidsh-market-snapshot"></a>
+
+## `@deepseek-ai/dsh-market-snapshot`
+
+```ts config-catalog
+/** Filesystem location for immutable snapshot artifacts. */
+export interface Config {
+  /** Directory containing content-addressed snapshots and immutable identity references. */
+  readonly root: string
+}
+```
+
+Source: [`packages/market/market-snapshot/src/index.ts:14`](../packages/market/market-snapshot/src/index.ts)
+
 <a id="deepseek-aidsh-mcp-client"></a>
 
 ## `@deepseek-ai/dsh-mcp-client`

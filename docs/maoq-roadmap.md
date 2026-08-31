@@ -67,6 +67,10 @@ The immediate next step is **P0: prove one real commander decision end to end**.
 
 ## P1 — Immutable daily market snapshot
 
+**Status:** In progress. `MarketSnapshot` v1, deterministic construction, cutoff and point-in-time validation, source lineage, content-addressed persistence, exact-identity reads, and the offline risk fixture suite are implemented in [`dsh-market-snapshot`](../packages/market/market-snapshot/README.md). Production daily, sector, and news adapters remain before P1 closes.
+
+P1 applies “seek truth from facts” by keeping acquired observations separate from interpretation, “no investigation, no right to speak” by failing on missing critical facts, and “concrete analysis of concrete conditions” by versioning the exact date, cutoff, adjustment, calendar, sector classification, and sources. The [market snapshot decision](../.agents/notes/implemented/architecture/2026-08-31-maoq-market-snapshot.md) owns this mapping.
+
 ### Scope and deliverables
 
 1. Define one versioned `MarketSnapshot` document that owns identity, cutoff, provenance, quality state, daily stock bars, point-in-time sector data, market breadth, emotion facts, and eligible news evidence.

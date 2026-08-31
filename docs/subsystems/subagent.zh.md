@@ -340,6 +340,8 @@ interface SubagentResult {
    * schema-agnostic.
    */
   readonly structured?: unknown
+  /** Provider-authoritative token accounting for this child turn, when available. */
+  readonly usage?: TokenUsage
   /**
    * Provider-authored, non-assistant failure detail for a non-`completed`
    * result. Providers keep this text free of tool inputs, file contents,

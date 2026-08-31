@@ -10,7 +10,7 @@ describe('@deepseek-ai/dsh-maoq-app', () => {
     expect(inject).toEqual(['invariants'])
   })
 
-  test('installs the commander policy, workflow engine, and decision tool', () => {
+  test('installs the commander policy, market facts, workflow engine, and decision tool', () => {
     const patchPath = fileURLToPath(new URL('../cordis.patch.yml', import.meta.url))
     const patches = load(readFileSync(patchPath, 'utf8')) as Array<Record<string, unknown>>
     const prompt = patches[0] as { config: { persona: string } }
@@ -28,6 +28,11 @@ describe('@deepseek-ai/dsh-maoq-app', () => {
       id: 'llm-pi-ai',
       config: { reuseCodexLogin: true, providers: { 'openai-codex': {} } },
     })
+    expect(insertion.insert).toContainEqual(expect.objectContaining({
+      id: 'market-snapshot',
+      name: '@deepseek-ai/dsh-market-snapshot',
+      config: { root: '.maoq/snapshots' },
+    }))
     expect(insertion.insert).toContainEqual(expect.objectContaining({
       id: 'subagent-codex',
       name: '@deepseek-ai/dsh-subagent-codex',

@@ -1052,6 +1052,13 @@ export interface DeepSeekCatalogModel {
 /** Plugin configuration: the provider routes this instance owns. */
 export interface Config {
   /**
+   * Let the `openai-codex` route reuse the local Codex CLI/app ChatGPT login
+   * when this adapter has no stored OAuth grant of its own. Disabled by
+   * default so generic deployments never read host-level Codex state unless
+   * their composition explicitly opts in.
+   */
+  reuseCodexLogin?: boolean
+  /**
    * pi-ai provider routes, keyed by provider. An empty (or omitted) dict is
    * the dormant settings-driven posture: the adapter mounts with no routes
    * and registers them the moment a settings section supplies profiles.
@@ -1439,6 +1446,20 @@ export interface LspLocalServerConfig {
 ```
 
 来源：[`packages/lsp/lsp-stdio/src/index.ts:82`](../packages/lsp/lsp-stdio/src/index.ts)
+
+<a id="deepseek-aidsh-market-snapshot"></a>
+
+## `@deepseek-ai/dsh-market-snapshot`
+
+```ts config-catalog
+/** Filesystem location for immutable snapshot artifacts. */
+export interface Config {
+  /** Directory containing content-addressed snapshots and immutable identity references. */
+  readonly root: string
+}
+```
+
+来源：[`packages/market/market-snapshot/src/index.ts:14`](../packages/market/market-snapshot/src/index.ts)
 
 <a id="deepseek-aidsh-mcp-client"></a>
 

@@ -28,6 +28,11 @@
       openai-codex: {}
 
 - insert:
+    - id: market-snapshot
+      name: '@deepseek-ai/dsh-market-snapshot'
+      config:
+        root: .maoq/snapshots
+
     - id: subagent-codex
       name: '@deepseek-ai/dsh-subagent-codex'
       config:

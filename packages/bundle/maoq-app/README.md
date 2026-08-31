@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The MAOQ application layer composes over `dsh-base` and `dsh-web-app`. It supplies the commander persona and mounts [`dsh-tool-maoq-decision`](../../workflow/tool-maoq-decision/README.md). The shipped `maoq` profile therefore retains the ordinary browser, data, web-search, and subagent capabilities while adding one bounded decision council. It grants no live-trading authority.
+The MAOQ application layer composes over `dsh-base` and `dsh-web-app`. It supplies the commander persona and mounts [`dsh-tool-maoq-decision`](../../workflow/tool-maoq-decision/README.md) plus the immutable [`dsh-market-snapshot`](../../market/market-snapshot/README.md) fact store. The shipped `maoq` profile therefore retains the ordinary browser, data, web-search, and subagent capabilities while adding one bounded decision council. It grants no live-trading authority.
 
 ## Table of Contents
 
@@ -25,7 +25,7 @@ The MAOQ application layer composes over `dsh-base` and `dsh-web-app`. It suppli
 <a id="use-this-package"></a>
 ## Use this package
 
-Launch with `dsh --profile maoq`. The shipped template composes `dsh-base`, `dsh-web-app`, then this policy layer, and keeps profile patches live-reloadable. On a supported macOS and Node combination, profile launch automatically inherits enabled system HTTP and HTTPS proxies when no explicit proxy environment is present. The decision council reuses the local Codex/ChatGPT login through Codex app-server, pins `gpt-5.6-sol`, permits at most four selected specialists, and limits rendered results to 32768 characters. Token usage is reported per specialist, commander synthesis, and independent risk review, then aggregated across input, cache, output, reasoning, and total tokens. Calls without provider usage are counted in `unavailableCalls` rather than estimated.
+Launch with `dsh --profile maoq`. The shipped template composes `dsh-base`, `dsh-web-app`, then this policy layer, and keeps profile patches live-reloadable. The market snapshot service stores immutable artifacts under `.maoq/snapshots` relative to the launch directory. On a supported macOS and Node combination, profile launch automatically inherits enabled system HTTP and HTTPS proxies when no explicit proxy environment is present. The decision council reuses the local Codex/ChatGPT login through Codex app-server, pins `gpt-5.6-sol`, permits at most four selected specialists, and limits rendered results to 32768 characters. Token usage is reported per specialist, commander synthesis, and independent risk review, then aggregated across input, cache, output, reasoning, and total tokens. Calls without provider usage are counted in `unavailableCalls` rather than estimated.
 
 <a id="operate-and-recover"></a>
 ## Operate and recover

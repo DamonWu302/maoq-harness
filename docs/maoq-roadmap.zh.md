@@ -67,6 +67,10 @@
 
 ## P1 — 不可变日级市场快照
 
+**状态：** 进行中。[`dsh-market-snapshot`](../packages/market/market-snapshot/README.zh.md)已经实现 `MarketSnapshot` v1、确定性构建、截止点及时点校验、来源谱系、内容寻址持久化、精确身份读取和离线风险 fixture 集。P1 收口前仍需完成生产日线、板块和新闻适配器。
+
+P1 以“实事求是”要求取得的观察与解释分离，以“没有调查，没有发言权”要求关键事实缺失时失败，以“具体问题具体分析”要求为精确日期、截止点、复权、日历、板块分类和来源设置版本。[市场快照决策](../.agents/notes/implemented/architecture/2026-08-31-maoq-market-snapshot.zh.md)负责这份映射。
+
 ### 范围与交付物
 
 1. 定义一份带版本的 `MarketSnapshot` 文档，统一拥有身份、截止点、来源、质量状态、股票日线、时点正确的板块数据、市场宽度、情绪事实和符合截止点的新闻证据。
