@@ -24,13 +24,14 @@ function fixture(options: FixtureOptions = {}): { query: MarketSnapshotQuery; st
     price_source: 'tushare_official', price_retrieved_at: FETCHED,
     adj_factor: '2', adjustment_source: 'tushare_official', adjustment_retrieved_at: FETCHED,
     turnover_rate: '1.5', basic_source: 'tushare_official', basic_retrieved_at: FETCHED,
-    pre_close: '10', up_limit: '11', down_limit: '9', limit_source: 'tushare_official', limit_retrieved_at: FETCHED,
+    pre_close: '10', pre_close_derived: 0, up_limit: '11', down_limit: '9', limit_source: 'tushare_official', limit_retrieved_at: FETCHED,
     list_status: 'L', list_date: '2020-01-01', delist_date: null, lifecycle_source: 'tushare_official', lifecycle_retrieved_at: FETCHED,
   }
   const routes: Record<string, object[]> = {
     quality: [{ trade_date: DATE, status: 'complete', observed_rows: options.observed ?? 1, minimum_required_rows: 1, usable_for_model: options.usable ?? 1, source: 'tushare_official', updated_at: FETCHED }],
     versions: [{
       price_version: FETCHED,
+      previous_price_version: FETCHED,
       adjustment_version: options.missingVersion === true ? null : FETCHED,
       basic_version: FETCHED,
       limit_version: FETCHED,
@@ -120,6 +121,51 @@ describe('long_short_stock MySQL adapter', () => {
     const draft = await adapter.load(identity)
     expect(draft.stocks[0]?.qualityFlags).toEqual(['lifecycle-inferred-from-observed-bar'])
     expect(draft.stocks[0]?.tradingStatus).toBe('trading')
+  })
+
+  it('records the audited previous-session fallback when limit pre-close is absent', async () => {
+    const base = fixture()
+    const wrapped: MarketSnapshotQuery = {
+      rows: async <T extends object>(sql: string, parameters: readonly unknown[]): Promise<T[]> => {
+        const rows = await base.query.rows<Record<string, unknown>>(sql, parameters)
+        if (!sql.includes('maoq:daily')) return rows as T[]
+        return rows.map(row => ({ ...row, pre_close_derived: 1 })) as T[]
+      },
+    }
+    const adapter = new LongShortStockMysqlAdapter(wrapped, { minimumStocks: 1, historySessions: 2 })
+    const identity = await adapter.discoverIdentity(DATE, CUTOFF)
+    const snapshot = buildMarketSnapshot(await adapter.load(identity))
+    expect(identity.sourceVersions).toContain(`previous-price:${FETCHED}`)
+    expect(snapshot.stocks[0]?.provenance.transforms).toContain('missing-limit-pre-close=previous-session-raw-close')
+    expect(snapshot.sectors[0]?.provenance.transforms).toContain('missing-limit-pre-close=previous-session-raw-close')
+    expect(snapshot.breadth.provenance.transforms).toContain('missing-limit-pre-close=previous-session-raw-close')
+    expect(snapshot.emotion.provenance.transforms).toContain('missing-limit-pre-close=previous-session-raw-close')
+    expect(base.statements.find(sql => sql.includes('maoq:daily'))).toContain('COALESCE(l.pre_close, previous.close_price)')
+  })
+
+  it('retains a new listing without price history but excludes it from return facts', async () => {
+    const base = fixture({ observed: 2, dailyCount: 2 })
+    const wrapped: MarketSnapshotQuery = {
+      rows: async <T extends object>(sql: string, parameters: readonly unknown[]): Promise<T[]> => {
+        const rows = await base.query.rows<Record<string, unknown>>(sql, parameters)
+        if (sql.includes('maoq:daily')) {
+          return rows.map((row, index) => index === 0
+            ? { ...row, pre_close: null, pre_close_derived: 0 }
+            : { ...row, close_price: '10' }) as T[]
+        }
+        if (sql.includes('maoq:sectors')) return [{ ...rows[0], symbol: '000002' }] as T[]
+        return rows as T[]
+      },
+    }
+    const adapter = new LongShortStockMysqlAdapter(wrapped, { minimumStocks: 1, historySessions: 2 })
+    const identity = await adapter.discoverIdentity(DATE, CUTOFF)
+    const snapshot = buildMarketSnapshot(await adapter.load(identity))
+    expect(snapshot.stocks.find(stock => stock.symbol === '000001')?.qualityFlags)
+      .toContain('pre-close-unavailable-no-history')
+    expect(snapshot.breadth.provenance.transforms)
+      .toContain('missing-pre-close-without-history=excluded-from-return-facts')
+    expect(snapshot.emotion.provenance.transforms)
+      .toContain('missing-pre-close-without-history=excluded-from-return-facts')
   })
 
   it('merges only the exact frozen news batch named by the snapshot identity', async () => {

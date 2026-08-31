@@ -28,6 +28,7 @@ interface QualityRow {
 
 interface VersionRow {
   price_version: string | null
+  previous_price_version: string | null
   adjustment_version: string | null
   basic_version: string | null
   limit_version: string | null
@@ -52,6 +53,7 @@ interface DailyRow {
   basic_source: string
   basic_retrieved_at: string
   pre_close: string | null
+  pre_close_derived: number
   up_limit: string | null
   down_limit: string | null
   limit_source: string
@@ -99,6 +101,13 @@ FROM daily_price_session_quality WHERE trade_date = ?`
 const VERSION_SQL = `/* maoq:versions */
 SELECT
  (SELECT DATE_FORMAT(MAX(updated_at), '%Y-%m-%dT%H:%i:%s.%f+08:00') FROM daily_price_bar WHERE trade_date = ?) price_version,
+ (SELECT DATE_FORMAT(MAX(previous.updated_at), '%Y-%m-%dT%H:%i:%s.%f+08:00')
+  FROM daily_price_bar current
+  JOIN daily_price_bar previous ON previous.symbol=current.symbol AND previous.trade_date=(
+   SELECT MAX(previous_date.trade_date) FROM daily_price_bar previous_date
+   WHERE previous_date.symbol=current.symbol AND previous_date.trade_date<current.trade_date
+  )
+  WHERE current.trade_date=?) previous_price_version,
  (SELECT DATE_FORMAT(MAX(fetched_at), '%Y-%m-%dT%H:%i:%s.%f+08:00') FROM daily_adjustment_factor WHERE trade_date = ?) adjustment_version,
  (SELECT DATE_FORMAT(MAX(fetched_at), '%Y-%m-%dT%H:%i:%s.%f+08:00') FROM daily_basic_factor WHERE trade_date = ?) basic_version,
  (SELECT DATE_FORMAT(MAX(fetched_at), '%Y-%m-%dT%H:%i:%s.%f+08:00') FROM daily_price_limit WHERE trade_date = ?) limit_version,
@@ -107,10 +116,14 @@ SELECT
 
 const DAILY_SQL = `/* maoq:daily */
 SELECT p.symbol, p.open_price, p.high_price, p.low_price, p.close_price, p.volume, p.amount,
- p.source price_source, DATE_FORMAT(p.updated_at, '%Y-%m-%dT%H:%i:%s.%f+08:00') price_retrieved_at,
+ p.source price_source,
+ DATE_FORMAT(CASE WHEN l.pre_close IS NULL AND previous.updated_at IS NOT NULL
+   THEN GREATEST(p.updated_at, previous.updated_at) ELSE p.updated_at END, '%Y-%m-%dT%H:%i:%s.%f+08:00') price_retrieved_at,
  a.adj_factor, a.source adjustment_source, DATE_FORMAT(a.fetched_at, '%Y-%m-%dT%H:%i:%s.%f+08:00') adjustment_retrieved_at,
  b.turnover_rate, b.source basic_source, DATE_FORMAT(b.fetched_at, '%Y-%m-%dT%H:%i:%s.%f+08:00') basic_retrieved_at,
- l.pre_close, l.up_limit, l.down_limit, l.source limit_source, DATE_FORMAT(l.fetched_at, '%Y-%m-%dT%H:%i:%s.%f+08:00') limit_retrieved_at,
+ COALESCE(l.pre_close, previous.close_price) pre_close,
+ IF(l.pre_close IS NULL AND previous.close_price IS NOT NULL, 1, 0) pre_close_derived,
+ l.up_limit, l.down_limit, l.source limit_source, DATE_FORMAT(l.fetched_at, '%Y-%m-%dT%H:%i:%s.%f+08:00') limit_retrieved_at,
  s.list_status, DATE_FORMAT(COALESCE(s.list_date, (SELECT MIN(first_bar.trade_date) FROM daily_price_bar first_bar WHERE first_bar.symbol=p.symbol)), '%Y-%m-%d') list_date,
  DATE_FORMAT(s.delist_date, '%Y-%m-%d') delist_date,
  COALESCE(s.source, 'daily_price_bar:first-observed') lifecycle_source,
@@ -119,6 +132,10 @@ FROM daily_price_bar p
 JOIN daily_adjustment_factor a ON a.trade_date=p.trade_date AND a.symbol=p.symbol
 JOIN daily_basic_factor b ON b.trade_date=p.trade_date AND b.symbol=p.symbol
 JOIN daily_price_limit l ON l.trade_date=p.trade_date AND l.symbol=p.symbol
+LEFT JOIN daily_price_bar previous ON previous.symbol=p.symbol AND previous.trade_date=(
+ SELECT MAX(previous_date.trade_date) FROM daily_price_bar previous_date
+ WHERE previous_date.symbol=p.symbol AND previous_date.trade_date<p.trade_date
+)
 LEFT JOIN security_lifecycle s ON s.symbol=p.symbol
 WHERE p.trade_date = ? ORDER BY p.symbol`
 
@@ -274,11 +291,12 @@ export class LongShortStockMysqlAdapter implements MarketSnapshotAdapter {
     const required = Math.max(this.minimumStocks, quality.minimum_required_rows)
     if (quality.observed_rows < required) throw new MarketSnapshotMysqlError(`only ${String(quality.observed_rows)} rows; ${String(required)} required`)
     validateCutoff(quality.updated_at, cutoffTime, 'quality decision')
-    const versionParameters = [tradingDate, tradingDate, tradingDate, tradingDate, tradingDate, tradingDate, tradingDate]
+    const versionParameters = [tradingDate, tradingDate, tradingDate, tradingDate, tradingDate, tradingDate, tradingDate, tradingDate]
     const [versions] = await this.query.rows<VersionRow>(VERSION_SQL, versionParameters)
     if (versions === undefined) throw new MarketSnapshotMysqlError(`no source versions for ${tradingDate}`)
     const requiredVersions = [
       versions.price_version,
+      versions.previous_price_version,
       versions.adjustment_version,
       versions.basic_version,
       versions.limit_version,
@@ -286,8 +304,19 @@ export class LongShortStockMysqlAdapter implements MarketSnapshotAdapter {
       versions.sector_version,
     ]
     if (requiredVersions.some(value => value === null)) throw new MarketSnapshotMysqlError(`one or more required datasets are absent for ${tradingDate}`)
-    const [price, adjustment, basic, limit, index, sector] = requiredVersions as [string, string, string, string, string, string]
-    for (const [label, value] of [['price', price], ['adjustment', adjustment], ['basic', basic], ['limit', limit], ['index', index], ['sector', sector]] as const) validateCutoff(value, cutoffTime, label)
+    const [price, previousPrice, adjustment, basic, limit, index, sector] = requiredVersions as [
+      string, string, string, string, string, string, string,
+    ]
+    const versionsByName = [
+      ['price', price],
+      ['previous price', previousPrice],
+      ['adjustment', adjustment],
+      ['basic', basic],
+      ['limit', limit],
+      ['index', index],
+      ['sector', sector],
+    ] as const
+    for (const [label, value] of versionsByName) validateCutoff(value, cutoffTime, label)
     return {
       tradingDate,
       cutoffTime,
@@ -296,6 +325,7 @@ export class LongShortStockMysqlAdapter implements MarketSnapshotAdapter {
       sectorClassificationVersion: `sw-l1:${sector}`,
       sourceVersions: [
         `price:${price}`,
+        `previous-price:${previousPrice}`,
         `basic:${basic}`,
         `limit:${limit}`,
         `index:${index}`,
@@ -382,7 +412,10 @@ export class LongShortStockMysqlAdapter implements MarketSnapshotAdapter {
         tradingStatus: row.list_status === 'D' && row.delist_date !== null && row.delist_date <= identity.tradingDate ? 'delisting' : 'trading',
         limitStatus: close >= up ? 'limit-up' : close <= down ? 'limit-down' : 'none',
         listingDays: daysInclusive(row.list_date, identity.tradingDate),
-        qualityFlags: row.list_status === null ? ['lifecycle-inferred-from-observed-bar'] : [],
+        qualityFlags: [
+          ...row.list_status === null ? ['lifecycle-inferred-from-observed-bar'] : [],
+          ...row.pre_close === null ? ['pre-close-unavailable-no-history'] : [],
+        ],
         provenance: source(this.name, [
           'daily_price_bar',
           'daily_adjustment_factor',
@@ -391,6 +424,7 @@ export class LongShortStockMysqlAdapter implements MarketSnapshotAdapter {
           'security_lifecycle',
         ].join('+'), identity.adjustmentVersion, retrievedAt, `${identity.tradingDate}:${row.symbol}`, [
           'hfq-price=raw-price*adj-factor',
+          ...row.pre_close_derived === 1 ? ['missing-limit-pre-close=previous-session-raw-close'] : [],
           'turnover-ratio=turnover-rate-percent/100',
           'volume-and-amount-unadjusted',
           'listing-days=calendar-days-inclusive',
@@ -443,13 +477,16 @@ export class LongShortStockMysqlAdapter implements MarketSnapshotAdapter {
           'overlapping-membership=latest-in-date-then-latest-fetch',
           'equal-weight-sector-index=mean(raw-price/pre-close)*100',
           'leaders=top-5-close-return',
+          ...active.some(item => item.row.pre_close_derived === 1) ? ['missing-limit-pre-close=previous-session-raw-close'] : [],
         ]),
       }
     })
   }
 
   private breadth(identity: MarketSnapshotIdentityInput, rows: readonly DailyRow[], indices: readonly IndexRow[]): MarketBreadth {
-    const changes = rows.map(row => numberOf(row.close_price, `${row.symbol}.close`) - numberOf(row.pre_close, `${row.symbol}.pre_close`))
+    const returnEligible = rows.filter(row => row.pre_close !== null)
+    const changes = returnEligible.map(row =>
+      numberOf(row.close_price, `${row.symbol}.close`) - numberOf(row.pre_close, `${row.symbol}.pre_close`))
     const broken = rows.filter(row => numberOf(row.high_price, `${row.symbol}.high`) >= numberOf(row.up_limit, `${row.symbol}.up_limit`) && numberOf(row.close_price, `${row.symbol}.close`) < numberOf(row.up_limit, `${row.symbol}.up_limit`)).length
     const retrievedAt = latest(...rows.map(row => row.price_retrieved_at), ...indices.map(index => index.fetched_at))
     return {
@@ -465,7 +502,12 @@ export class LongShortStockMysqlAdapter implements MarketSnapshotAdapter {
       limitUp: rows.filter(row => numberOf(row.close_price, `${row.symbol}.close`) >= numberOf(row.up_limit, `${row.symbol}.up_limit`)).length,
       limitDown: rows.filter(row => numberOf(row.close_price, `${row.symbol}.close`) <= numberOf(row.down_limit, `${row.symbol}.down_limit`)).length,
       brokenLimit: broken,
-      provenance: source(this.name, 'daily_price_bar+daily_price_limit+market_index_daily_bar', identity.sourceVersions.join('|'), retrievedAt, identity.tradingDate, ['breadth=close-vs-pre-close', 'broken-limit=high>=up-limit-and-close<up-limit']),
+      provenance: source(this.name, 'daily_price_bar+daily_price_limit+market_index_daily_bar', identity.sourceVersions.join('|'), retrievedAt, identity.tradingDate, [
+        'breadth=close-vs-pre-close',
+        'broken-limit=high>=up-limit-and-close<up-limit',
+        ...rows.some(row => row.pre_close_derived === 1) ? ['missing-limit-pre-close=previous-session-raw-close'] : [],
+        ...rows.some(row => row.pre_close === null) ? ['missing-pre-close-without-history=excluded-from-return-facts'] : [],
+      ]),
     }
   }
 
@@ -489,16 +531,21 @@ export class LongShortStockMysqlAdapter implements MarketSnapshotAdapter {
       streaks.set(boards, (streaks.get(boards) ?? 0) + 1)
     }
     const broken = rows.filter(row => numberOf(row.high_price, `${row.symbol}.high`) >= numberOf(row.up_limit, `${row.symbol}.up_limit`) && numberOf(row.close_price, `${row.symbol}.close`) < numberOf(row.up_limit, `${row.symbol}.up_limit`)).length
+    const returnEligible = rows.filter(row => row.pre_close !== null)
     return {
       consecutiveBoardCounts: [...streaks].map(([boards, count]) => ({ boards, count })),
       promotionRate: ratio([...priorLimitUp].filter(symbol => currentLimitUp.has(symbol)).length, priorLimitUp.size),
       brokenLimitRate: ratio(broken, broken + currentLimitUp.size),
-      lossEffectRate: ratio(rows.filter(row => numberOf(row.close_price, `${row.symbol}.close`) / numberOf(row.pre_close, `${row.symbol}.pre_close`) - 1 <= -0.05).length, rows.length),
+      lossEffectRate: ratio(returnEligible.filter(row =>
+        numberOf(row.close_price, `${row.symbol}.close`) / numberOf(row.pre_close, `${row.symbol}.pre_close`) - 1 <= -0.05,
+      ).length, returnEligible.length),
       provenance: source(this.name, 'daily_price_bar+daily_price_limit', identity.sourceVersions.find(value => value.startsWith('emotion:')) ?? 'emotion', latest(...rows.map(row => row.price_retrieved_at)), identity.tradingDate, [
         `consecutive-boards=closed-limit-ups-over-last-${String(this.historySessions)}-complete-priced-sessions`,
         'promotion=prior-limit-up-and-current-limit-up/prior-limit-up',
         'broken-rate=broken/(broken+closed-limit-up)',
         'loss-effect=close-return<=-5-percent/all-priced-stocks',
+        ...rows.some(row => row.pre_close_derived === 1) ? ['missing-limit-pre-close=previous-session-raw-close'] : [],
+        ...rows.some(row => row.pre_close === null) ? ['missing-pre-close-without-history=excluded-from-return-facts'] : [],
       ]),
     }
   }
