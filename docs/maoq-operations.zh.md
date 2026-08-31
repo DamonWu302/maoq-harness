@@ -4,7 +4,7 @@
 
 ## 目标
 
-本手册负责 P0 阶段的运行检查，包括启动 MAOQ、选择模型路由、验证一次有界决策、读取 token 用量和从常见故障中恢复。MAOQ 仍是前台运行的研究与模拟交易应用，不具备实盘下单权限。
+本手册负责 P0 与 P1 的运行检查，包括启动 MAOQ、选择模型路由、验证一次有界决策、读取 token 用量、冻结市场快照和从常见故障中恢复。MAOQ 仍是前台运行的研究与模拟交易应用，不具备实盘下单权限。
 
 ## 启动、验证与停止
 
@@ -72,3 +72,23 @@ codex login status
 | 提供方 token 用量按原值报告且不估算 | [`tool-maoq-decision.spec.ts`](../packages/workflow/tool-maoq-decision/tests/tool-maoq-decision.spec.ts) | 检查 canary 中逐调用总计和 `unavailableCalls` |
 
 自动化证据全部通过且操作者机器上的本机 Codex canary 成功时，P0 即完成。依赖某个外部账户之前必须完成该账户的真实外部 canary，但缺少外部凭据不会阻塞本机 Codex 运行或无 Key 发布门禁。
+
+## P1 canary
+
+生产日线适配器保持可选，因为数据库端点和凭据属于部署事实。使用只具备 SELECT 权限的账户以及 Unix socket 或 TCP 端点，把 `dsh-market-snapshot-mysql` 挂载在随附快照与新闻服务旁。调用 `discoverIdentity(tradingDate, cutoffTime, newsBatchHash?)`，再通过 `ctx.marketSnapshots` 使用返回的精确身份构建。不要把任何版本标记替换为易读日期。
+
+政策与新闻采集是独立的截止点前步骤。提前使用带版本查询调用 `ctx.marketNews.acquire()`，确保它在 `cutoffTime` 前完成，再通过 `discoverIdentity` 加入其内容哈希。即使文章发布更早，首次在截止点后执行的搜索也不合格。回放调用 `get(hash)`，不执行搜索。
+
+2026-08-31 本机验收使用交易日 2026-08-28 和截止点 `2026-08-31T16:00:00+08:00`。两次完整适配器构建及一次持久化回放对 5,208 只股票、31 个申万一级板块和 6 个主要指数产生相同哈希 `1369f75b3759ecedf4db41e22e812640787bfec16b555fb3966e3df56ea17c7c`。同一来源正确拒绝了 2026-08-28 的较早截止点，因为指数行在 2026-08-31 被重新抓取；也拒绝了质量不完整的 2026-05-11。这证明截止点由事实强制执行，而不是从交易日猜测。
+
+### P1 验收证据
+
+| P1 性质 | 自动化证据 | 真实数据证据 |
+|---|---|---|
+| 规范不可变构建、精确身份、冲突与冻结回放 | [`market-snapshot.spec.ts`](../packages/market/market-snapshot/tests/market-snapshot.spec.ts) | 重复构建和持久化读取返回上述同一哈希 |
+| 质量门控的日线、参考、板块、宽度与情绪事实 | [`market-snapshot-mysql.spec.ts`](../packages/market/market-snapshot-mysql/tests/market-snapshot-mysql.spec.ts) | 5,208 只股票、31 个板块、6 个指数；连接后行数等于质量行 |
+| 截止点安全的联网证据与离线回放 | [`market-news-web.spec.ts`](../packages/market/market-news-web/tests/market-news-web.spec.ts) | 随附 Profile 把不可变存储挂载在 `.maoq/news`；依赖某个提供方时间戳前需要该提供方 canary |
+| 不使用未来数据且不静默回退质量 | 上述 MySQL 与新闻测试 | 截止点后刷新的指数证据和不完整会话均被拒绝 |
+| 供应商无关的审计导入 | [`market-snapshot-json.spec.ts`](../packages/market/market-snapshot-json/tests/market-snapshot-json.spec.ts) | 无数据库凭据时仍可使用按精确身份寻址的导入 |
+
+这些测试、文档门禁、宿主构建、真实日线双构建、早截止点拒绝和不可用质量拒绝全部通过时，P1 即完成。使用某个联网提供方的证据开展研究前，该提供方仍必须通过真实的截止点前 canary；提供方不可用不会削弱或绕过不可变批次约定。

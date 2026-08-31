@@ -4,7 +4,7 @@ English | [中文](maoq-operations.zh.md)
 
 ## Purpose
 
-This runbook owns the P0 operating checks for launching MAOQ, choosing a model route, proving one bounded decision, reading token usage, and recovering from common failures. MAOQ remains a foreground research and paper-trading application; it has no live-order authority.
+This runbook owns the P0 and P1 operating checks for launching MAOQ, choosing a model route, proving one bounded decision, reading token usage, freezing a market snapshot, and recovering from common failures. MAOQ remains a foreground research and paper-trading application; it has no live-order authority.
 
 ## Start, verify, and stop
 
@@ -72,3 +72,23 @@ Run the canary once with Local Codex login. When an external provider credential
 | Provider token usage is reported without estimates | [`tool-maoq-decision.spec.ts`](../packages/workflow/tool-maoq-decision/tests/tool-maoq-decision.spec.ts) | Inspect per-call totals and `unavailableCalls` in the canary |
 
 P0 is complete when the automated evidence is green and the Local Codex canary passes on the operator machine. A live external canary is required before relying on that external account, but the absence of an external credential does not block Local Codex operation or the keyless release gate.
+
+## P1 canary
+
+The production daily adapter is opt-in because database endpoints and credentials are deployment facts. Mount `dsh-market-snapshot-mysql` beside the shipped snapshot and news services, using a SELECT-only account and either a Unix socket or TCP endpoint. Call `discoverIdentity(tradingDate, cutoffTime, newsBatchHash?)`, then build through `ctx.marketSnapshots` with the returned exact identity. Do not replace any version token with a friendly date.
+
+Policy and news acquisition is a separate pre-cutoff step. Run `ctx.marketNews.acquire()` with versioned queries early enough that it finishes before `cutoffTime`; add its content hash through `discoverIdentity`. A search first executed after the cutoff is ineligible even if the article was published earlier. Replays call `get(hash)` and perform no search.
+
+The 2026-08-31 local acceptance used trading date 2026-08-28 and cutoff `2026-08-31T16:00:00+08:00`. Two full adapter builds and one persisted replay produced the same hash, `1369f75b3759ecedf4db41e22e812640787bfec16b555fb3966e3df56ea17c7c`, over 5,208 stocks, 31 SW L1 sectors, and 6 major indices. The same source correctly rejected the earlier 2026-08-28 cutoff because the index rows had been refreshed on 2026-08-31, and rejected the incomplete 2026-05-11 quality row. This proves the cutoff is enforced rather than inferred from the trading date.
+
+### P1 acceptance evidence
+
+| P1 property | Automated evidence | Real-data evidence |
+|---|---|---|
+| Canonical immutable build, exact identity, conflicts, and frozen replay | [`market-snapshot.spec.ts`](../packages/market/market-snapshot/tests/market-snapshot.spec.ts) | Repeated build and persisted read returned the hash above |
+| Quality-gated daily, reference, sector, breadth, and emotion facts | [`market-snapshot-mysql.spec.ts`](../packages/market/market-snapshot-mysql/tests/market-snapshot-mysql.spec.ts) | 5,208 stocks, 31 sectors, 6 indices; joined count equaled the quality row |
+| Cutoff-safe web evidence and offline replay | [`market-news-web.spec.ts`](../packages/market/market-news-web/tests/market-news-web.spec.ts) | The shipped profile mounts the immutable store at `.maoq/news`; a provider canary is required before relying on that provider's timestamps |
+| No look-ahead or silent quality fallback | MySQL and news tests linked above | Refreshed post-cutoff index evidence and the incomplete session were both rejected |
+| Provider-neutral audited import | [`market-snapshot-json.spec.ts`](../packages/market/market-snapshot-json/tests/market-snapshot-json.spec.ts) | Exact identity-addressed imports remain available without database credentials |
+
+P1 is complete when these tests, documentation gates, host build, real daily double-build, early-cutoff rejection, and unusable-quality rejection pass. A particular web provider must still pass a live pre-cutoff canary before its evidence is used in research; provider availability does not weaken or bypass the immutable batch contract.

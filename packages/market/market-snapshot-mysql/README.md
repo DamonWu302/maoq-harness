@@ -56,7 +56,7 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-`discoverIdentity()` reads the dated quality decision and exact maximum fetch versions. `load()` repeats the version check, uses parameterized SELECT-only SQL, requires the joined price count to equal the quality count, and converts turnover percent to a ratio while applying HFQ only to prices. Sector bars are equal-weight `raw price / pre-close` indices over the latest effective SW L1 membership. Emotion facts come from closed limit-ups over usable sessions; no model labels or stock ranking enter this package.
+`discoverIdentity()` reads the dated quality decision and exact maximum fetch versions. `load()` repeats the version check, uses parameterized SELECT-only SQL, requires the joined price count to equal the quality count, and converts turnover percent to a ratio while applying HFQ only to prices. Sector bars are equal-weight `raw price / pre-close` indices over the latest effective SW L1 membership. Emotion facts require the configured number of prior sessions with complete price and price-limit coverage; no model labels or stock ranking enter this package.
 
 </details>
 

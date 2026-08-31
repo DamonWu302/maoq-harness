@@ -67,7 +67,7 @@
 
 ## P1 — 不可变日级市场快照
 
-**状态：** 进行中。[`dsh-market-snapshot`](../packages/market/market-snapshot/README.zh.md)已经实现 `MarketSnapshot` v1、确定性构建、截止点及时点校验、来源谱系、内容寻址持久化、精确身份读取和离线风险 fixture 集。具名适配器注册表和 [`dsh-market-snapshot-json`](../packages/market/market-snapshot-json/README.zh.md)提供确定性的审计导入。P1 收口前仍需完成生产日线、板块和新闻采集。
+**状态：** 已完成。[`dsh-market-snapshot`](../packages/market/market-snapshot/README.zh.md)负责 `MarketSnapshot` v1、确定性构建、截止点及时点校验、来源谱系、内容寻址持久化和精确身份读取。[`dsh-market-snapshot-json`](../packages/market/market-snapshot-json/README.zh.md)提供审计回放；[`dsh-market-snapshot-mysql`](../packages/market/market-snapshot-mysql/README.zh.md)消费经过质量门控的生产日线、板块、指数与情绪事实；[`dsh-market-news-web`](../packages/market/market-news-web/README.zh.md)冻结截止点前的政策与新闻证据以供精确回放。[P1 canary](maoq-operations.zh.md#p1-canary)记录真实数据库验收证据。
 
 P1 以“实事求是”要求取得的观察与解释分离，以“没有调查，没有发言权”要求关键事实缺失时失败，以“具体问题具体分析”要求为精确日期、截止点、复权、日历、板块分类和来源设置版本。[市场快照决策](../.agents/notes/implemented/architecture/2026-08-31-maoq-market-snapshot.zh.md)负责这份映射。
 

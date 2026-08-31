@@ -142,7 +142,12 @@ export class MarketNewsWebService extends Service {
     this.store = new MarketNewsEvidenceStore(config.root)
   }
 
-  /** Search all versioned questions and persist one immutable evidence batch. */
+  /**
+   * Search all versioned questions and persist one immutable evidence batch.
+   * @param input - Trading date, cutoff, versioned query policies, and result bound.
+   * @param signal - Optional cancellation signal forwarded to every web search.
+   * @returns The verified content-addressed batch.
+   */
   async acquire(input: MarketNewsAcquireInput, signal?: AbortSignal): Promise<MarketNewsBatch> {
     validateInput(input)
     const cutoff = Date.parse(input.cutoffTime)
@@ -168,7 +173,11 @@ export class MarketNewsWebService extends Service {
     })
   }
 
-  /** Read and verify one exact frozen batch without performing network access. */
+  /**
+   * Read and verify one exact frozen batch without performing network access.
+   * @param hash - Lowercase SHA-256 content address.
+   * @returns The deeply frozen verified batch.
+   */
   get(hash: string): Promise<MarketNewsBatch> {
     return this.store.get(hash)
   }

@@ -52,7 +52,11 @@ export class MarketNewsEvidenceStore {
     this.root = resolve(root)
   }
 
-  /** Persist a batch once and return the verified immutable value. */
+  /**
+   * Persist a batch once and return the verified immutable value.
+   * @param body - Complete batch fields except the derived content hash.
+   * @returns The stored and verified batch including its content address.
+   */
   async put(body: Omit<MarketNewsBatch, 'contentHash'>): Promise<MarketNewsBatch> {
     const batch: MarketNewsBatch = { ...body, contentHash: contentHash(body) }
     await mkdir(this.root, { recursive: true })
@@ -69,7 +73,11 @@ export class MarketNewsEvidenceStore {
     return this.get(batch.contentHash)
   }
 
-  /** Read one exact hash and verify that its bytes still match the address. */
+  /**
+   * Read one exact hash and verify that its bytes still match the address.
+   * @param hash - Lowercase SHA-256 content address.
+   * @returns The deeply frozen verified batch.
+   */
   async get(hash: string): Promise<MarketNewsBatch> {
     const parsed = JSON.parse(await readFile(join(this.root, `${hash}.json`), 'utf8')) as MarketNewsBatch
     if (parsed.schemaVersion !== MARKET_NEWS_BATCH_SCHEMA_VERSION) {

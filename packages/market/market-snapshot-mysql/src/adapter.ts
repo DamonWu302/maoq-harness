@@ -142,7 +142,17 @@ FROM market_index_daily_bar i WHERE i.trade_date=? ORDER BY i.symbol`
 const HISTORY_SQL = `/* maoq:limit-history */
 SELECT DATE_FORMAT(p.trade_date, '%Y-%m-%d') trade_date, p.symbol, p.close_price, p.high_price, l.pre_close, l.up_limit
 FROM daily_price_bar p JOIN daily_price_limit l ON l.trade_date=p.trade_date AND l.symbol=p.symbol
-JOIN (SELECT trade_date FROM daily_price_session_quality WHERE trade_date <= ? AND usable_for_model=1 ORDER BY trade_date DESC LIMIT ?) sessions
+JOIN (
+ SELECT history.trade_date
+ FROM daily_price_bar history
+ JOIN daily_price_limit history_limit
+   ON history_limit.trade_date=history.trade_date AND history_limit.symbol=history.symbol
+ WHERE history.trade_date <= ?
+ GROUP BY history.trade_date
+ HAVING COUNT(*) >= ?
+ ORDER BY history.trade_date DESC
+ LIMIT ?
+) sessions
   ON sessions.trade_date=p.trade_date
 ORDER BY p.trade_date, p.symbol`
 
@@ -245,7 +255,13 @@ export class LongShortStockMysqlAdapter implements MarketSnapshotAdapter {
   private readonly historySessions: number
   private readonly readNewsBatch: ((hash: string) => Promise<MarketNewsBatch>) | undefined
 
-  /** Discover the exact versions required to request a reproducible snapshot. */
+  /**
+   * Discover the exact versions required to request a reproducible snapshot.
+   * @param tradingDate - Exact market trading date in ISO calendar form.
+   * @param cutoffTime - Decision cutoff with an explicit UTC offset.
+   * @param newsBatchHash - Optional frozen web-evidence SHA-256 to bind into the identity.
+   * @returns The complete versioned identity accepted by {@link load}.
+   */
   async discoverIdentity(
     tradingDate: string,
     cutoffTime: string,
@@ -300,7 +316,7 @@ export class LongShortStockMysqlAdapter implements MarketSnapshotAdapter {
       this.query.rows<DailyRow>(DAILY_SQL, [identity.tradingDate]),
       this.query.rows<SectorRow>(SECTOR_SQL, [identity.tradingDate, identity.tradingDate]),
       this.query.rows<IndexRow>(INDEX_SQL, [identity.tradingDate]),
-      this.query.rows<LimitHistoryRow>(HISTORY_SQL, [identity.tradingDate, this.historySessions]),
+      this.query.rows<LimitHistoryRow>(HISTORY_SQL, [identity.tradingDate, this.minimumStocks, this.historySessions]),
       this.query.rows<QualityRow>(QUALITY_SQL, [identity.tradingDate]),
       newsBatchHash === undefined ? Promise.resolve(undefined) : this.loadNewsBatch(newsBatchHash, identity),
     ])
@@ -308,6 +324,12 @@ export class LongShortStockMysqlAdapter implements MarketSnapshotAdapter {
     if (daily.length !== qualityRows[0]?.observed_rows) throw new MarketSnapshotMysqlError(`joined daily facts contain ${String(daily.length)} stocks but quality observed ${String(qualityRows[0]?.observed_rows ?? 'none')}`)
     if (sectorRows.length === 0) throw new MarketSnapshotMysqlError('point-in-time SW L1 membership is empty')
     if (indices.length === 0) throw new MarketSnapshotMysqlError('major index facts are empty')
+    const historyDates = new Set(history.map(row => row.trade_date))
+    if (historyDates.size !== this.historySessions) {
+      throw new MarketSnapshotMysqlError(
+        `emotion history contains ${String(historyDates.size)} complete sessions; ${String(this.historySessions)} required`,
+      )
+    }
     const finalObserved = await this.discoverIdentity(identity.tradingDate, identity.cutoffTime, newsBatchHash)
     if (!sameIdentity(identity, finalObserved)) throw new MarketSnapshotMysqlError('source versions changed while facts were being read')
     const stocks = this.stocks(identity, daily)
@@ -473,7 +495,7 @@ export class LongShortStockMysqlAdapter implements MarketSnapshotAdapter {
       brokenLimitRate: ratio(broken, broken + currentLimitUp.size),
       lossEffectRate: ratio(rows.filter(row => numberOf(row.close_price, `${row.symbol}.close`) / numberOf(row.pre_close, `${row.symbol}.pre_close`) - 1 <= -0.05).length, rows.length),
       provenance: source(this.name, 'daily_price_bar+daily_price_limit', identity.sourceVersions.find(value => value.startsWith('emotion:')) ?? 'emotion', latest(...rows.map(row => row.price_retrieved_at)), identity.tradingDate, [
-        `consecutive-boards=closed-limit-ups-over-last-${String(this.historySessions)}-usable-sessions`,
+        `consecutive-boards=closed-limit-ups-over-last-${String(this.historySessions)}-complete-priced-sessions`,
         'promotion=prior-limit-up-and-current-limit-up/prior-limit-up',
         'broken-rate=broken/(broken+closed-limit-up)',
         'loss-effect=close-return<=-5-percent/all-priced-stocks',

@@ -61,7 +61,7 @@ function fixture(options: FixtureOptions = {}): { query: MarketSnapshotQuery; st
 describe('long_short_stock MySQL adapter', () => {
   it('discovers exact versions and builds deterministic adjusted facts', async () => {
     const { query, statements } = fixture()
-    const adapter = new LongShortStockMysqlAdapter(query, { minimumStocks: 1 })
+    const adapter = new LongShortStockMysqlAdapter(query, { minimumStocks: 1, historySessions: 2 })
     const identity = await adapter.discoverIdentity(DATE, CUTOFF)
     const first = buildMarketSnapshot(await adapter.load(identity))
     const second = buildMarketSnapshot(await adapter.load(identity))
@@ -78,24 +78,30 @@ describe('long_short_stock MySQL adapter', () => {
 
   it('rejects a failed quality decision before reading market rows', async () => {
     const { query } = fixture({ usable: 0 })
-    const adapter = new LongShortStockMysqlAdapter(query, { minimumStocks: 1 })
+    const adapter = new LongShortStockMysqlAdapter(query, { minimumStocks: 1, historySessions: 2 })
     await expect(adapter.discoverIdentity(DATE, CUTOFF)).rejects.toThrow(MarketSnapshotMysqlError)
   })
 
   it('rejects missing reference datasets and post-cutoff evidence', async () => {
-    const missing = new LongShortStockMysqlAdapter(fixture({ missingVersion: true }).query, { minimumStocks: 1 })
+    const missing = new LongShortStockMysqlAdapter(
+      fixture({ missingVersion: true }).query,
+      { minimumStocks: 1, historySessions: 2 },
+    )
     await expect(missing.discoverIdentity(DATE, CUTOFF)).rejects.toThrow(/required datasets are absent/)
 
-    const late = new LongShortStockMysqlAdapter(fixture().query, { minimumStocks: 1 })
+    const late = new LongShortStockMysqlAdapter(fixture().query, { minimumStocks: 1, historySessions: 2 })
     await expect(late.discoverIdentity(DATE, '2026-08-28T18:00:00+08:00')).rejects.toThrow(/after cutoff/)
   })
 
   it('rejects identity drift and a joined row count that contradicts quality', async () => {
-    const stable = new LongShortStockMysqlAdapter(fixture().query, { minimumStocks: 1 })
+    const stable = new LongShortStockMysqlAdapter(fixture().query, { minimumStocks: 1, historySessions: 2 })
     const identity = await stable.discoverIdentity(DATE, CUTOFF)
     await expect(stable.load({ ...identity, adjustmentVersion: 'hfq:different' })).rejects.toThrow(/does not match/)
 
-    const incomplete = new LongShortStockMysqlAdapter(fixture({ observed: 2 }).query, { minimumStocks: 1 })
+    const incomplete = new LongShortStockMysqlAdapter(
+      fixture({ observed: 2 }).query,
+      { minimumStocks: 1, historySessions: 2 },
+    )
     const incompleteIdentity = await incomplete.discoverIdentity(DATE, CUTOFF)
     await expect(incomplete.load(incompleteIdentity)).rejects.toThrow(/quality observed 2/)
   })
@@ -109,7 +115,7 @@ describe('long_short_stock MySQL adapter', () => {
         return rows.map(row => ({ ...row, list_status: null, list_date: DATE, lifecycle_source: 'daily_price_bar:first-observed' })) as T[]
       },
     }
-    const adapter = new LongShortStockMysqlAdapter(wrapped, { minimumStocks: 1 })
+    const adapter = new LongShortStockMysqlAdapter(wrapped, { minimumStocks: 1, historySessions: 2 })
     const identity = await adapter.discoverIdentity(DATE, CUTOFF)
     const draft = await adapter.load(identity)
     expect(draft.stocks[0]?.qualityFlags).toEqual(['lifecycle-inferred-from-observed-bar'])
@@ -149,6 +155,7 @@ describe('long_short_stock MySQL adapter', () => {
     }
     const adapter = new LongShortStockMysqlAdapter(fixture().query, {
       minimumStocks: 1,
+      historySessions: 2,
       readNewsBatch: () => Promise.resolve(batch),
     })
     const identity = await adapter.discoverIdentity(DATE, CUTOFF, hash)
@@ -158,6 +165,7 @@ describe('long_short_stock MySQL adapter', () => {
 
     const wrongDate = new LongShortStockMysqlAdapter(fixture().query, {
       minimumStocks: 1,
+      historySessions: 2,
       readNewsBatch: () => Promise.resolve({ ...batch, tradingDate: '2026-08-27' }),
     })
     await expect(wrongDate.load(await wrongDate.discoverIdentity(DATE, CUTOFF, hash))).rejects.toThrow(/does not match/)
