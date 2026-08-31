@@ -6,7 +6,7 @@ English | [中文](maoq-roadmap.zh.md)
 
 This document turns the MAOQ direction into an executable sequence. The outcome is not a chatbot that discusses stocks, but a research and paper-trading agent that can identify the principal contradiction, select the least-resistance battlefield, choose tactics for the current market state, rank stocks, state invalidation conditions, and accept an independent risk veto.
 
-The immediate next step is **M0: prove one real commander decision end to end**. Market-data breadth and tactical breadth come only after the runtime path is observable and reliable.
+The immediate next step is **P0: prove one real commander decision end to end**. Market-data breadth and tactical breadth come only after the runtime path is observable and reliable.
 
 ## Current baseline
 
@@ -31,16 +31,18 @@ The immediate next step is **M0: prove one real commander decision end to end**.
 
 | Milestone | Goal | Main deliverable | Exit criterion |
 |---|---|---|---|
-| M0 — Runtime proof | Prove the current commander stack with real model calls | Reproducible commander smoke scenario and usage report | Both model sources can create a new task; Codex can call tools; council output, veto, and token usage are visible |
-| M1 — Market snapshot | Freeze one immutable daily market input | Versioned daily-bar, sector, and evidence snapshot schema | The same cutoff always rebuilds the same snapshot; no future data enters |
-| M2 — Strategic state | Identify the market's principal contradiction and least-resistance direction | Market-regime, emotion-cycle, and sector-battlefield engines | Each daily snapshot produces a state, supporting evidence, counter-evidence, and transition conditions |
-| M3 — Tactical pool | Match tactics to the current state | Gated tactic registry with entry, exit, and invalidation rules | Ineligible tactics are deterministically excluded before stock ranking |
-| M4 — Stock battlefield | Return actionable short- and medium-horizon candidates | Scenario-aware candidate generation, ranking, and explanation | Every candidate traces to sector, tactic, evidence, risk, and invalidation; walk-forward evaluation is reproducible |
-| M5 — Operating loop | Run the process consistently without live execution | Scheduled research, paper portfolio, review, and drift report | Daily runs are idempotent, auditable, and fail closed on stale or incomplete data |
+| P0 — Runtime proof | Prove the current commander stack with real model calls | Reproducible commander smoke scenario and usage report | Both model sources can create a new task; Codex can call tools; council output, veto, and token usage are visible |
+| P1 — Market snapshot | Freeze one immutable daily market input | Versioned daily-bar, sector, and evidence snapshot schema | The same cutoff always rebuilds the same snapshot; no future data enters |
+| P2 — Strategic state | Identify the market's principal contradiction and least-resistance direction | Market-regime, emotion-cycle, and sector-battlefield engines | Each daily snapshot produces a state, supporting evidence, counter-evidence, and transition conditions |
+| P3 — Tactical pool | Match tactics to the current state | Gated tactic registry with entry, exit, and invalidation rules | Ineligible tactics are deterministically excluded before stock ranking |
+| P4 — Stock battlefield | Return actionable short- and medium-horizon candidates | Scenario-aware candidate generation, ranking, and explanation | Every candidate traces to sector, tactic, evidence, risk, and invalidation; walk-forward evaluation is reproducible |
+| P5 — Operating loop | Run the process consistently without live execution | Scheduled research, paper portfolio, review, and drift report | Daily runs are idempotent, auditable, and fail closed on stale or incomplete data |
 
-## M0 — Immediate sprint: real runtime proof
+## P0 — Runtime foundation and real decision proof
 
-### Work items
+**Status:** in progress. Local Codex login, model selection, token accounting, macOS system-proxy bootstrap, bounded specialist selection, structured synthesis, and independent risk veto have real-call evidence. External-provider parity and the complete failure matrix remain exit work.
+
+### Scope and deliverables
 
 1. Add a profile-level smoke harness that starts `maoq` from the delivered CLI rather than a hand-built test context.
 2. Exercise the **Local Codex login** commander with a small tool call, then confirm the assistant continues after the tool result.
@@ -60,8 +62,18 @@ The immediate next step is **M0: prove one real commander decision end to end**.
 - A risk veto cannot be rendered as approval.
 - Provider-reported token usage is visible; absent usage is marked unavailable instead of estimated.
 - Logs and user-visible diagnostics never contain access tokens, refresh tokens, or API keys.
+- Each failure class produces a stable, actionable diagnostic and cannot be rendered as a successful decision.
+- A committed keyless replay covers specialist selection, structured synthesis, and a terminal risk veto; a real-provider smoke covers the delivered CLI path.
 
-## M1 — Immutable daily market snapshot
+## P1 — Immutable daily market snapshot
+
+### Scope and deliverables
+
+1. Define one versioned `MarketSnapshot` document that owns identity, cutoff, provenance, quality state, daily stock bars, point-in-time sector data, market breadth, emotion facts, and eligible news evidence.
+2. Add a deterministic builder that normalizes source fields, validates trading-day semantics, sorts every unordered collection, computes the content hash, and persists the immutable result.
+3. Introduce source adapters for the chosen daily-bar, sector, and news feeds without exposing vendor field names above the adapter layer.
+4. Provide read-only snapshot lookup by identity and content hash for the commander, tests, historical replay, and later backtests.
+5. Publish a fixture set covering a normal session, suspension, recent listing, delisting path, limit-constrained trading, sector-membership change, missing data, conflicting data, and news on both sides of the cutoff.
 
 ### Data boundary
 
@@ -78,8 +90,13 @@ The immediate next step is **M0: prove one real commander decision end to end**.
 - Historical sector membership is point-in-time correct.
 - News published or retrieved after the cutoff cannot enter the snapshot.
 - Missing or conflicting critical fields fail the decision run rather than silently defaulting.
+- Every persisted field is traceable to a source version or a named deterministic transformation.
+- Snapshot consumers receive read-only data and cannot mutate the stored artifact or reinterpret its cutoff.
+- Fixture replay succeeds without network access and produces byte-stable normalized output.
 
-## M2 — Strategic state engine
+## P2 — Strategic state and principal-contradiction engine
+
+### Scope and deliverables
 
 The strategic layer produces three connected but independently testable outputs:
 
@@ -89,7 +106,20 @@ The strategic layer produces three connected but independently testable outputs:
 
 The engine must separate observation from interpretation. Deterministic features are computed first; model analysis explains the principal contradiction, counter-evidence, and possible transitions without rewriting those features.
 
-## M3 — Tactical pool
+The deterministic layer owns feature definitions, missing-data behavior, classification inputs, and eligibility bounds. The interpretation layer receives one snapshot identity plus those computed facts and returns a structured thesis containing the principal contradiction, least-resistance battlefield, supporting evidence references, counter-evidence references, transition conditions, confidence, and eligible strategic posture. The final record stores both layers so a later evaluator can distinguish a feature error from a reasoning error.
+
+### Acceptance criteria
+
+- The same snapshot and engine version always produce identical deterministic features.
+- Market regime, emotion cycle, and sector battlefield can each be tested and failed independently.
+- Every emitted state cites concrete snapshot fields; the model cannot introduce an uncited price, count, date, sector membership, or news fact.
+- Supporting evidence, counter-evidence, confidence, and falsifiable transition conditions are mandatory structured fields.
+- A stale, incomplete, or internally inconsistent snapshot cannot produce an actionable posture.
+- Golden fixtures cover at least one case for each market-regime and emotion-cycle label, plus ambiguous evidence that must reduce confidence or produce defense/no-trade.
+- Changing a prompt or model cannot change deterministic features; replay reports interpretation differences separately.
+- The engine does not rank individual stocks or bypass the later tactic-eligibility and risk layers.
+
+## P3 — Tactical pool
 
 | Tactic family | Eligible environment | Primary evidence | Typical invalidation |
 |---|---|---|---|
@@ -102,7 +132,7 @@ The engine must separate observation from interpretation. Deterministic features
 
 Every tactic is a module with eligibility gates, candidate features, entry conditions, exit conditions, invalidation, position ceiling, and evaluation protocol. The LLM may select among eligible tactics; it may not bypass a failed deterministic gate.
 
-## M4 — Stock selection and evaluation
+## P4 — Stock selection and evaluation
 
 Candidate selection proceeds in this order:
 
@@ -121,7 +151,7 @@ The output keeps short-line and medium-line decisions separate. A short-line can
 
 Evaluation uses walk-forward splits, point-in-time membership, transaction costs, limit constraints, suspension handling, and delisting outcomes. Report hit rate, payoff ratio, expectancy, maximum drawdown, turnover, capacity, regime-conditioned performance, and the contribution of vetoed trades. No single backtest score is sufficient for promotion.
 
-## M5 — Daily operating loop
+## P5 — Daily operating loop
 
 1. Build and validate the immutable snapshot after the configured cutoff.
 2. Run deterministic state and sector features.
@@ -131,6 +161,18 @@ Evaluation uses walk-forward splits, point-in-time membership, transaction costs
 6. Update a paper portfolio only; never place a live order.
 7. After the outcome window closes, attribute decisions to data, regime, sector, tactic, selection, execution assumptions, and veto.
 8. Monitor feature drift, tactic decay, model changes, token cost, and unavailable evidence.
+
+## Extension form and architecture decision
+
+MAOQ remains a profile assembled from ordinary Cordis plugins; it does not fork the Agent loop and does not become one monolithic plugin. `dsh-maoq-app` remains the deployment bundle that selects and configures capabilities, while owned runtime behavior lives in focused packages with tests and explicit services.
+
+- **P0 orchestration:** keep `dsh-tool-maoq-decision` as the model-facing council Consumer. It coordinates selected subagents and enforces the final veto, but it does not fetch market data or calculate indicators.
+- **P1 market facts:** add one MAOQ market-snapshot Cordis plugin package that initially owns the snapshot types, deterministic builder, validation, persistence interface, and read-only service. Keep normalization adapters inside this package until a second real data source or independent release cadence proves a separate provider package is needed.
+- **P2 strategic state:** add one MAOQ strategic-state Cordis plugin package that consumes the snapshot service, computes deterministic features, and exposes the versioned strategic-state result. Its model interpretation uses the existing subagent capability; specialist roles remain runtime agents, not Cordis plugins.
+- **Later UI:** add a separate Client Cordis plugin only when snapshot and strategic-state records have a stable presentation contract. The current bundle mounts it; domain packages do not import browser components.
+- **Later data vendors:** split a vendor adapter into its own Service Provider package only when replacement, credentials, dependencies, or lifecycle genuinely differ. The snapshot schema and downstream decisions never depend on vendor field names.
+
+Do not create one package or plugin per indicator, tactic, specialist role, or prompt. Deterministic calculators are ordinary modules inside their owning capability package; tactics become registered modules only in P3, when independent eligibility and evaluation justify that extension point. This keeps P0–P2 replaceable at real system boundaries without turning internal functions into deployment units.
 
 ## Architecture boundaries
 
@@ -146,4 +188,4 @@ A milestone advances only when its artifact is reproducible, its failures are ex
 
 ## Recommended next action
 
-Start M0 with one delivered-profile smoke scenario: launch `maoq`, select `openai-codex/gpt-5.6-sol`, ask the commander to inspect a small local fixture and call `maoq_decide` with `market_regime` and `sector_battlefield`, force the risk reviewer to veto one unsafe paper trade, and persist the complete output plus token-usage facts. Do not begin market-data ingestion until this scenario is repeatable.
+Finish the remaining P0 exit work with one delivered-profile smoke scenario for each model source and the committed failure matrix. Then start P1 by freezing the `MarketSnapshot` schema and fixture corpus before selecting or integrating a production data vendor.
