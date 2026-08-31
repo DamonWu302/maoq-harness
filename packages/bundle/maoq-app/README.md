@@ -24,7 +24,7 @@ The MAOQ application layer composes over `dsh-base` and `dsh-web-app`. It suppli
 <a id="use-this-package"></a>
 ## Use this package
 
-Launch with `dsh --profile maoq`. The shipped template composes `dsh-base`, `dsh-web-app`, then this policy layer, and keeps profile patches live-reloadable. The decision council reuses the local Codex/ChatGPT login through Codex app-server, pins `gpt-5.6-sol`, permits at most four selected specialists, and limits rendered results to 32768 characters. Token usage is reported per specialist, commander synthesis, and independent risk review, then aggregated across input, cache, output, reasoning, and total tokens. Calls without provider usage are counted in `unavailableCalls` rather than estimated.
+Launch with `dsh --profile maoq`. The shipped template composes `dsh-base`, `dsh-web-app`, then this policy layer, and keeps profile patches live-reloadable. On a supported macOS and Node combination, profile launch automatically inherits enabled system HTTP and HTTPS proxies when no explicit proxy environment is present. The decision council reuses the local Codex/ChatGPT login through Codex app-server, pins `gpt-5.6-sol`, permits at most four selected specialists, and limits rendered results to 32768 characters. Token usage is reported per specialist, commander synthesis, and independent risk review, then aggregated across input, cache, output, reasoning, and total tokens. Calls without provider usage are counted in `unavailableCalls` rather than estimated.
 
 <a id="choose-commander-model"></a>
 ## Choose the commander model
