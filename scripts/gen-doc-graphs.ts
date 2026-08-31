@@ -99,6 +99,23 @@ const GROUP_ORDER = [
 
 const SERVICE_ROLES: ServiceRole[] = [
   {
+    key: 'marketSnapshots',
+    pkg: 'market-snapshot',
+    title: 'Immutable MAOQ market snapshots',
+    mode: 'seam',
+    implementations: ['market-snapshot-json', 'market-snapshot-mysql'],
+    consumers: ['tool-maoq-decision'],
+    note: 'Adapters build exact cutoff identities; strategic consumers load frozen facts by content hash.',
+  },
+  {
+    key: 'marketNews',
+    pkg: 'market-news-web',
+    title: 'Cutoff-safe MAOQ web evidence',
+    mode: 'core',
+    consumers: ['market-snapshot-mysql'],
+    note: 'Freezes pre-cutoff search results into content-addressed batches that snapshot acquisition may merge by exact version token.',
+  },
+  {
     key: 'attachments',
     pkg: 'attachment',
     title: 'Durable binary attachment storage',

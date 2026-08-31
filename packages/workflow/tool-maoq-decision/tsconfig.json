@@ -11,6 +11,8 @@
     { "path": "../../../vendor/schemastery" },
     { "path": "../../core/agent" },
     { "path": "../../llm/llm" },
+    { "path": "../../market/market-snapshot" },
+    { "path": "../../market/market-strategic-state" },
     { "path": "../../subagent/subagent" },
     { "path": "../../core/system-prompt" },
     { "path": "../../core/tools" },

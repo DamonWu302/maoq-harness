@@ -80,8 +80,9 @@ export class MarketNewsEvidenceStore {
    */
   async get(hash: string): Promise<MarketNewsBatch> {
     const parsed = JSON.parse(await readFile(join(this.root, `${hash}.json`), 'utf8')) as MarketNewsBatch
-    if (parsed.schemaVersion !== MARKET_NEWS_BATCH_SCHEMA_VERSION) {
-      throw new MarketNewsEvidenceError(`unsupported schema version ${String(parsed.schemaVersion)}`)
+    const persistedVersion = (parsed as { schemaVersion: number }).schemaVersion
+    if (persistedVersion !== MARKET_NEWS_BATCH_SCHEMA_VERSION) {
+      throw new MarketNewsEvidenceError(`unsupported schema version ${String(persistedVersion)}`)
     }
     const { contentHash: declared, ...body } = parsed
     const actual = contentHash(body)

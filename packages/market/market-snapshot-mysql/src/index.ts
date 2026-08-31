@@ -76,7 +76,9 @@ export function apply(ctx: Context, config: Config): void {
     },
   }
   const adapter = new LongShortStockMysqlAdapter(query, {
-    ...config,
+    ...config.adapterName === undefined ? {} : { adapterName: config.adapterName },
+    ...config.minimumStocks === undefined ? {} : { minimumStocks: config.minimumStocks },
+    ...config.historySessions === undefined ? {} : { historySessions: config.historySessions },
     readNewsBatch: async (hash) => {
       const news = ctx.get('marketNews')
       if (news === undefined) throw new Error('market news evidence service is not mounted')

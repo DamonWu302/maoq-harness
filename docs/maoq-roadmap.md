@@ -104,8 +104,8 @@ P1 applies “seek truth from facts” by keeping acquired observations separate
 
 The strategic layer produces three connected but independently testable outputs:
 
-1. **Market regime:** risk-on trend, rotation, high-volatility divergence, risk-off contraction, or repair.
-2. **Emotion cycle:** ignition, acceleration, climax, divergence, retreat, or repair, supported by ladder height, promotion rate, failed breakouts, loss effect, and breadth.
+1. **Market regime:** risk-on trend, rotation, high-volatility divergence, risk contraction, or repair.
+2. **Emotion cycle:** startup, acceleration, climax, divergence, ebb, or repair, supported by ladder height, promotion rate, failed breakouts, loss effect, and breadth.
 3. **Sector battlefield:** sector strength, persistence, capacity, catalyst support, internal breadth, leader quality, crowding, and resistance.
 
 The engine must separate observation from interpretation. Deterministic features are computed first; model analysis explains the principal contradiction, counter-evidence, and possible transitions without rewriting those features.
@@ -118,6 +118,7 @@ The deterministic layer owns feature definitions, missing-data behavior, classif
 - Market regime, emotion cycle, and sector battlefield can each be tested and failed independently.
 - Every emitted state cites concrete snapshot fields; the model cannot introduce an uncited price, count, date, sector membership, or news fact.
 - Supporting evidence, counter-evidence, confidence, and falsifiable transition conditions are mandatory structured fields.
+- Every accepted interpretation names at least one allowlisted Mao method, its source work, its evidence-bound application, and its limitation; method summaries are marked as paraphrases rather than quotations.
 - A stale, incomplete, or internally inconsistent snapshot cannot produce an actionable posture.
 - Golden fixtures cover at least one case for each market-regime and emotion-cycle label, plus ambiguous evidence that must reduce confidence or produce defense/no-trade.
 - Changing a prompt or model cannot change deterministic features; replay reports interpretation differences separately.
@@ -172,7 +173,7 @@ MAOQ remains a profile assembled from ordinary Cordis plugins; it does not fork 
 
 - **P0 orchestration:** keep `dsh-tool-maoq-decision` as the model-facing council Consumer. It coordinates selected subagents and enforces the final veto, but it does not fetch market data or calculate indicators.
 - **P1 market facts:** the MAOQ market-snapshot service owns snapshot types, deterministic construction, validation, persistence, read-only queries, and a named adapter registry. Source-specific or independently deployed acquisition belongs in separate provider packages.
-- **P2 strategic state:** add one MAOQ strategic-state Cordis plugin package that consumes the snapshot service, computes deterministic features, and exposes the versioned strategic-state result. Its model interpretation uses the existing subagent capability; specialist roles remain runtime agents, not Cordis plugins.
+- **P2 strategic state:** `dsh-market-strategic-state` computes deterministic features and validates evidence-bound interpretation as a plain domain library; `dsh-tool-maoq-decision` consumes it and the snapshot service through `maoq_analyze_strategy`. Specialist roles remain runtime agents, not Cordis plugins.
 - **Later UI:** add a separate Client Cordis plugin only when snapshot and strategic-state records have a stable presentation contract. The current bundle mounts it; domain packages do not import browser components.
 - **Later data vendors:** split a vendor adapter into its own Service Provider package only when replacement, credentials, dependencies, or lifecycle genuinely differ. The snapshot schema and downstream decisions never depend on vendor field names.
 
@@ -192,4 +193,4 @@ A milestone advances only when its artifact is reproducible, its failures are ex
 
 ## Recommended next action
 
-Start P1 by freezing the `MarketSnapshot` schema and fixture corpus before selecting or integrating a production data vendor. Keep the [P0 canary](maoq-operations.md#p0-canary) green when changing model routes, prompts, council structure, authentication, or browser onboarding.
+Start P3 by defining tactic eligibility contracts and gold fixtures without adding stock ranking to the P2 engine. Keep the [P0 canary](maoq-operations.md#p0-canary) and P2 deterministic replay fixtures green when changing model routes, prompts, council structure, authentication, or browser onboarding.

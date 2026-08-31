@@ -1,0 +1,42 @@
+# Keyless full Loader composition for the P2 MAOQ strategic-state path.
+- id: market-snapshot
+  name: '@deepseek-ai/dsh-market-snapshot'
+  config:
+    root: './.snapshots'
+
+- id: mock-maoq-strategic-runtime
+  name: './mock-maoq-strategic-runtime.ts'
+
+- id: subagent
+  name: '@deepseek-ai/dsh-subagent'
+
+- id: workflow-worker-thread
+  name: '@deepseek-ai/dsh-workflow-worker-thread'
+  config:
+    provider: fresh
+
+- id: tool-maoq-decision
+  name: '@deepseek-ai/dsh-tool-maoq-decision'
+  config:
+    subagentProvider: fresh
+    maxSpecialists: 3
+
+- id: agent-spine
+  name: '@deepseek-ai/dsh-agent-spine-demo'
+  config:
+    agents:
+      - id: commander
+        provider: mock-strategic
+        model: maoq-commander
+        cwd: !!js process.cwd()
+    persona: 'Exercise the evidence-bound MAOQ strategic path without network access.'
+    workspaceContext: false
+
+- id: persistence
+  name: '@deepseek-ai/dsh-session-persistence-jsonl'
+  config:
+    root: './.sessions'
+    compression: 'none'
+
+- id: checkpoint-policy
+  name: '@deepseek-ai/dsh-session-checkpoint-policy'

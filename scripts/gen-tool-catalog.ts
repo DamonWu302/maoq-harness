@@ -423,7 +423,7 @@ const TOOL_PACKAGES: ToolPackage[] = [
       await ctx.plugin(ToolMaoqDecision, { subagentProvider: 'mock' })
     },
     note:
-      'A fixed council runs only the commander-selected specialists, then a fresh synthesis child and an independent risk reviewer whose veto is enforced outside model control.',
+      'The strategic path computes immutable-snapshot features before selected specialists run, binds interpretation to evidence and allowlisted Mao methods, and keeps an independent risk veto outside model control; the diagnostic path exercises the council runtime.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-ralph',

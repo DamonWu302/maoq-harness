@@ -1206,6 +1206,62 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'marketNews',
+    summary: 'Acquires before cutoff, freezes once, and replays only by content hash.',
+    description: 'Acquires before cutoff, freezes once, and replays only by content hash.',
+    methods: [
+      {
+        signature: 'async acquire(input: MarketNewsAcquireInput, signal?: AbortSignal): Promise<MarketNewsBatch>',
+        description: 'Search all versioned questions and persist one immutable evidence batch.',
+        parameters: [{ name: 'input', description: 'Trading date, cutoff, versioned query policies, and result bound.' }, { name: 'signal', description: 'Optional cancellation signal forwarded to every web search.' }],
+        returns: 'The verified content-addressed batch.',
+      },
+      {
+        signature: 'get(hash: string): Promise<MarketNewsBatch>',
+        description: 'Read and verify one exact frozen batch without performing network access.',
+        parameters: [{ name: 'hash', description: 'Lowercase SHA-256 content address.' }],
+        returns: 'The deeply frozen verified batch.',
+      },
+    ],
+  },
+  {
+    key: 'marketSnapshots',
+    summary: 'Builds, persists and queries one authoritative set of daily market facts.',
+    description: 'Builds, persists and queries one authoritative set of daily market facts.',
+    methods: [
+      {
+        signature: 'register(adapter: MarketSnapshotAdapter): () => void',
+        description: 'Register one provider-neutral adapter until its contributor disposes the returned effect.',
+        parameters: [{ name: 'adapter', description: 'Adapter with a unique lowercase-hyphenated registry name.' }],
+        returns: 'A disposer that removes this exact adapter registration.',
+      },
+      {
+        signature: 'listAdapters(): readonly string[]',
+        description: 'Return registered adapter names in deterministic order.',
+        parameters: [],
+        returns: 'A sorted snapshot of the current registry names.',
+      },
+      {
+        signature: 'async build(adapterName: string, identity: MarketSnapshotIdentityInput): Promise<MarketSnapshot>',
+        description: 'Load normalized facts from a named adapter, validate them, and persist canonical bytes.',
+        parameters: [{ name: 'adapterName', description: 'Exact registered adapter name.' }, { name: 'identity', description: 'Complete requested identity that the adapter must preserve.' }],
+        returns: 'The validated immutable snapshot written to the content-addressed store.',
+      },
+      {
+        signature: 'getByHash(hash: string): Promise<MarketSnapshot | undefined>',
+        description: 'Read one immutable snapshot by content hash.',
+        parameters: [{ name: 'hash', description: 'Lowercase hexadecimal SHA-256 content address.' }],
+        returns: 'A deeply frozen snapshot, or `undefined` when the address is absent.',
+      },
+      {
+        signature: 'getByIdentity(identity: MarketSnapshotIdentityInput): Promise<MarketSnapshot | undefined>',
+        description: 'Read the snapshot for one exact versioned cutoff identity.',
+        parameters: [{ name: 'identity', description: 'Complete versioned identity without a content hash.' }],
+        returns: 'A deeply frozen snapshot, or `undefined` when the identity is absent.',
+      },
+    ],
+  },
+  {
     key: 'messageFeedback',
     summary: 'Storage-domain sidecar service.',
     description: 'Storage-domain sidecar service. It inspects persisted Session history and never creates or resumes an Agent or Session.',
@@ -4000,6 +4056,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface EditGoalRequest {\n    readonly objective?: string;\n    readonly maxGoalRounds?: number;\n}',
   },
   {
+    name: 'EmotionFacts',
+    declaration: 'export interface EmotionFacts {\n    readonly consecutiveBoardCounts: readonly {\n        readonly boards: number;\n        readonly count: number;\n    }[];\n    readonly promotionRate: number;\n    readonly brokenLimitRate: number;\n    readonly lossEffectRate: number;\n    readonly provenance: MarketProvenance;\n}',
+  },
+  {
     name: 'EncodedImageAttachment',
     declaration: 'export interface EncodedImageAttachment {\n    mediaType: ImageMediaType;\n    data: string;\n    name?: string;\n}',
   },
@@ -4392,6 +4452,50 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ManualCompactAgentContext extends CompactionAgentContext {\n    runMaintenance<T>(task: (signal: AbortSignal) => Promise<T>): Promise<T>;\n}',
   },
   {
+    name: 'MarketBreadth',
+    declaration: 'export interface MarketBreadth {\n    readonly majorIndices: readonly {\n        readonly symbol: string;\n        readonly close: number;\n        readonly changePct: number;\n    }[];\n    readonly totalAmount: number;\n    readonly advancing: number;\n    readonly declining: number;\n    readonly unchanged: number;\n    readonly limitUp: number;\n    readonly limitDown: number;\n    readonly brokenLimit: number;\n    readonly provenance: MarketProvenance;\n}',
+  },
+  {
+    name: 'MarketNewsAcquireInput',
+    declaration: 'export interface MarketNewsAcquireInput {\n    readonly tradingDate: string;\n    readonly cutoffTime: string;\n    readonly queryVersion: string;\n    readonly queries: readonly MarketNewsQuery[];\n    readonly maxResults?: number;\n}',
+  },
+  {
+    name: 'MarketNewsBatch',
+    declaration: 'export interface MarketNewsBatch {\n    readonly schemaVersion: typeof MARKET_NEWS_BATCH_SCHEMA_VERSION;\n    readonly tradingDate: string;\n    readonly cutoffTime: string;\n    readonly queryVersion: string;\n    readonly fetchedAt: string;\n    readonly evidence: readonly NewsEvidence[];\n    readonly contentHash: string;\n}',
+  },
+  {
+    name: 'MarketNewsQuery',
+    declaration: 'export interface MarketNewsQuery {\n    readonly query: string;\n    readonly affectedSectors: readonly string[];\n    readonly confidence: number;\n}',
+  },
+  {
+    name: 'MarketProvenance',
+    declaration: 'export interface MarketProvenance {\n    readonly source: MarketSource;\n    readonly transforms: readonly string[];\n}',
+  },
+  {
+    name: 'MarketSnapshot',
+    declaration: 'export interface MarketSnapshot {\n    readonly schemaVersion: typeof MARKET_SNAPSHOT_SCHEMA_VERSION;\n    readonly identity: MarketSnapshotIdentity;\n    readonly quality: {\n        readonly status: \'complete\';\n        readonly warnings: readonly string[];\n    };\n    readonly stocks: readonly StockDailyBar[];\n    readonly sectors: readonly SectorDailySnapshot[];\n    readonly breadth: MarketBreadth;\n    readonly emotion: EmotionFacts;\n    readonly news: readonly NewsEvidence[];\n}',
+  },
+  {
+    name: 'MarketSnapshotAdapter',
+    declaration: 'export interface MarketSnapshotAdapter {\n    readonly name: string;\n    load(identity: MarketSnapshotIdentityInput): Promise<MarketSnapshotDraft>;\n}',
+  },
+  {
+    name: 'MarketSnapshotDraft',
+    declaration: 'export interface MarketSnapshotDraft {\n    readonly identity: MarketSnapshotIdentityInput;\n    readonly stocks: readonly StockDailyBar[];\n    readonly sectors: readonly SectorDailySnapshot[];\n    readonly breadth: MarketBreadth;\n    readonly emotion: EmotionFacts;\n    readonly news: readonly NewsEvidence[];\n}',
+  },
+  {
+    name: 'MarketSnapshotIdentity',
+    declaration: 'export interface MarketSnapshotIdentity extends MarketSnapshotIdentityInput {\n    readonly contentHash: string;\n}',
+  },
+  {
+    name: 'MarketSnapshotIdentityInput',
+    declaration: 'export interface MarketSnapshotIdentityInput {\n    readonly tradingDate: string;\n    readonly cutoffTime: string;\n    readonly calendarVersion: string;\n    readonly adjustmentVersion: string;\n    readonly sectorClassificationVersion: string;\n    readonly sourceVersions: readonly string[];\n}',
+  },
+  {
+    name: 'MarketSource',
+    declaration: 'export interface MarketSource {\n    readonly adapter: string;\n    readonly dataset: string;\n    readonly version: string;\n    readonly retrievedAt: string;\n    readonly recordId: string;\n}',
+  },
+  {
     name: 'Message',
     declaration: 'export interface Message {\n    readonly id: MessageId;\n    readonly role: \'system\' | \'user\' | \'assistant\';\n    readonly content: ContentBlock[];\n    readonly source: MessageSource;\n}',
   },
@@ -4518,6 +4622,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ModelReasoningEffort',
     declaration: 'export interface ModelReasoningEffort {\n    readonly id: string;\n    readonly name: string;\n    readonly description?: string;\n}',
+  },
+  {
+    name: 'NewsEvidence',
+    declaration: 'export interface NewsEvidence {\n    readonly id: string;\n    readonly title: string;\n    readonly url: string;\n    readonly publisher: string;\n    readonly publishedAt: string;\n    readonly fetchedAt: string;\n    readonly eventAt: string;\n    readonly affectedSectors: readonly string[];\n    readonly confidence: number;\n    readonly provenance: MarketProvenance;\n}',
   },
   {
     name: 'ObjectJsonSchema',
@@ -4798,6 +4906,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SearchResultView',
     declaration: 'export type SearchResultView = SearchMatchesResultView | SearchPathsResultView;',
+  },
+  {
+    name: 'SectorDailySnapshot',
+    declaration: 'export interface SectorDailySnapshot {\n    readonly sectorId: string;\n    readonly name: string;\n    readonly tradingDate: string;\n    readonly open: number;\n    readonly high: number;\n    readonly low: number;\n    readonly close: number;\n    readonly amount: number;\n    readonly advancingRatio: number;\n    readonly limitUpCount: number;\n    readonly dispersion: number;\n    readonly leaders: readonly string[];\n    readonly members: readonly SectorMember[];\n    readonly provenance: MarketProvenance;\n}',
+  },
+  {
+    name: 'SectorMember',
+    declaration: 'export interface SectorMember {\n    readonly symbol: string;\n    readonly effectiveFrom: string;\n    readonly effectiveTo: string | null;\n}',
   },
   {
     name: 'SendTeamMessageRequest',
@@ -5392,6 +5508,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SpillSource {\n    toolName: string;\n    callId: ToolCallId;\n    label: string;\n}',
   },
   {
+    name: 'StockDailyBar',
+    declaration: 'export interface StockDailyBar {\n    readonly symbol: string;\n    readonly tradingDate: string;\n    readonly open: number;\n    readonly high: number;\n    readonly low: number;\n    readonly close: number;\n    readonly volume: number;\n    readonly amount: number;\n    readonly turnoverRate: number;\n    readonly adjustmentFactor: number;\n    readonly tradingStatus: \'trading\' | \'suspended\' | \'delisting\';\n    readonly limitStatus: \'none\' | \'limit-up\' | \'limit-down\';\n    readonly listingDays: number;\n    readonly qualityFlags: readonly string[];\n    readonly provenance: MarketProvenance;\n}',
+  },
+  {
     name: 'StorageBackend',
     declaration: 'export interface StorageBackend {\n    readonly kv?: KvFacet;\n    close(): Promise<void>;\n}',
   },
@@ -5469,7 +5589,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SubagentResult',
-    declaration: 'export interface SubagentResult {\n    readonly output: ContentBlock[];\n    readonly structured?: unknown;\n    readonly diagnostic?: string;\n    readonly stopReason: SubagentStopReason;\n}',
+    declaration: 'export interface SubagentResult {\n    readonly output: ContentBlock[];\n    readonly structured?: unknown;\n    readonly usage?: TokenUsage;\n    readonly diagnostic?: string;\n    readonly stopReason: SubagentStopReason;\n}',
   },
   {
     name: 'SubagentRun',

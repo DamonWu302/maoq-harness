@@ -271,6 +271,7 @@
     { "path": "./packages/market/market-snapshot-json" },
     { "path": "./packages/market/market-news-web" },
     { "path": "./packages/market/market-snapshot-mysql" },
+    { "path": "./packages/market/market-strategic-state" },
     { "path": "./packages/bundle/base" },
     { "path": "./packages/bundle/headless" },
     { "path": "./packages/bundle/sdk-app" },

@@ -12,6 +12,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ToolCallView, ToolResultView } from '@deepseek-ai/dsh-tools'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { WorkflowResult, WorkflowRun } from '@deepseek-ai/dsh-workflow'
+import { registerStrategicStateTool } from './strategic.ts'
 
 export const name = 'tool-maoq-decision'
 export const inject = ['tools', 'workflowEngine', 'subagents', 'systemPrompt']
@@ -44,7 +45,8 @@ export const Config: z<Config> = z.object({
   maxResultChars: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(32_768),
 })
 
-interface ResolvedConfig {
+/** Validated deployment values shared by both MAOQ tool registrations. */
+export interface ResolvedConfig {
   readonly subagentProvider: string
   readonly maxSpecialists: number
   readonly maxResultChars: number
@@ -231,8 +233,13 @@ function resolveConfig(config: Config): ResolvedConfig {
   return { subagentProvider, maxSpecialists, maxResultChars }
 }
 
-/** Require a fresh provider that can enforce every child output schema. */
-function requireFreshProvider(ctx: Context, providerName: string): SubagentProvider {
+/**
+ * Require a fresh provider that can enforce every child output schema.
+ * @param ctx - Active plugin context containing the subagent registry.
+ * @param providerName - Exact configured provider route.
+ * @returns The validated non-inheriting structured-output provider.
+ */
+export function requireFreshProvider(ctx: Context, providerName: string): SubagentProvider {
   const provider = ctx.subagents.getProvider(providerName)
   if (provider === undefined) throw new Error(`MAOQ subagent provider "${providerName}" is not registered`)
   if (!provider.capabilities.outputSchema) {
@@ -290,7 +297,12 @@ function readCouncilResult(value: unknown, expected: readonly SpecialistRole[]):
   }
 }
 
-function workflowError(result: WorkflowResult): string | undefined {
+/**
+ * Convert a non-completed workflow terminal state into a caller-facing error.
+ * @param result - Settled workflow result.
+ * @returns `undefined` for completion, otherwise a stable failure message.
+ */
+export function workflowError(result: WorkflowResult): string | undefined {
   switch (result.stopReason) {
     case 'completed': return undefined
     case 'cancelled': return `MAOQ decision council was cancelled${result.error === undefined ? '' : ` (${result.error})`}`
@@ -330,8 +342,9 @@ export function apply(ctx: Context, config: Config): void {
   ctx.systemPrompt.section({
     name: 'tool:maoq-decision',
     order: ctx.systemPrompt.getSectionOrder('TOOL_WORKFLOW'),
-    text: 'For a market decision, identify the current question and call maoq_decide with the smallest sufficient specialist set. Do not invoke every specialist by default. Treat its independent risk veto as final for that run. The result is analysis or a paper decision only; it cannot place a live order.',
+    text: 'For a strategic market decision grounded in an immutable snapshot, call maoq_analyze_strategy with the smallest sufficient specialist set. Its deterministic market regime, emotion cycle, sector battlefield features, evidence references, Mao method attributions, and independent risk veto are binding. Use maoq_decide only for council-runtime diagnostics. Neither tool can place a live order or rank stocks in the P2 strategic-state phase.',
   })
+  registerStrategicStateTool(ctx, resolved)
   ctx.tools.register(defineTool({
     name: 'maoq_decide',
     description: DESCRIPTION,

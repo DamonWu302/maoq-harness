@@ -39,3 +39,82 @@
 `dsh-market-news-web` 在决策截止点前通过既有 `ctx.web` seam 执行带版本问题。采集必须在该截止点前开始并结束，每条接纳结果都必须携带 URL、标题和提供方给出的、不晚于截止点的发布时间。它把批次冻结到规范内容哈希下；回放只读取该哈希，不发起网络调用。
 
 只有当 `sourceVersions` 包含精确 `news:<sha256>` 标记，且批次交易日和截止点等于请求身份时，MySQL 适配器才合并该批次。搜索结果不能覆盖价格或板块事实。查询拥有的板块映射和置信度保持为带版本采集策略；后续模型可以解释证据，但不能改变其来源、发布时间、抓取时间或截止点资格。
+
+<!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
+
+<a id="cordis-surface"></a>
+
+## Cordis API
+
+Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.zh.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
+
+<a id="ctxmarketnews--marketnewswebservice"></a>
+
+### `ctx.marketNews` — `MarketNewsWebService`
+
+Acquires before cutoff, freezes once, and replays only by content hash.
+
+```ts cordis-catalog
+/**
+ * Search all versioned questions and persist one immutable evidence batch.
+ * @param input - Trading date, cutoff, versioned query policies, and result bound.
+ * @param signal - Optional cancellation signal forwarded to every web search.
+ * @returns The verified content-addressed batch.
+ */
+async acquire(input: MarketNewsAcquireInput, signal?: AbortSignal): Promise<MarketNewsBatch>
+
+/**
+ * Read and verify one exact frozen batch without performing network access.
+ * @param hash - Lowercase SHA-256 content address.
+ * @returns The deeply frozen verified batch.
+ */
+get(hash: string): Promise<MarketNewsBatch>
+```
+
+Source: [`packages/market/market-news-web/src/index.ts`](../../packages/market/market-news-web/src/index.ts)
+
+<a id="ctxmarketsnapshots--marketsnapshotservice"></a>
+
+### `ctx.marketSnapshots` — `MarketSnapshotService`
+
+Builds, persists and queries one authoritative set of daily market facts.
+
+```ts cordis-catalog
+/**
+ * Register one provider-neutral adapter until its contributor disposes the returned effect.
+ * @param adapter - Adapter with a unique lowercase-hyphenated registry name.
+ * @returns A disposer that removes this exact adapter registration.
+ */
+register(adapter: MarketSnapshotAdapter): () => void
+
+/**
+ * Return registered adapter names in deterministic order.
+ * @returns A sorted snapshot of the current registry names.
+ */
+listAdapters(): readonly string[]
+
+/**
+ * Load normalized facts from a named adapter, validate them, and persist canonical bytes.
+ * @param adapterName - Exact registered adapter name.
+ * @param identity - Complete requested identity that the adapter must preserve.
+ * @returns The validated immutable snapshot written to the content-addressed store.
+ */
+async build(adapterName: string, identity: MarketSnapshotIdentityInput): Promise<MarketSnapshot>
+
+/**
+ * Read one immutable snapshot by content hash.
+ * @param hash - Lowercase hexadecimal SHA-256 content address.
+ * @returns A deeply frozen snapshot, or `undefined` when the address is absent.
+ */
+getByHash(hash: string): Promise<MarketSnapshot | undefined>
+
+/**
+ * Read the snapshot for one exact versioned cutoff identity.
+ * @param identity - Complete versioned identity without a content hash.
+ * @returns A deeply frozen snapshot, or `undefined` when the identity is absent.
+ */
+getByIdentity(identity: MarketSnapshotIdentityInput): Promise<MarketSnapshot | undefined>
+```
+
+Source: [`packages/market/market-snapshot/src/index.ts`](../../packages/market/market-snapshot/src/index.ts)
+<!-- END GENERATED cordis-surface -->

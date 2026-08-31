@@ -26,6 +26,7 @@ The market group turns acquired A-share daily, sector, breadth, emotion, and new
 |---|---|---|
 | [`market-snapshot`](market-snapshot/README.md) | Builds, persists, and queries canonical daily market snapshots | `ctx.marketSnapshots` |
 | [`market-snapshot-json`](market-snapshot-json/README.md) | Imports audited provider-neutral drafts by exact snapshot identity | registered adapter |
+| [`market-strategic-state`](market-strategic-state/README.md) | Computes replay-stable strategic features and validates evidence-bound interpretation | library |
 
 -----
 
@@ -33,6 +34,7 @@ The market group turns acquired A-share daily, sector, breadth, emotion, and new
 ## Related documentation
 
 - [Market snapshot subsystem](../../docs/subsystems/market-snapshot.md) — persisted facts, identity, cutoff, and adapter rules.
+- [Market strategic state subsystem](../../docs/subsystems/market-strategic-state.md) — deterministic labels, evidence references, and interpretation rules.
 - [MAOQ roadmap](../../docs/maoq-roadmap.md) — P1 scope and acceptance criteria.
 
 -----
