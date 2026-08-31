@@ -4,7 +4,13 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { buildMarketSnapshot, marketSnapshotIdentityHash } from './builder.ts'
 import { MarketSnapshotStore } from './store.ts'
-import type { MarketSnapshot, MarketSnapshotAdapter, MarketSnapshotIdentityInput } from './types.ts'
+import type {
+  MarketSnapshot,
+  MarketSnapshotAdapter,
+  MarketSnapshotDiscoveryRequest,
+  MarketSnapshotIdentityInput,
+  MarketSnapshotSummary,
+} from './types.ts'
 
 export * from './builder.ts'
 export * from './store.ts'
@@ -59,6 +65,45 @@ export class MarketSnapshotService extends Service {
   }
 
   /**
+   * Return registered sources and whether each can discover recent audited sessions.
+   * @returns Deterministically sorted source capabilities.
+   */
+  describeAdapters(): readonly { readonly name: string; readonly supportsRecentDiscovery: boolean }[] {
+    return [...this.adapters.values()]
+      .map(adapter => ({ name: adapter.name, supportsRecentDiscovery: adapter.discoverRecent !== undefined }))
+      .sort((left, right) => left.name.localeCompare(right.name))
+  }
+
+  /**
+   * Ask one named source for exact recent identities without loading market rows.
+   * @param adapterName - Registered source name.
+   * @param request - Explicit date ceiling, evidence cutoff, and bounded count.
+   * @returns Exact identities in ascending trading-date order.
+   */
+  async discoverRecent(
+    adapterName: string,
+    request: MarketSnapshotDiscoveryRequest,
+  ): Promise<readonly MarketSnapshotIdentityInput[]> {
+    const adapter = this.adapters.get(adapterName)
+    if (adapter === undefined) throw new Error(`market snapshot adapter "${adapterName}" is not registered`)
+    if (adapter.discoverRecent === undefined) throw new Error(`market snapshot adapter "${adapterName}" does not support recent discovery`)
+    if (!Number.isInteger(request.limit) || request.limit < 1) throw new TypeError('market snapshot discovery limit must be a positive integer')
+    const identities = await adapter.discoverRecent(request)
+    if (identities.length !== request.limit) {
+      throw new Error(`market snapshot adapter "${adapterName}" returned ${String(identities.length)} identities, expected ${String(request.limit)}`)
+    }
+    for (const [index, identity] of identities.entries()) {
+      if (identity.tradingDate > request.beforeOrOn) throw new Error(`market snapshot adapter "${adapterName}" returned a date after the requested ceiling`)
+      if (identity.cutoffTime !== request.cutoffTime) throw new Error(`market snapshot adapter "${adapterName}" changed the requested cutoff`)
+      const previous = identities[index - 1]
+      if (previous !== undefined && previous.tradingDate >= identity.tradingDate) {
+        throw new Error(`market snapshot adapter "${adapterName}" did not return strictly ascending trading dates`)
+      }
+    }
+    return identities
+  }
+
+  /**
    * Load normalized facts from a named adapter, validate them, and persist canonical bytes.
    * @param adapterName - Exact registered adapter name.
    * @param identity - Complete requested identity that the adapter must preserve.
@@ -92,6 +137,15 @@ export class MarketSnapshotService extends Service {
    */
   getByIdentity(identity: MarketSnapshotIdentityInput): Promise<MarketSnapshot | undefined> {
     return this.store.getByIdentity(identity)
+  }
+
+  /**
+   * Verify and list stored content references under an explicit filesystem scan bound.
+   * @param maxFiles - Maximum number of stored content files to inspect.
+   * @returns Newest exact summaries first.
+   */
+  listSummaries(maxFiles: number): Promise<readonly MarketSnapshotSummary[]> {
+    return this.store.listSummaries(maxFiles)
   }
 }
 

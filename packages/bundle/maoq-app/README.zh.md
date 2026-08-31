@@ -9,7 +9,7 @@ kind: "package-bundle"
 
 ## 概述
 
-MAOQ 应用层组合在 `dsh-base` 和 `dsh-web-app` 之上，提供统帅人格，并挂载 [`dsh-tool-maoq-decision`](../../workflow/tool-maoq-decision/README.zh.md)、不可变事实存储 [`dsh-market-snapshot`](../../market/market-snapshot/README.zh.md)和截止点前证据冻结器 [`dsh-market-news-web`](../../market/market-news-web/README.zh.md)。因此，随附的 `maoq` Profile 保留普通浏览器、数据、联网搜索和子 Agent 能力，同时增加一个有界决策议事组。它不授予实盘交易权限。
+MAOQ 应用层组合在 `dsh-base` 和 `dsh-web-app` 之上，提供统帅人格，并挂载 [`dsh-tool-maoq-decision`](../../workflow/tool-maoq-decision/README.zh.md)、不可变事实存储 [`dsh-market-snapshot`](../../market/market-snapshot/README.zh.md)、有界取得工具 [`dsh-tool-maoq-snapshot`](../../market/tool-maoq-snapshot/README.zh.md)和截止点前证据冻结器 [`dsh-market-news-web`](../../market/market-news-web/README.zh.md)。因此，随附的 `maoq` Profile 保留普通浏览器、数据、联网搜索和子 Agent 能力，同时增加一个有界决策议事组。它不授予实盘交易权限。
 
 ## 目录
 
@@ -26,6 +26,8 @@ MAOQ 应用层组合在 `dsh-base` 和 `dsh-web-app` 之上，提供统帅人格
 ## 使用本包
 
 通过 `dsh --profile maoq` 启动。随附模板依次组合 `dsh-base`、`dsh-web-app` 和本策略层，并允许 Profile 补丁热重载。市场快照服务把不可变产物保存在 `.maoq/snapshots`，从 `.maoq/imports` 读取审计过的供应商无关导入，并把截止点前联网证据冻结到 `.maoq/news`；它们都相对于启动目录。在受支持的 macOS 与 Node 组合上，如果没有显式代理环境变量，Profile 启动会自动继承已启用的系统 HTTP 和 HTTPS 代理。决策议事组通过 Codex app-server 复用本机 Codex/ChatGPT 登录，固定使用 `gpt-5.6-sol`，最多允许四位所选专家，渲染结果上限为 32768 个字符。每位专家、统帅综合和独立风控的 token 用量都会单列，并在结果中汇总输入、缓存、输出、推理与总 token；若 Codex 未返回用量，该调用会计入 `unavailableCalls`，不会伪造估算值。
+
+Profile 还会挂载延迟连接的 `long-short-stock-mysql` 适配器。如果默认值与既有日线数据库不一致，可配置 `MAOQ_MYSQL_HOST`、`MAOQ_MYSQL_PORT`、`MAOQ_MYSQL_SOCKET`、`MAOQ_MYSQL_USER` 和 `MAOQ_MYSQL_DATABASE`。`MAOQ_MYSQL_PASSWORD_CREDENTIAL` 应指向保存密码的凭据存储键；密码本身不会进入补丁或工具参数。统帅每次前台调用最多生成十个交易日。
 
 <a id="operate-and-recover"></a>
 ## 运行与恢复
@@ -64,7 +66,7 @@ You are the MAOQ commander. Seek truth from current evidence, identify the princ
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- **日线数据库仍为可选**——本层挂载快照语义、审计 JSON 导入和新闻冻结；生产 MySQL 位置与凭据仍属于部署专用配置。
+- **日线数据库由部署配置**——适配器采用延迟连接，但在配置的 MySQL 端点和密码凭据可用前，生成会失败。
 - **没有组合执行器** — 决策止于研究和模拟交易输出。
 - **目前只有通用风险审查** — 敞口、流动性和回撤的数值引擎仍是未来的独立服务。
 

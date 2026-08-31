@@ -25,7 +25,7 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-挂载一个存储，注册一个或多个供应商无关适配器，然后向 `ctx.marketSnapshots.build()` 传入适配器名称和完整带版本身份。
+挂载一个存储，注册一个或多个供应商无关适配器，然后向 `ctx.marketSnapshots.build()` 传入适配器名称和完整带版本身份。适配器可以实现 `discoverRecent()`；服务会要求返回指定数量的精确身份、保持截止点不变，并强制交易日严格升序。`listSummaries()` 会在显式扫描上限内校验已存产物，并按从新到旧返回带精确内容哈希的摘要。
 
 ### 何时选择
 
@@ -81,7 +81,7 @@ kind: "package-reference"
 
 <a id="known-limitations-and-deferred-work"></a>
 
-本包负责规范事实，不负责采集凭据或发现交易日历。
+本包负责规范事实与发现契约，不负责取得凭据或提供方的交易日历数据。
 
 - **适配器部署**——生产日线、板块和新闻提供方必须把字段映射为 `MarketSnapshotDraft`；[JSON 适配器](../market-snapshot-json/README.zh.md)支持审计导入，但不采集供应商数据。
 - **单进程写入者**——只追加文件能检测身份冲突，但多进程协调发布需要事务型后端。

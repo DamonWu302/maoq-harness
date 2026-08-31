@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/maoq-operations.md
-maoq-operations.md: 0a78c6cec9da69019e0a73126d6948cf00c8a769
-maoq-operations.zh.md: 27b7383dd91e13a3d9c1d4a8a7933a9911595d9c
+maoq-operations.md: f8bdf9b6f49ca3c1a3124101311f4002adbd22ef
+maoq-operations.zh.md: a2f152e6588c58e9f4e30a621772603786c40bdc

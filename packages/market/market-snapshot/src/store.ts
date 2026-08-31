@@ -1,10 +1,24 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { deepFreeze } from '@deepseek-ai/dsh-util-values'
 import { canonicalJson, marketSnapshotIdentityHash, verifyMarketSnapshot } from './builder.ts'
-import type { MarketSnapshot, MarketSnapshotIdentityInput } from './types.ts'
+import type { MarketSnapshot, MarketSnapshotIdentityInput, MarketSnapshotSummary } from './types.ts'
 
 const CONTENT_HASH_PATTERN = /^[a-f0-9]{64}$/
+
+/** Project one validated snapshot into the bounded facts tools may catalog. */
+export function summarizeMarketSnapshot(snapshot: MarketSnapshot): MarketSnapshotSummary {
+  return {
+    tradingDate: snapshot.identity.tradingDate,
+    cutoffTime: snapshot.identity.cutoffTime,
+    contentHash: snapshot.identity.contentHash,
+    stocks: snapshot.stocks.length,
+    sectors: snapshot.sectors.length,
+    indices: snapshot.breadth.majorIndices.length,
+    news: snapshot.news.length,
+    warnings: [...snapshot.quality.warnings],
+  }
+}
 
 /** Immutable identity already points at different market content. */
 export class MarketSnapshotConflictError extends Error {
@@ -95,5 +109,35 @@ export class MarketSnapshotStore {
       throw error
     }
     return this.getByHash(hash)
+  }
+
+  /**
+   * Verify and summarize every stored snapshot up to a caller-owned scan bound.
+   * @param maxFiles - Positive maximum number of content files this scan may open.
+   * @returns Newest summaries first, preserving exact cutoff and content hash.
+   */
+  async listSummaries(maxFiles: number): Promise<readonly MarketSnapshotSummary[]> {
+    if (!Number.isInteger(maxFiles) || maxFiles < 1) throw new TypeError('market snapshot scan bound must be a positive integer')
+    let entries: string[]
+    try {
+      entries = await readdir(join(this.root, 'snapshots'))
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException | null)?.code === 'ENOENT') return []
+      throw error
+    }
+    const hashes = entries
+      .filter(entry => entry.endsWith('.json'))
+      .map(entry => entry.slice(0, -'.json'.length))
+      .filter(hash => CONTENT_HASH_PATTERN.test(hash))
+    if (hashes.length > maxFiles) {
+      throw new Error(`market snapshot catalog has ${String(hashes.length)} files; scan bound is ${String(maxFiles)}`)
+    }
+    const snapshots = await Promise.all(hashes.map(hash => this.getByHash(hash)))
+    return snapshots
+      .filter((snapshot): snapshot is MarketSnapshot => snapshot !== undefined)
+      .map(summarizeMarketSnapshot)
+      .sort((left, right) => right.tradingDate.localeCompare(left.tradingDate)
+        || right.cutoffTime.localeCompare(left.cutoffTime)
+        || right.contentHash.localeCompare(left.contentHash))
   }
 }

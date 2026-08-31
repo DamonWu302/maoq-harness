@@ -26,7 +26,9 @@ market 组把取得的 A 股日线、板块、宽度、情绪和新闻事实转�
 |---|---|---|
 | [`market-snapshot`](market-snapshot/README.zh.md) | 构建、持久化和查询规范日级市场快照 | `ctx.marketSnapshots` |
 | [`market-snapshot-json`](market-snapshot-json/README.zh.md) | 按精确快照身份导入审计过的供应商无关草稿 | 注册适配器 |
+| [`market-snapshot-mysql`](market-snapshot-mysql/README.zh.md) | 从既有 MySQL 流水线取得通过质量门禁的日线事实 | 注册适配器 |
 | [`market-strategic-state`](market-strategic-state/README.zh.md) | 计算可回放战略特征并校验证据约束的解释 | 库 |
+| [`tool-maoq-snapshot`](tool-maoq-snapshot/README.zh.md) | 提供有界快照发现、生成、列表和检查工具 | 工具 |
 
 -----
 

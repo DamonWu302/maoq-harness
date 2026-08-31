@@ -20,6 +20,8 @@ The local store addresses artifacts by SHA-256 and writes a separate reference f
 
 `@deepseek-ai/dsh-market-news-web` owns a separate pre-cutoff acquisition boundary over `ctx.web`. A search batch must start and finish by the cutoff, every accepted source must have a URL, title, and provider-supplied publication time no later than the cutoff, and the resulting canonical batch is persisted by content hash. A snapshot merges news only when its identity names that exact `news:<sha256>` batch. Replay never searches the web again, and search evidence cannot overwrite database facts.
 
+`@deepseek-ai/dsh-tool-maoq-snapshot` is the least-authority model boundary over acquisition and recovery. It exposes source discovery, bounded serial generation, bounded verified listing, and exact-hash inspection as separate tools. Deployment owns the adapter allowlist, generation count, scan count, and timeout. Credentials remain adapter configuration and never enter model arguments. The tool package deliberately has no delete, overwrite, source-write, ranking, portfolio, or order capability; interpretation stays in `@deepseek-ai/dsh-tool-maoq-decision`.
+
 ## Maoist method mapping
 
 “Seek truth from facts” becomes a separation between acquired facts and later interpretation. “No investigation, no right to speak” becomes fail-closed validation for missing critical market evidence. “Concrete analysis of concrete conditions” becomes explicit trading-date, cutoff, adjustment, sector-classification, and source versions. The distinction between principal and secondary contradictions remains a P2 interpretation over this evidence; the P1 builder does not predict, rank sectors, or select stocks.
@@ -31,6 +33,8 @@ The local store addresses artifacts by SHA-256 and writes a separate reference f
 **Persist one mutable snapshot per trading date.** A date alone cannot distinguish cutoff, adjustment, calendar, classification, or source revisions, and an overwrite destroys the evidence used by an earlier decision.
 
 **Let the model repair missing or conflicting data.** A plausible repair is not an observed fact and makes later evaluation unable to separate data failure from reasoning failure.
+
+**Give the commander a general shell or database tool for acquisition.** This would mix credentials, schema knowledge, mutation authority, and fact semantics in model context. A small snapshot plugin preserves freedom to choose when facts are needed without granting unrelated authority.
 
 ## Consequences
 

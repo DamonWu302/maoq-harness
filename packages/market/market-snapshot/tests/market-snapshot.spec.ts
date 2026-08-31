@@ -160,6 +160,17 @@ describe('immutable persistence and service', () => {
     expect(bytes).toBe(`${canonicalJson(snapshot)}\n`)
     await expect(store.getByHash(snapshot.identity.contentHash)).resolves.toEqual(snapshot)
     await expect(store.getByIdentity(identity)).resolves.toEqual(snapshot)
+    await expect(store.listSummaries(1)).resolves.toEqual([{
+      tradingDate: snapshot.identity.tradingDate,
+      cutoffTime: snapshot.identity.cutoffTime,
+      contentHash: snapshot.identity.contentHash,
+      stocks: snapshot.stocks.length,
+      sectors: snapshot.sectors.length,
+      indices: snapshot.breadth.majorIndices.length,
+      news: snapshot.news.length,
+      warnings: [],
+    }])
+    await expect(store.listSummaries(0)).rejects.toThrow(/positive integer/)
   })
 
   it('rejects a non-hash lookup before resolving a filesystem path', async () => {
@@ -187,9 +198,18 @@ describe('immutable persistence and service', () => {
     const adapter: MarketSnapshotAdapter = {
       name: 'offline-fixture',
       load: requested => Promise.resolve({ ...normalDraft(), identity: requested }),
+      discoverRecent: () => Promise.resolve([identity]),
     }
     const disposeAdapter = ctx.marketSnapshots.register(adapter)
     expect(ctx.marketSnapshots.listAdapters()).toEqual(['offline-fixture'])
+    expect(ctx.marketSnapshots.describeAdapters()).toEqual([{
+      name: 'offline-fixture', supportsRecentDiscovery: true,
+    }])
+    await expect(ctx.marketSnapshots.discoverRecent('offline-fixture', {
+      beforeOrOn: identity.tradingDate,
+      cutoffTime: identity.cutoffTime,
+      limit: 1,
+    })).resolves.toEqual([identity])
     const snapshot = await ctx.marketSnapshots.build('offline-fixture', identity)
     const loaded = await ctx.marketSnapshots.getByHash(snapshot.identity.contentHash)
     expect(loaded).toEqual(snapshot)
@@ -210,6 +230,11 @@ describe('immutable persistence and service', () => {
     const dispose = ctx.marketSnapshots.register(adapter)
     expect(() => ctx.marketSnapshots.register(adapter)).toThrow(/already registered/)
     await expect(ctx.marketSnapshots.build('missing', identity)).rejects.toThrow(/not registered/)
+    await expect(ctx.marketSnapshots.discoverRecent('fixture', {
+      beforeOrOn: identity.tradingDate,
+      cutoffTime: identity.cutoffTime,
+      limit: 1,
+    })).rejects.toThrow(/does not support/)
     const changedIdentity = { ...identity, cutoffTime: '2026-08-28T15:31:00+08:00' }
     await expect(ctx.marketSnapshots.build('fixture', changedIdentity)).rejects.toThrow(/different identity/)
     dispose()

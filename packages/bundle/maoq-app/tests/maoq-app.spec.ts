@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
-import { load } from 'js-yaml'
+import { loadCordisYaml } from '../../../../scripts/cordis-yaml.ts'
 import { inject, name } from '../src/invariant.ts'
 
 describe('@deepseek-ai/dsh-maoq-app', () => {
@@ -12,7 +12,7 @@ describe('@deepseek-ai/dsh-maoq-app', () => {
 
   test('installs the commander policy, market facts, workflow engine, and decision tool', () => {
     const patchPath = fileURLToPath(new URL('../cordis.patch.yml', import.meta.url))
-    const patches = load(readFileSync(patchPath, 'utf8')) as Array<Record<string, unknown>>
+    const patches = loadCordisYaml(readFileSync(patchPath, 'utf8')) as Array<Record<string, unknown>>
     const prompt = patches[0] as { config: { persona: string } }
     const workflowEngine = patches[1] as { id: string; disabled: boolean }
     const codexRoute = patches[2] as {
@@ -44,6 +44,10 @@ describe('@deepseek-ai/dsh-maoq-app', () => {
       config: { root: '.maoq/news' },
     }))
     expect(insertion.insert).toContainEqual(expect.objectContaining({
+      id: 'market-snapshot-mysql',
+      name: '@deepseek-ai/dsh-market-snapshot-mysql',
+    }))
+    expect(insertion.insert).toContainEqual(expect.objectContaining({
       id: 'subagent-codex',
       name: '@deepseek-ai/dsh-subagent-codex',
       config: { model: 'gpt-5.6-sol', permissionMode: 'never' },
@@ -51,6 +55,10 @@ describe('@deepseek-ai/dsh-maoq-app', () => {
     expect(insertion.insert).toContainEqual(expect.objectContaining({
       id: 'tool-maoq-decision',
       name: '@deepseek-ai/dsh-tool-maoq-decision',
+    }))
+    expect(insertion.insert).toContainEqual(expect.objectContaining({
+      id: 'tool-maoq-snapshot',
+      name: '@deepseek-ai/dsh-tool-maoq-snapshot',
     }))
   })
 })

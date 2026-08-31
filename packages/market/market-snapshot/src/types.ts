@@ -145,8 +145,28 @@ export interface MarketSnapshot {
   readonly news: readonly NewsEvidence[]
 }
 
+/** Bounded request for exact identities from the newest audited source sessions. */
+export interface MarketSnapshotDiscoveryRequest {
+  readonly beforeOrOn: string
+  readonly cutoffTime: string
+  readonly limit: number
+}
+
+/** Lightweight, exact reference returned by catalog and generation operations. */
+export interface MarketSnapshotSummary {
+  readonly tradingDate: string
+  readonly cutoffTime: string
+  readonly contentHash: string
+  readonly stocks: number
+  readonly sectors: number
+  readonly indices: number
+  readonly news: number
+  readonly warnings: readonly string[]
+}
+
 /** Adapter that converts one vendor or staged source into provider-neutral facts. */
 export interface MarketSnapshotAdapter {
   readonly name: string
   load(identity: MarketSnapshotIdentityInput): Promise<MarketSnapshotDraft>
+  discoverRecent?(request: MarketSnapshotDiscoveryRequest): Promise<readonly MarketSnapshotIdentityInput[]>
 }

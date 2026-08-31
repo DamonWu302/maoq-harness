@@ -25,7 +25,7 @@ This package freezes one A-share trading day's daily bars, point-in-time sectors
 <a id="use-this-package"></a>
 ## Use this package
 
-Mount one store, register one or more provider-neutral adapters, then pass an adapter name and complete versioned identity to `ctx.marketSnapshots.build()`.
+Mount one store, register one or more provider-neutral adapters, then pass an adapter name and complete versioned identity to `ctx.marketSnapshots.build()`. An adapter may implement `discoverRecent()`; the service requires the requested number of exact identities, preserves the cutoff, and enforces strictly ascending trading dates. `listSummaries()` verifies stored artifacts under an explicit scan bound and returns newest summaries first with exact content hashes.
 
 ### When to choose it
 
@@ -81,7 +81,7 @@ None. Snapshot reads remain host-side until a later consumer explicitly logs and
 
 <a id="known-limitations-and-deferred-work"></a>
 
-The package owns canonical facts, not acquisition credentials or trading-calendar discovery.
+The package owns canonical facts and the discovery contract, not acquisition credentials or the provider's trading-calendar data.
 
 - **Adapter deployment** — production daily, sector, and news providers must map their fields into `MarketSnapshotDraft`; the [JSON adapter](../market-snapshot-json/README.md) supports audited imports but does not acquire vendor data.
 - **Single-process writer** — append-only files detect identity conflicts, but coordinated multi-process publication requires a transactional backend.

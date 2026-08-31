@@ -75,7 +75,7 @@ codex login status
 
 ## P1 canary
 
-生产日线适配器保持可选，因为数据库端点和凭据属于部署事实。使用只具备 SELECT 权限的账户以及 Unix socket 或 TCP 端点，把 `dsh-market-snapshot-mysql` 挂载在随附快照与新闻服务旁。调用 `discoverIdentity(tradingDate, cutoffTime, newsBatchHash?)`，再通过 `ctx.marketSnapshots` 使用返回的精确身份构建。不要把任何版本标记替换为易读日期。
+Profile 会延迟挂载生产日线适配器，因为数据库端点和凭据属于部署事实。使用只具备 SELECT 权限的账户，并按需配置 `MAOQ_MYSQL_HOST`、`MAOQ_MYSQL_PORT`、`MAOQ_MYSQL_SOCKET`、`MAOQ_MYSQL_USER`、`MAOQ_MYSQL_DATABASE` 以及密码凭据键 `MAOQ_MYSQL_PASSWORD_CREDENTIAL`。然后可以要求统帅：“以 2026-08-31T16:00:00+08:00 为截止点，生成截至 2026-08-28 的最近 10 个不可变日线快照。”它可以使用 `maoq_snapshot_sources`、`maoq_snapshot_generate`、`maoq_snapshot_list` 和 `maoq_snapshot_inspect`；生成结果会返回精确的 `currentHash` 与 `historyHashes` 供战略分析使用。不要把任何版本标记替换为易读日期。
 
 政策与新闻采集是独立的截止点前步骤。提前使用带版本查询调用 `ctx.marketNews.acquire()`，确保它在 `cutoffTime` 前完成，再通过 `discoverIdentity` 加入其内容哈希。即使文章发布更早，首次在截止点后执行的搜索也不合格。回放调用 `get(hash)`，不执行搜索。
 
@@ -87,6 +87,7 @@ codex login status
 |---|---|---|
 | 规范不可变构建、精确身份、冲突与冻结回放 | [`market-snapshot.spec.ts`](../packages/market/market-snapshot/tests/market-snapshot.spec.ts) | 重复构建和持久化读取返回上述同一哈希 |
 | 质量门控的日线、参考、板块、宽度与情绪事实 | [`market-snapshot-mysql.spec.ts`](../packages/market/market-snapshot-mysql/tests/market-snapshot-mysql.spec.ts) | 5,208 只股票、31 个板块、6 个指数；连接后行数等于质量行 |
+| 模型触发的有界取得和精确哈希找回 | [`loader-composition.spec.ts`](../packages/market/tool-maoq-snapshot/tests/loader-composition.spec.ts) | 请求有界窗口，再检查返回的当前哈希 |
 | 截止点安全的联网证据与离线回放 | [`market-news-web.spec.ts`](../packages/market/market-news-web/tests/market-news-web.spec.ts) | 随附 Profile 把不可变存储挂载在 `.maoq/news`；依赖某个提供方时间戳前需要该提供方 canary |
 | 不使用未来数据且不静默回退质量 | 上述 MySQL 与新闻测试 | 截止点后刷新的指数证据和不完整会话均被拒绝 |
 | 供应商无关的审计导入 | [`market-snapshot-json.spec.ts`](../packages/market/market-snapshot-json/tests/market-snapshot-json.spec.ts) | 无数据库凭据时仍可使用按精确身份寻址的导入 |

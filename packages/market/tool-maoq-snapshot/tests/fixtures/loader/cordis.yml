@@ -1,0 +1,38 @@
+# Keyless full Loader composition for model-triggered MAOQ snapshot acquisition.
+- id: market-snapshot
+  name: '@deepseek-ai/dsh-market-snapshot'
+  config:
+    root: './.snapshots'
+
+- id: mock-maoq-snapshot-runtime
+  name: './mock-maoq-snapshot-runtime.ts'
+
+- id: tool-maoq-snapshot
+  name: '../../../src/index.ts'
+  config:
+    allowedAdapters:
+      - loader-fixture
+    maxGenerateCount: 3
+    maxListCount: 5
+    maxScanFiles: 10
+    generateTimeoutMs: 10000
+
+- id: agent-spine
+  name: '@deepseek-ai/dsh-agent-spine-demo'
+  config:
+    agents:
+      - id: commander
+        provider: mock-snapshot
+        model: maoq-commander
+        cwd: !!js process.cwd()
+    persona: 'Acquire exact immutable market facts before interpretation.'
+    workspaceContext: false
+
+- id: persistence
+  name: '@deepseek-ai/dsh-session-persistence-jsonl'
+  config:
+    root: './.sessions'
+    compression: 'none'
+
+- id: checkpoint-policy
+  name: '@deepseek-ai/dsh-session-checkpoint-policy'

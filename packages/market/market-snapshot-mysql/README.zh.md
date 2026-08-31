@@ -25,7 +25,7 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-只在能访问审计数据库的环境挂载。MAOQ 默认 bundle 仍有意使用无需凭据的 JSON 适配器。
+只在能访问审计数据库的环境使用。MAOQ Profile 会把它与无需凭据的 JSON 适配器一起延迟挂载，因此数据库配置完成前仍可正常启动。
 
 ```yaml
 - name: '@deepseek-ai/dsh-market-snapshot-mysql'
@@ -55,6 +55,8 @@ kind: "package-reference"
 
 <details>
 <summary>实现内部——点击展开</summary>
+
+`discoverRecent()` 选择一个经过质量批准的精确有界交易日窗口，并按日期升序解析每个身份。
 
 `discoverIdentity()` 读取指定日期的质量结论与精确最大抓取版本。`load()` 再次检查版本，只执行参数化 SELECT，要求连接后的价格行数等于质量行数，把换手百分数转成比率，并只对价格做后复权。涨跌停表的 `pre_close` 缺失时，身份会绑定上一日价格版本，适配器使用该股票上一有效交易日的原始收盘价。没有历史行情的新股仍会保留并标记 `pre-close-unavailable-no-history`，但会从收益率派生事实中排除。板块日线是在最新有效申万一级归属上计算的等权 `原价 / 昨收` 指数。情绪事实要求达到配置数量、同时具备完整价格和涨跌停覆盖的历史交易日；本包不加入模型标签，也不排序选股。
 

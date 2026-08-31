@@ -12,6 +12,7 @@ flowchart LR
   pkg_market_snapshot_json["market-snapshot-json"]
   pkg_market_snapshot_mysql["market-snapshot-mysql"]
   pkg_tool_maoq_decision["tool-maoq-decision"]
+  pkg_tool_maoq_snapshot["tool-maoq-snapshot"]
   pkg_market_news_web["market-news-web"]
   svc_marketNews["ctx.marketNews<br/>Cutoff-safe MAOQ web evidence"]
   pkg_attachment["attachment"]
@@ -387,6 +388,7 @@ flowchart LR
   svc_lsp --> pkg_tool_lsp
   svc_marketNews --> pkg_market_snapshot_mysql
   svc_marketSnapshots --> pkg_tool_maoq_decision
+  svc_marketSnapshots --> pkg_tool_maoq_snapshot
   svc_sandbox --> pkg_bash_sandbox
   svc_sandbox --> pkg_terminal_bash
   svc_sandboxPolicy --> pkg_bash_sandbox
@@ -476,7 +478,7 @@ flowchart LR
 
 | ctx key | Role | Owner | Implementations | Direct consumers | Companion plugins | Note |
 | --- | --- | --- | --- | --- | --- | --- |
-| `ctx.marketSnapshots` | `seam` | [`market-snapshot`](../packages/market/market-snapshot) | [`market-snapshot-json`](../packages/market/market-snapshot-json), [`market-snapshot-mysql`](../packages/market/market-snapshot-mysql) | [`tool-maoq-decision`](../packages/workflow/tool-maoq-decision) | - | Adapters build exact cutoff identities; strategic consumers load frozen facts by content hash. |
+| `ctx.marketSnapshots` | `seam` | [`market-snapshot`](../packages/market/market-snapshot) | [`market-snapshot-json`](../packages/market/market-snapshot-json), [`market-snapshot-mysql`](../packages/market/market-snapshot-mysql) | [`tool-maoq-decision`](../packages/workflow/tool-maoq-decision), [`tool-maoq-snapshot`](../packages/market/tool-maoq-snapshot) | - | Adapters build exact cutoff identities; strategic consumers load frozen facts by content hash. |
 | `ctx.marketNews` | `core` | [`market-news-web`](../packages/market/market-news-web) | - | [`market-snapshot-mysql`](../packages/market/market-snapshot-mysql) | - | Freezes pre-cutoff search results into content-addressed batches that snapshot acquisition may merge by exact version token. |
 | `ctx.attachments` | `seam` | [`attachment`](../packages/attachment/attachment) | [`attachment-local`](../packages/attachment/attachment-local) | [`api-session-controller`](../packages/api/session-controller), [`tool-fs`](../packages/fs/tool-fs), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`llm-deepseek`](../packages/llm/llm-deepseek) | - | The host commits accepted images before session events; provider adapters resolve authorized durable references into provider-native content. |
 | `ctx.llm` | `seam` | [`llm`](../packages/llm/llm) | [`llm-deepseek`](../packages/llm/llm-deepseek), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`llm-replay`](../packages/test-support/llm-replay) | [`agent-loop`](../packages/core/agent-loop), [`compaction-basic`](../packages/compaction/compaction-basic) | - | Adapters register provider implementations; the loop and compaction call the provider-neutral stream service. |

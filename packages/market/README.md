@@ -26,7 +26,9 @@ The market group turns acquired A-share daily, sector, breadth, emotion, and new
 |---|---|---|
 | [`market-snapshot`](market-snapshot/README.md) | Builds, persists, and queries canonical daily market snapshots | `ctx.marketSnapshots` |
 | [`market-snapshot-json`](market-snapshot-json/README.md) | Imports audited provider-neutral drafts by exact snapshot identity | registered adapter |
+| [`market-snapshot-mysql`](market-snapshot-mysql/README.md) | Acquires quality-gated daily facts from the existing MySQL pipeline | registered adapter |
 | [`market-strategic-state`](market-strategic-state/README.md) | Computes replay-stable strategic features and validates evidence-bound interpretation | library |
+| [`tool-maoq-snapshot`](tool-maoq-snapshot/README.md) | Exposes bounded snapshot discovery, generation, listing, and inspection | tools |
 
 -----
 

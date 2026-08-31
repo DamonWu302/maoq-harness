@@ -66,7 +66,9 @@ import * as ToolSubagent from '@deepseek-ai/dsh-tool-subagent'
 import { registerListSubagentModels } from '../packages/subagent/tool-subagent/src/list-models.ts'
 import * as ToolWeb from '@deepseek-ai/dsh-tool-web'
 import VmWorkflowEngine from '@deepseek-ai/dsh-workflow-worker-thread'
+import MarketSnapshotService from '@deepseek-ai/dsh-market-snapshot'
 import * as ToolMaoqDecision from '@deepseek-ai/dsh-tool-maoq-decision'
+import * as ToolMaoqSnapshot from '@deepseek-ai/dsh-tool-maoq-snapshot'
 import * as ToolRalph from '@deepseek-ai/dsh-tool-ralph'
 import * as ToolWorkflow from '@deepseek-ai/dsh-tool-workflow'
 import { githubSlug } from './verify-md-links.ts'
@@ -424,6 +426,19 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'The strategic path computes immutable-snapshot features before selected specialists run, binds interpretation to evidence and allowlisted Mao methods, and keeps an independent risk veto outside model control; the diagnostic path exercises the council runtime.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-maoq-snapshot',
+    dir: 'tool-maoq-snapshot',
+    source: 'packages/market/tool-maoq-snapshot/src/index.ts',
+    requires: ['ctx.tools', 'ctx.marketSnapshots', 'ctx.systemPrompt'],
+    writes: ['tool/call', 'immutable market snapshot files during generation', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(MarketSnapshotService, { root: '.artifacts/tool-catalog-maoq-snapshots' })
+      await ctx.plugin(ToolMaoqSnapshot, { allowedAdapters: [] })
+    },
+    note:
+      'The four bounded tools discover source capabilities, generate an exact immutable window, list verified local hashes, and inspect one snapshot without exposing full stock rows. Generation requires a deployment-allowed adapter and never deletes or overwrites source data.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-ralph',

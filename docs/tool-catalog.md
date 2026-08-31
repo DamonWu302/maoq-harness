@@ -31,6 +31,7 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-schedule` | `schedule_create`, `schedule_delete`, `schedule_list` | `ctx.tools`, `ctx.sessions`, `Session persistence`, `a future live root Agent` | `tool/call`, `schedule/change create or delete`, `tool/result` | - | Registered only inside live root Agent scopes created after the opt-in Schedule plugin loads. Version 1 accepts after_seconds, explicit absolute at, and bounded fixed-rate every_seconds, and discloses session-local delivery; management reads and mutations require the shared Session persistence barrier. |
 | `@deepseek-ai/dsh-tool-lsp` | `lsp` | `ctx.tools`, `ctx.lsp`, `ctx.systemPrompt` | `tool/call`, `tool/result` | - | The lsp tool keeps provider selection and language-server subprocesses behind ctx.lsp, so its model-visible schema stays stable across providers. Requires a registered provider (e.g. `@deepseek-ai/dsh-lsp-stdio`) at runtime; without one, a query returns the structured `LSP_UNAVAILABLE` error rather than changing the schema. |
 | `@deepseek-ai/dsh-tool-maoq-decision` | `maoq_analyze_strategy`, `maoq_decide` | `ctx.tools`, `ctx.workflowEngine`, `ctx.subagents`, `ctx.systemPrompt`, `a calling Agent` | `tool/call`, `tool/result`, `workflow and child session events during execution` | - | The strategic path computes immutable-snapshot features before selected specialists run, binds interpretation to evidence and allowlisted Mao methods, and keeps an independent risk veto outside model control; the diagnostic path exercises the council runtime. |
+| `@deepseek-ai/dsh-tool-maoq-snapshot` | `maoq_snapshot_generate`, `maoq_snapshot_inspect`, `maoq_snapshot_list`, `maoq_snapshot_sources` | `ctx.tools`, `ctx.marketSnapshots`, `ctx.systemPrompt` | `tool/call`, `immutable market snapshot files during generation`, `tool/result` | - | The four bounded tools discover source capabilities, generate an exact immutable window, list verified local hashes, and inspect one snapshot without exposing full stock rows. Generation requires a deployment-allowed adapter and never deletes or overwrites source data. |
 | `@deepseek-ai/dsh-tool-ralph` | `ralph` | `ctx.tools`, `ctx.workflowEngine`, `ctx.subagents`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents every fresh round)` | `tool/call`, `tool/result`, `workflow and child session events during execution` | - | A fixed foreground workflow starts one fresh structured child per round; the model selects only the immutable objective and an optional round cap. |
 | `@deepseek-ai/dsh-tool-skill` | `skill` | `ctx.tools`, `ctx.agents`, `ctx.skills` | `tool/call`, `tool/result`, `user/message replacement catalogs via agent.inject()` | - | - |
 | `@deepseek-ai/dsh-tool-session-query` | `session_event_read`, `session_event_search`, `session_event_trace`, `session_search`, `session_trace` | `ctx.tools`, `ctx.systemPrompt`, `ctx.sessionQuery`, `a calling Agent for workspace authority` | `tool/call`, `tool/result` | - | The five read-only tools hide provider cursors and authorize every result from the immutable calling agent session. The package is opt-in; compositions that need enforced deadlines or bounded inline output also mount the generic timeout or spill policies. |
@@ -1344,6 +1345,107 @@ Run a bounded MAOQ decision council. Select the smallest sufficient specialist s
 Source: [`packages/workflow/tool-maoq-decision/src/index.ts`](../packages/workflow/tool-maoq-decision/src/index.ts)
 
 The strategic path computes immutable-snapshot features before selected specialists run, binds interpretation to evidence and allowlisted Mao methods, and keeps an independent risk veto outside model control; the diagnostic path exercises the council runtime.
+
+<a id="deepseek-aidsh-tool-maoq-snapshot"></a>
+
+## `@deepseek-ai/dsh-tool-maoq-snapshot`
+
+### `maoq_snapshot_generate`
+
+Discover and persist a bounded window of recent quality-approved immutable market snapshots. The cutoff and source versions are exact; this tool does not analyze or rank stocks.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "adapterName": {
+      "type": "string",
+      "description": "Registered and deployment-allowed source name."
+    },
+    "beforeOrOn": {
+      "type": "string",
+      "description": "Newest allowed trading date in YYYY-MM-DD form."
+    },
+    "cutoffTime": {
+      "type": "string",
+      "description": "Evidence cutoff as an ISO timestamp with explicit offset."
+    },
+    "count": {
+      "type": "integer",
+      "description": "Number of consecutive quality-approved sessions to generate."
+    }
+  },
+  "required": [
+    "adapterName",
+    "beforeOrOn",
+    "cutoffTime",
+    "count"
+  ]
+}
+```
+
+Source: [`packages/market/tool-maoq-snapshot/src/index.ts`](../packages/market/tool-maoq-snapshot/src/index.ts)
+
+### `maoq_snapshot_inspect`
+
+Load and verify one immutable market snapshot by exact SHA-256 hash, returning bounded identity and quality metadata rather than all stock rows.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "hash": {
+      "type": "string",
+      "description": "Exact lowercase snapshot SHA-256 content hash."
+    }
+  },
+  "required": [
+    "hash"
+  ]
+}
+```
+
+Source: [`packages/market/tool-maoq-snapshot/src/index.ts`](../packages/market/tool-maoq-snapshot/src/index.ts)
+
+### `maoq_snapshot_list`
+
+Verify and list locally stored immutable snapshot summaries with exact hashes. Results are newest first and never select a snapshot implicitly.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "limit": {
+      "type": "integer",
+      "description": "Maximum summaries to return."
+    },
+    "beforeOrOn": {
+      "type": "string",
+      "description": "Optional inclusive trading-date ceiling in YYYY-MM-DD form."
+    }
+  },
+  "required": [
+    "limit"
+  ]
+}
+```
+
+Source: [`packages/market/tool-maoq-snapshot/src/index.ts`](../packages/market/tool-maoq-snapshot/src/index.ts)
+
+### `maoq_snapshot_sources`
+
+List registered immutable market snapshot sources and whether each supports recent-session discovery. This tool performs no acquisition.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/market/tool-maoq-snapshot/src/index.ts`](../packages/market/tool-maoq-snapshot/src/index.ts)
+
+The four bounded tools discover source capabilities, generate an exact immutable window, list verified local hashes, and inspect one snapshot without exposing full stock rows. Generation requires a deployment-allowed adapter and never deletes or overwrites source data.
 
 <a id="deepseek-aidsh-tool-ralph"></a>
 

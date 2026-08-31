@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The MAOQ application layer composes over `dsh-base` and `dsh-web-app`. It supplies the commander persona and mounts [`dsh-tool-maoq-decision`](../../workflow/tool-maoq-decision/README.md), the immutable [`dsh-market-snapshot`](../../market/market-snapshot/README.md) fact store, and the pre-cutoff [`dsh-market-news-web`](../../market/market-news-web/README.md) evidence freezer. The shipped `maoq` profile therefore retains the ordinary browser, data, web-search, and subagent capabilities while adding one bounded decision council. It grants no live-trading authority.
+The MAOQ application layer composes over `dsh-base` and `dsh-web-app`. It supplies the commander persona and mounts [`dsh-tool-maoq-decision`](../../workflow/tool-maoq-decision/README.md), the immutable [`dsh-market-snapshot`](../../market/market-snapshot/README.md) fact store, the bounded [`dsh-tool-maoq-snapshot`](../../market/tool-maoq-snapshot/README.md) acquisition tools, and the pre-cutoff [`dsh-market-news-web`](../../market/market-news-web/README.md) evidence freezer. The shipped `maoq` profile therefore retains the ordinary browser, data, web-search, and subagent capabilities while adding one bounded decision council. It grants no live-trading authority.
 
 ## Table of Contents
 
@@ -26,6 +26,8 @@ The MAOQ application layer composes over `dsh-base` and `dsh-web-app`. It suppli
 ## Use this package
 
 Launch with `dsh --profile maoq`. The shipped template composes `dsh-base`, `dsh-web-app`, then this policy layer, and keeps profile patches live-reloadable. The market snapshot service stores immutable artifacts under `.maoq/snapshots`, reads audited provider-neutral imports from `.maoq/imports`, and freezes pre-cutoff web evidence under `.maoq/news`, all relative to the launch directory. On a supported macOS and Node combination, profile launch automatically inherits enabled system HTTP and HTTPS proxies when no explicit proxy environment is present. The decision council reuses the local Codex/ChatGPT login through Codex app-server, pins `gpt-5.6-sol`, permits at most four selected specialists, and limits rendered results to 32768 characters. Token usage is reported per specialist, commander synthesis, and independent risk review, then aggregated across input, cache, output, reasoning, and total tokens. Calls without provider usage are counted in `unavailableCalls` rather than estimated.
+
+The profile also mounts the lazy `long-short-stock-mysql` adapter. Configure `MAOQ_MYSQL_HOST`, `MAOQ_MYSQL_PORT`, `MAOQ_MYSQL_SOCKET`, `MAOQ_MYSQL_USER`, and `MAOQ_MYSQL_DATABASE` when their defaults do not match the existing daily-data database. Set `MAOQ_MYSQL_PASSWORD_CREDENTIAL` to the credential-store key that holds the password; the password itself never enters the patch or tool arguments. The commander may generate at most ten sessions per foreground call.
 
 <a id="operate-and-recover"></a>
 ## Operate and recover
@@ -62,7 +64,7 @@ Stable while the profile, plugin roster, and live patch text are unchanged. A pr
 
 ## Known Limitations and Deferred Work
 
-- **Daily database remains opt-in** — this layer mounts snapshot semantics, audited JSON import, and news freezing; production MySQL location and credentials remain deployment-specific configuration.
+- **Daily database is deployment-configured** — the adapter is lazy, but generation fails until the configured MySQL endpoint and password credential are available.
 - **No portfolio executor** — decisions stop at research and paper-trading output.
 - **One generic risk reviewer** — numeric exposure, liquidity, and drawdown engines remain future independent services.
 

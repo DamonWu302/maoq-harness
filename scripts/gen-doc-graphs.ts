@@ -104,7 +104,7 @@ const SERVICE_ROLES: ServiceRole[] = [
     title: 'Immutable MAOQ market snapshots',
     mode: 'seam',
     implementations: ['market-snapshot-json', 'market-snapshot-mysql'],
-    consumers: ['tool-maoq-decision'],
+    consumers: ['tool-maoq-decision', 'tool-maoq-snapshot'],
     note: 'Adapters build exact cutoff identities; strategic consumers load frozen facts by content hash.',
   },
   {

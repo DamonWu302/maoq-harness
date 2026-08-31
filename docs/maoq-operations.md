@@ -75,7 +75,7 @@ P0 is complete when the automated evidence is green and the Local Codex canary p
 
 ## P1 canary
 
-The production daily adapter is opt-in because database endpoints and credentials are deployment facts. Mount `dsh-market-snapshot-mysql` beside the shipped snapshot and news services, using a SELECT-only account and either a Unix socket or TCP endpoint. Call `discoverIdentity(tradingDate, cutoffTime, newsBatchHash?)`, then build through `ctx.marketSnapshots` with the returned exact identity. Do not replace any version token with a friendly date.
+The profile mounts the production daily adapter lazily because database endpoints and credentials are deployment facts. Use a SELECT-only account and configure `MAOQ_MYSQL_HOST`, `MAOQ_MYSQL_PORT`, `MAOQ_MYSQL_SOCKET`, `MAOQ_MYSQL_USER`, `MAOQ_MYSQL_DATABASE`, and the password credential key `MAOQ_MYSQL_PASSWORD_CREDENTIAL` as needed. Then ask the commander to “generate the latest 10 immutable daily snapshots through 2026-08-28 with cutoff 2026-08-31T16:00:00+08:00.” It may use `maoq_snapshot_sources`, `maoq_snapshot_generate`, `maoq_snapshot_list`, and `maoq_snapshot_inspect`; generation returns exact `currentHash` and `historyHashes` for strategic analysis. Do not replace any version token with a friendly date.
 
 Policy and news acquisition is a separate pre-cutoff step. Run `ctx.marketNews.acquire()` with versioned queries early enough that it finishes before `cutoffTime`; add its content hash through `discoverIdentity`. A search first executed after the cutoff is ineligible even if the article was published earlier. Replays call `get(hash)` and perform no search.
 
@@ -87,6 +87,7 @@ The 2026-08-31 local acceptance used trading date 2026-08-28 and cutoff `2026-08
 |---|---|---|
 | Canonical immutable build, exact identity, conflicts, and frozen replay | [`market-snapshot.spec.ts`](../packages/market/market-snapshot/tests/market-snapshot.spec.ts) | Repeated build and persisted read returned the hash above |
 | Quality-gated daily, reference, sector, breadth, and emotion facts | [`market-snapshot-mysql.spec.ts`](../packages/market/market-snapshot-mysql/tests/market-snapshot-mysql.spec.ts) | 5,208 stocks, 31 sectors, 6 indices; joined count equaled the quality row |
+| Model-triggered bounded acquisition and exact hash recovery | [`loader-composition.spec.ts`](../packages/market/tool-maoq-snapshot/tests/loader-composition.spec.ts) | Ask for a bounded window, then inspect the returned current hash |
 | Cutoff-safe web evidence and offline replay | [`market-news-web.spec.ts`](../packages/market/market-news-web/tests/market-news-web.spec.ts) | The shipped profile mounts the immutable store at `.maoq/news`; a provider canary is required before relying on that provider's timestamps |
 | No look-ahead or silent quality fallback | MySQL and news tests linked above | Refreshed post-cutoff index evidence and the incomplete session were both rejected |
 | Provider-neutral audited import | [`market-snapshot-json.spec.ts`](../packages/market/market-snapshot-json/tests/market-snapshot-json.spec.ts) | Exact identity-addressed imports remain available without database credentials |

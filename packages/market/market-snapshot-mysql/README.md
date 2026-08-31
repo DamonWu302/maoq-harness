@@ -25,7 +25,7 @@ This adapter reads the existing `long_short_stock` MySQL quality pipeline instea
 <a id="use-this-package"></a>
 ## Use this package
 
-Mount it only where the audited database is reachable. The MAOQ default bundle deliberately keeps the credential-free JSON adapter as its default.
+Mount it only where the audited database is reachable. The MAOQ profile mounts it lazily beside the credential-free JSON adapter, so startup remains available before the database is configured.
 
 ```yaml
 - name: '@deepseek-ai/dsh-market-snapshot-mysql'
@@ -55,6 +55,8 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 
 <details>
 <summary>Implementation internals — click to expand</summary>
+
+`discoverRecent()` selects an exact bounded window of quality-approved sessions and resolves each identity in ascending date order.
 
 `discoverIdentity()` reads the dated quality decision and exact maximum fetch versions. `load()` repeats the version check, uses parameterized SELECT-only SQL, requires the joined price count to equal the quality count, and converts turnover percent to a ratio while applying HFQ only to prices. When price-limit `pre_close` is absent, the identity binds the previous-price version and the adapter uses the stock's previous session raw close. A new listing without a previous bar stays visible with `pre-close-unavailable-no-history` and is excluded from return-derived facts. Sector bars are equal-weight `raw price / pre-close` indices over the latest effective SW L1 membership. Emotion facts require the configured number of prior sessions with complete price and price-limit coverage; no model labels or stock ranking enter this package.
 

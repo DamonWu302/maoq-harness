@@ -38,6 +38,16 @@
       config:
         root: .maoq/imports
 
+    - id: market-snapshot-mysql
+      name: '@deepseek-ai/dsh-market-snapshot-mysql'
+      config:
+        host: !!js process.env.MAOQ_MYSQL_HOST ?? '127.0.0.1'
+        port: !!js Number(process.env.MAOQ_MYSQL_PORT ?? 3306)
+        socketPath: !!js process.env.MAOQ_MYSQL_SOCKET
+        user: !!js process.env.MAOQ_MYSQL_USER ?? 'root'
+        database: !!js process.env.MAOQ_MYSQL_DATABASE ?? 'long_short_stock'
+        passwordEnv: !!js process.env.MAOQ_MYSQL_PASSWORD_CREDENTIAL
+
     - id: market-news-web
       name: '@deepseek-ai/dsh-market-news-web'
       config:
@@ -55,3 +65,13 @@
         subagentProvider: codex
         maxSpecialists: 4
         maxResultChars: 32768
+
+    - id: tool-maoq-snapshot
+      name: '@deepseek-ai/dsh-tool-maoq-snapshot'
+      config:
+        allowedAdapters:
+          - long-short-stock-mysql
+        maxGenerateCount: 10
+        maxListCount: 20
+        maxScanFiles: 500
+        generateTimeoutMs: 600000

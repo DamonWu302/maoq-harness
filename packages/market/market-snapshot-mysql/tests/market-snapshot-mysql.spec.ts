@@ -28,6 +28,10 @@ function fixture(options: FixtureOptions = {}): { query: MarketSnapshotQuery; st
     list_status: 'L', list_date: '2020-01-01', delist_date: null, lifecycle_source: 'tushare_official', lifecycle_retrieved_at: FETCHED,
   }
   const routes: Record<string, object[]> = {
+    'available-dates': [
+      { trading_date: DATE },
+      { trading_date: '2026-08-27' },
+    ],
     quality: [{ trade_date: DATE, status: 'complete', observed_rows: options.observed ?? 1, minimum_required_rows: 1, usable_for_model: options.usable ?? 1, source: 'tushare_official', updated_at: FETCHED }],
     versions: [{
       price_version: FETCHED,
@@ -49,10 +53,13 @@ function fixture(options: FixtureOptions = {}): { query: MarketSnapshotQuery; st
   return {
     statements,
     query: {
-      rows: async <T extends object>(sql: string): Promise<T[]> => {
+      rows: async <T extends object>(sql: string, parameters: readonly unknown[]): Promise<T[]> => {
         statements.push(sql)
         const route = Object.keys(routes).find(key => sql.includes(`maoq:${key}`))
         if (route === undefined) throw new Error(`unexpected SQL: ${sql}`)
+        if (route === 'quality') {
+          return routes[route]!.map(row => ({ ...row, trade_date: String(parameters[0]) })) as T[]
+        }
         return routes[route] as T[]
       },
     },
@@ -60,6 +67,16 @@ function fixture(options: FixtureOptions = {}): { query: MarketSnapshotQuery; st
 }
 
 describe('long_short_stock MySQL adapter', () => {
+  it('discovers a bounded recent window in ascending trading-date order', async () => {
+    const { query, statements } = fixture()
+    const adapter = new LongShortStockMysqlAdapter(query, { minimumStocks: 1, historySessions: 2 })
+    const identities = await adapter.discoverRecent({ beforeOrOn: DATE, cutoffTime: CUTOFF, limit: 2 })
+    expect(identities.map(item => item.tradingDate)).toEqual(['2026-08-27', DATE])
+    expect(statements.find(sql => sql.includes('maoq:available-dates'))).toContain("status='complete'")
+    await expect(adapter.discoverRecent({ beforeOrOn: DATE, cutoffTime: CUTOFF, limit: 3 }))
+      .rejects.toThrow(/2 complete sessions; 3 required/)
+  })
+
   it('discovers exact versions and builds deterministic adjusted facts', async () => {
     const { query, statements } = fixture()
     const adapter = new LongShortStockMysqlAdapter(query, { minimumStocks: 1, historySessions: 2 })

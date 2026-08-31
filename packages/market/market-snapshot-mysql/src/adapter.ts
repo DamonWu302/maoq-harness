@@ -3,6 +3,7 @@ import type {
   MarketBreadth,
   MarketProvenance,
   MarketSnapshotAdapter,
+  MarketSnapshotDiscoveryRequest,
   MarketSnapshotDraft,
   MarketSnapshotIdentityInput,
   SectorDailySnapshot,
@@ -92,11 +93,22 @@ interface LimitHistoryRow {
   up_limit: string | null
 }
 
+interface AvailableDateRow {
+  trading_date: string
+}
+
 const QUALITY_SQL = `/* maoq:quality */
 SELECT DATE_FORMAT(trade_date, '%Y-%m-%d') trade_date, status, observed_rows,
        minimum_required_rows, usable_for_model, source,
        DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s.%f+08:00') updated_at
 FROM daily_price_session_quality WHERE trade_date = ?`
+
+const AVAILABLE_DATES_SQL = `/* maoq:available-dates */
+SELECT DATE_FORMAT(trade_date, '%Y-%m-%d') trading_date
+FROM daily_price_session_quality
+WHERE trade_date <= ? AND status='complete' AND usable_for_model=1
+  AND observed_rows >= GREATEST(minimum_required_rows, ?)
+ORDER BY trade_date DESC LIMIT ?`
 
 const VERSION_SQL = `/* maoq:versions */
 SELECT
@@ -271,6 +283,32 @@ export class LongShortStockMysqlAdapter implements MarketSnapshotAdapter {
   private readonly minimumStocks: number
   private readonly historySessions: number
   private readonly readNewsBatch: ((hash: string) => Promise<MarketNewsBatch>) | undefined
+
+  /**
+   * Discover the newest quality-approved sessions and bind each to exact source versions.
+   * @param request - Explicit date ceiling, cutoff, and bounded session count.
+   * @returns Exact identities in ascending trading-date order.
+   */
+  async discoverRecent(request: MarketSnapshotDiscoveryRequest): Promise<readonly MarketSnapshotIdentityInput[]> {
+    if (!Number.isInteger(request.limit) || request.limit < 1) {
+      throw new MarketSnapshotMysqlError('recent discovery limit must be a positive integer')
+    }
+    const dates = await this.query.rows<AvailableDateRow>(AVAILABLE_DATES_SQL, [
+      request.beforeOrOn,
+      this.minimumStocks,
+      request.limit,
+    ])
+    if (dates.length !== request.limit) {
+      throw new MarketSnapshotMysqlError(
+        `recent discovery found ${String(dates.length)} complete sessions; ${String(request.limit)} required`,
+      )
+    }
+    const identities: MarketSnapshotIdentityInput[] = []
+    for (const date of dates.reverse()) {
+      identities.push(await this.discoverIdentity(date.trading_date, request.cutoffTime))
+    }
+    return identities
+  }
 
   /**
    * Discover the exact versions required to request a reproducible snapshot.
