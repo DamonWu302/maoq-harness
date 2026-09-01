@@ -53,6 +53,8 @@ export interface Config {
   maxStateFiles?: number
   /** Maximum snapshot files a freshness query may verify (default 500). */
   maxSnapshotFiles?: number
+  /** Maximum age of the canonical daily state in hours (default 24). */
+  dailyStateMaximumAgeHours?: number
 }
 
 /** Schemastery configuration for the MAOQ decision tool. */
@@ -64,6 +66,7 @@ export const Config: z<Config> = z.object({
   stateRoot: z.string().default('.maoq/decisions'),
   maxStateFiles: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(500),
   maxSnapshotFiles: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(500),
+  dailyStateMaximumAgeHours: z.number().min(0).max(Number.MAX_SAFE_INTEGER).default(24),
 })
 
 /** Validated deployment values shared by both MAOQ tool registrations. */
@@ -75,6 +78,7 @@ export interface ResolvedConfig {
   readonly stateRoot: string
   readonly maxStateFiles: number
   readonly maxSnapshotFiles: number
+  readonly dailyStateMaximumAgeHours: number
 }
 
 interface MaoqCallArgs {
@@ -250,6 +254,7 @@ function resolveConfig(config: Config): ResolvedConfig {
   const stateRoot = config.stateRoot ?? '.maoq/decisions'
   const maxStateFiles = config.maxStateFiles ?? 500
   const maxSnapshotFiles = config.maxSnapshotFiles ?? 500
+  const dailyStateMaximumAgeHours = config.dailyStateMaximumAgeHours ?? 24
   if (subagentProvider.length === 0 || subagentProvider !== subagentProvider.trim()) {
     throw new TypeError('subagentProvider must be a non-empty normalized string')
   }
@@ -266,7 +271,19 @@ function resolveConfig(config: Config): ResolvedConfig {
   if (!Number.isSafeInteger(maxSnapshotFiles) || maxSnapshotFiles < 1) {
     throw new TypeError('maxSnapshotFiles must be a positive safe integer')
   }
-  return { subagentProvider, maxSpecialists, maxResultChars, analysisMode, stateRoot, maxStateFiles, maxSnapshotFiles }
+  if (!Number.isFinite(dailyStateMaximumAgeHours) || dailyStateMaximumAgeHours < 0) {
+    throw new TypeError('dailyStateMaximumAgeHours must be a non-negative finite number')
+  }
+  return {
+    subagentProvider,
+    maxSpecialists,
+    maxResultChars,
+    analysisMode,
+    stateRoot,
+    maxStateFiles,
+    maxSnapshotFiles,
+    dailyStateMaximumAgeHours,
+  }
 }
 
 /**
@@ -386,7 +403,7 @@ export function apply(ctx: Context, config: Config): void {
   ctx.systemPrompt.section({
     name: 'tool:maoq-decision',
     order: ctx.systemPrompt.getSectionOrder('TOOL_WORKFLOW'),
-    text: 'For current-state or multi-day review questions, read the persisted decision mirrors with maoq_state_latest, maoq_state_history, or maoq_state_get before considering a new analysis. A persisted mirror is current only when freshness.currentUseAllowed is true; otherwise use it for history only and obtain a new immutable snapshot before analysis. Call maoq_analyze_strategy with the smallest sufficient specialist set only when no matching current state exists or a new immutable snapshot requires one; exact repeated inputs return the persisted state without starting agents. Its deterministic features, evidence references, Mao method attributions, and independent risk veto are binding. Use maoq_decide only for council-runtime diagnostics. None of these tools can place a live order or rank stocks in the P2 strategic-state phase.',
+    text: 'For current-state questions, call maoq_state_latest first. A persisted mirror is current only when freshness.currentUseAllowed is true. If it is missing or stale and at least three trading-day snapshots exist, call maoq_state_refresh_daily; the host fixes its objective, snapshot window, specialist lenses, decision time, and age policy, and exact repeats start no agents. Use maoq_state_history for multi-day review and maoq_state_get for one exact mirror. Call maoq_analyze_strategy only for an explicitly ad-hoc question that the canonical daily state does not answer, using the smallest sufficient specialist set. Deterministic features, evidence references, Mao method attributions, and the independent risk veto are binding. Use maoq_decide only for council-runtime diagnostics. None of these tools can place a live order or rank stocks in the P2 strategic-state phase.',
   })
   registerStrategicStateTool(ctx, current)
   registerStrategicStateQueryTools(ctx, current)

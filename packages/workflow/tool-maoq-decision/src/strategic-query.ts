@@ -1,5 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
+import { contentHash } from '@deepseek-ai/dsh-market-snapshot'
 import { STRATEGIC_ENGINE_VERSION } from '@deepseek-ai/dsh-market-strategic-state'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ToolCallView, ToolResultView } from '@deepseek-ai/dsh-tools'
@@ -15,6 +16,13 @@ import {
 
 interface FreshnessArgs {
   readonly asOfTime?: string
+}
+
+function providerSettingsFingerprint(ctx: Context, providerName: string): string {
+  const settings = ctx.get('settings')
+  if (settings === undefined) return 'unavailable'
+  const value = settings.describe().find(item => item.ns === `subagent-codex-${providerName}`)?.value
+  return value === undefined ? 'unavailable' : contentHash(value)
 }
 
 function render(value: unknown, maxChars: number): string {
@@ -48,6 +56,7 @@ export function registerStrategicStateQueryTools(ctx: Context, getConfig: () => 
       workflowVersion: STRATEGIC_WORKFLOW_VERSION,
       analysisMode: getConfig().analysisMode,
       subagentProvider: getConfig().subagentProvider,
+      providerSettingsFingerprint: providerSettingsFingerprint(ctx, getConfig().subagentProvider),
     })
   }
   const freshnessParameters = {

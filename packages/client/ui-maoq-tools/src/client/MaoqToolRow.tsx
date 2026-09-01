@@ -17,6 +17,7 @@ export const MAOQ_TOOL_TITLES = {
   maoq_state_latest: 'stateLatest.title',
   maoq_state_history: 'stateHistory.title',
   maoq_state_get: 'stateGet.title',
+  maoq_state_refresh_daily: 'stateRefreshDaily.title',
 } as const satisfies Record<string, MaoqToolKey>
 
 type MaoqToolName = keyof typeof MAOQ_TOOL_TITLES
@@ -59,6 +60,7 @@ function summary(toolName: MaoqToolName, block: ToolCallViewProps['block'], t: R
   }
   if (toolName === 'maoq_snapshot_inspect') return typeof args['hash'] === 'string' ? `${args['hash'].slice(0, 12)}…` : ''
   if (toolName === 'maoq_state_history') return `最近 ${scalar(args['limit'])} 条`
+  if (toolName === 'maoq_state_refresh_daily') return t('state.dailyWindow')
   if (toolName === 'maoq_state_get' || toolName === 'maoq_state_latest') {
     const freshness = freshnessOf(block)
     if (freshness !== undefined) return t(freshness === 'fresh' ? 'state.fresh' : 'state.stale')

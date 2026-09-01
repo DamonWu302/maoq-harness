@@ -71,6 +71,7 @@ export const STRATEGIC_STATE_STALE_REASONS = [
   'workflow_changed',
   'analysis_mode_changed',
   'provider_route_changed',
+  'provider_settings_changed',
 ] as const
 
 /** Machine-readable reasons why a persisted mirror is historical rather than current. */
@@ -94,6 +95,7 @@ export interface StrategicStateFreshnessContext {
   readonly workflowVersion: string
   readonly analysisMode: MaoqAnalysisMode
   readonly subagentProvider: string
+  readonly providerSettingsFingerprint: string
 }
 
 function isNotFound(error: unknown): boolean {
@@ -186,6 +188,7 @@ export function evaluateStrategicStateFreshness(
   if (context.workflowVersion !== record.input.workflowVersion) reasons.push('workflow_changed')
   if (context.analysisMode !== record.input.analysisMode) reasons.push('analysis_mode_changed')
   if (context.subagentProvider !== record.input.subagentProvider) reasons.push('provider_route_changed')
+  if (context.providerSettingsFingerprint !== record.input.providerSettingsFingerprint) reasons.push('provider_settings_changed')
   return {
     status: reasons.length === 0 ? 'fresh' : 'stale',
     currentUseAllowed: reasons.length === 0,

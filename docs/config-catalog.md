@@ -2949,6 +2949,8 @@ export interface Config {
   maxStateFiles?: number
   /** Maximum snapshot files a freshness query may verify (default 500). */
   maxSnapshotFiles?: number
+  /** Maximum age of the canonical daily state in hours (default 24). */
+  dailyStateMaximumAgeHours?: number
 }
 
 /** Strategic-analysis execution depth. */

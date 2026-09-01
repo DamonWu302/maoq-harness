@@ -17,6 +17,7 @@ import type { WorkflowResult, WorkflowRun, WorkflowStartRequest } from '@deepsee
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { normalDraft } from '../../../market/market-snapshot/tests/fixtures.ts'
 import * as toolMaoqDecision from '../src/index.ts'
+import { MAOQ_DAILY_STATE_OBJECTIVE, MAOQ_DAILY_STATE_SPECIALISTS } from '../src/strategic.ts'
 
 const roots: string[] = []
 
@@ -88,14 +89,14 @@ function datedDraft(date: string, offset: number): MarketSnapshotDraft {
   }
 }
 
-async function setup(analysisMode: 'quick' | 'deep' = 'deep') {
+async function setup(analysisMode: 'quick' | 'deep' = 'deep', snapshotCount = 3) {
   const root = await mkdtemp(join(tmpdir(), 'maoq-strategic-tool-'))
   roots.push(root)
   const snapshots = [
     buildMarketSnapshot(datedDraft('2026-08-26', 0)),
     buildMarketSnapshot(datedDraft('2026-08-27', 1)),
     buildMarketSnapshot(datedDraft('2026-08-28', 2)),
-  ]
+  ].slice(0, snapshotCount)
   const store = new MarketSnapshotStore(root)
   await Promise.all(snapshots.map(snapshot => store.put(snapshot)))
   const ctx = new Context()
@@ -114,7 +115,11 @@ async function setup(analysisMode: 'quick' | 'deep' = 'deep') {
   return { ctx, engine: ctx.workflowEngine as StubEngine, snapshots, snapshotStore: store, parent: { id: SessionId('commander'), options: {} } as unknown as Agent }
 }
 
-function workflowValue(features: StrategicFeatureRecord, badRef = false) {
+function workflowValue(
+  features: StrategicFeatureRecord,
+  badRef = false,
+  specialists: readonly string[] = ['market_regime'],
+) {
   const refs = features.evidence.map(item => item.ref)
   const supporting = badRef ? ['invented'] : [refs[0]!]
   const application = {
@@ -144,7 +149,7 @@ function workflowValue(features: StrategicFeatureRecord, badRef = false) {
       confidence: 0.68,
       eligiblePosture: 'watch',
       maoMethodApplications: [application],
-      selectedSpecialists: ['market_regime'],
+      selectedSpecialists: specialists,
     },
     risk: { approved: true, verdict: 'approve', reasons: ['引用闭合'], evidenceRefs: [refs[0]!], hardLimits: ['禁止实盘'] },
     tokenUsage: { calls: [], total: { inputTokens: 10, outputTokens: 5, totalTokens: 15 }, unavailableCalls: 0 },
@@ -152,6 +157,78 @@ function workflowValue(features: StrategicFeatureRecord, badRef = false) {
 }
 
 describe('maoq_analyze_strategy', () => {
+  it('generates one host-canonical daily state and reuses it across repeated refreshes', async () => {
+    const { ctx, engine, snapshots, parent } = await setup('quick')
+    const pending = ctx.tools.execute({
+      signal: new AbortController().signal,
+      callId: ToolCallId('daily-state-first'),
+      name: 'maoq_state_refresh_daily',
+      arguments: {},
+      agent: parent,
+    })
+    await vi.waitFor(() => { expect(engine.requests).toHaveLength(1) }, { timeout: 4_000 })
+    const request = engine.requests[0]!
+    const requestArgs = request.args as Record<string, unknown>
+    const features = requestArgs['features'] as StrategicFeatureRecord
+    expect(requestArgs).toMatchObject({
+      objective: MAOQ_DAILY_STATE_OBJECTIVE,
+      specialists: MAOQ_DAILY_STATE_SPECIALISTS,
+      analysisMode: 'quick',
+    })
+    expect(features.tradingDate).toBe('2026-08-28')
+    expect(request.maxTotalAgents).toBe(2)
+    engine.settle({
+      value: { ...workflowValue(features, false, MAOQ_DAILY_STATE_SPECIALISTS), reports: [] },
+      stopReason: 'completed',
+      agentsStarted: 2,
+    })
+    const first = await pending
+    expect(first.isError).toBe(false)
+    if (first.isError) throw new Error('expected canonical daily state')
+    expect(first.value).toMatchObject({ cacheHit: false, agentsStarted: 2 })
+
+    const repeated = await ctx.tools.execute({
+      signal: new AbortController().signal,
+      callId: ToolCallId('daily-state-repeated'),
+      name: 'maoq_state_refresh_daily',
+      arguments: {},
+      agent: parent,
+    })
+    expect(repeated.isError).toBe(false)
+    if (repeated.isError) throw new Error('expected cached canonical daily state')
+    expect(repeated.value).toMatchObject({ cacheHit: true, agentsStarted: 0 })
+    expect(engine.requests).toHaveLength(1)
+    expect(repeated.value).toMatchObject({ decisionId: (first.value as Record<string, unknown>)['decisionId'] })
+
+    const latest = await ctx.tools.execute({
+      signal: new AbortController().signal,
+      callId: ToolCallId('daily-state-latest'),
+      name: 'maoq_state_latest',
+      arguments: { asOfTime: snapshots[2]!.identity.cutoffTime },
+    })
+    expect(latest.isError).toBe(false)
+    if (latest.isError) throw new Error('expected latest canonical daily state')
+    expect(latest.value).toMatchObject({
+      found: true,
+      freshness: { currentUseAllowed: true },
+      state: { input: { objective: MAOQ_DAILY_STATE_OBJECTIVE, specialists: MAOQ_DAILY_STATE_SPECIALISTS } },
+    })
+  })
+
+  it('fails closed before starting agents when three trading dates are unavailable', async () => {
+    const { ctx, engine, parent } = await setup('quick', 2)
+    const result = await ctx.tools.execute({
+      signal: new AbortController().signal,
+      callId: ToolCallId('daily-state-insufficient-history'),
+      name: 'maoq_state_refresh_daily',
+      arguments: {},
+      agent: parent,
+    })
+    expect(result.isError).toBe(true)
+    expect(engine.requests).toHaveLength(0)
+    expect((result.content[0] as { text: string }).text).toContain('at least three distinct trading dates')
+  })
+
   it('uses only synthesis plus independent risk review in quick mode', async () => {
     const { ctx, engine, snapshots, snapshotStore, parent } = await setup('quick')
     const arguments_ = {

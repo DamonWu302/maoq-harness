@@ -34,6 +34,7 @@ describe('MAOQ business tool rows', () => {
     ['maoq_state_latest', '读取最新市场战略状态'],
     ['maoq_state_history', '查看历史战略状态'],
     ['maoq_state_get', '读取指定战略状态'],
+    ['maoq_state_refresh_daily', '生成每日标准战略状态'],
   ] as const)('renders %s with a business-language title', (toolName, title) => {
     render(<MaoqToolRow {...props(toolName, { objective: '判断主攻方向', limit: 10 })} />)
     expect(screen.getByText(title)).toBeTruthy()

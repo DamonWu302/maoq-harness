@@ -120,6 +120,7 @@ describe('StrategicDecisionStore', () => {
       workflowVersion: STRATEGIC_WORKFLOW_VERSION,
       analysisMode: 'quick',
       subagentProvider: 'codex',
+      providerSettingsFingerprint: 'unavailable',
     })).toMatchObject({ status: 'fresh', currentUseAllowed: true, reasons: [] })
     expect(evaluateStrategicStateFreshness(record, {
       evaluatedAt: '2026-08-29T15:30:00.001+08:00',
@@ -129,6 +130,7 @@ describe('StrategicDecisionStore', () => {
       workflowVersion: 'maoq-strategic-workflow-v2',
       analysisMode: 'deep',
       subagentProvider: 'external',
+      providerSettingsFingerprint: 'changed',
     })).toMatchObject({
       status: 'stale',
       currentUseAllowed: false,
@@ -139,6 +141,7 @@ describe('StrategicDecisionStore', () => {
         'workflow_changed',
         'analysis_mode_changed',
         'provider_route_changed',
+        'provider_settings_changed',
       ],
     })
   })
@@ -159,6 +162,7 @@ describe('StrategicDecisionStore', () => {
       workflowVersion: STRATEGIC_WORKFLOW_VERSION,
       analysisMode: 'quick',
       subagentProvider: 'codex',
+      providerSettingsFingerprint: 'unavailable',
     })).toMatchObject({
       status: 'stale',
       currentUseAllowed: false,

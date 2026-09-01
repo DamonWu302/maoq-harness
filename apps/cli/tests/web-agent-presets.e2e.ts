@@ -784,6 +784,7 @@ describe('the shipped MAOQ market-mode composition', () => {
         'maoq_state_get',
         'maoq_state_history',
         'maoq_state_latest',
+        'maoq_state_refresh_daily',
         'web_fetch',
         'web_search',
       ])

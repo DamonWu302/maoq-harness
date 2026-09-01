@@ -13,7 +13,7 @@ import {
   type StrategicInterpretationDraft,
 } from '@deepseek-ai/dsh-market-strategic-state'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { ToolCallView, ToolResultView } from '@deepseek-ai/dsh-tools'
+import type { ToolCallView, ToolResultView, ToolRunContext } from '@deepseek-ai/dsh-tools'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { WorkflowRun } from '@deepseek-ai/dsh-workflow'
 import { requireFreshProvider, type MaoqAnalysisMode, type ResolvedConfig, workflowError } from './index.ts'
@@ -34,6 +34,9 @@ const STRATEGIC_SPECIALISTS = [
 
 type StrategicSpecialist = typeof STRATEGIC_SPECIALISTS[number]
 
+export const MAOQ_DAILY_STATE_OBJECTIVE = 'Determine the daily A-share strategic state: principal contradiction, emotion cycle, least-resistance sector battlefield, counter-evidence, transition conditions, and risk-vetoed posture.'
+export const MAOQ_DAILY_STATE_SPECIALISTS = ['market_regime', 'emotion_cycle', 'sector_battlefield'] as const satisfies readonly StrategicSpecialist[]
+
 interface StrategicCallArgs {
   readonly objective: string
   readonly snapshotHash: string
@@ -53,6 +56,32 @@ interface StrategicWorkflowValue {
   readonly risk: JsonValue
   readonly tokenUsage: JsonValue
 }
+
+interface StrategicToolResult extends StrategicDecisionResult {
+  readonly decisionId: string
+  readonly createdAt: string
+  readonly cacheHit: boolean
+}
+
+const STRATEGIC_OUTPUT_SCHEMA = {
+  type: 'object' as const,
+  additionalProperties: false,
+  properties: {
+    runId: { type: 'string' as const, required: true },
+    decisionId: { type: 'string' as const, required: true },
+    createdAt: { type: 'string' as const, required: true },
+    cacheHit: { type: 'boolean' as const, required: true },
+    agentsStarted: { type: 'integer' as const, required: true },
+    analysisMode: { type: 'string' as const, required: true, enum: ['quick', 'deep'] as const },
+    status: { type: 'string' as const, required: true, enum: ['approved', 'vetoed'] as const },
+    actionable: { type: 'boolean' as const, required: true },
+    features: { type: 'json' as const, required: true },
+    reports: { type: 'json' as const, required: true },
+    interpretation: { type: 'json' as const, required: true },
+    risk: { type: 'json' as const, required: true },
+    tokenUsage: { type: 'json' as const, required: true },
+  },
+} as const
 
 const METHOD_IDS = Object.keys(MAO_METHOD_CATALOG) as MaoMethodId[]
 
@@ -298,6 +327,140 @@ function providerSettingsFingerprint(ctx: Context, providerName: string): string
   return providerSettings === undefined ? 'unavailable' : contentHash(providerSettings)
 }
 
+async function executeStrategicAnalysis(
+  ctx: Context,
+  config: ResolvedConfig,
+  args: StrategicCallArgs,
+  exec: ToolRunContext,
+  preloadedCurrent?: MarketSnapshot,
+): Promise<StrategicToolResult> {
+  if (exec.agent === undefined) throw new Error('MAOQ strategic tool requires a calling agent')
+  if (args.objective.trim().length === 0) throw new Error('MAOQ strategic objective must be non-empty')
+  if (args.specialists.length < 1
+    || args.specialists.length > config.maxSpecialists
+    || new Set(args.specialists).size !== args.specialists.length) {
+    throw new Error('MAOQ strategic specialist selection is empty, duplicated, or exceeds the deployment limit')
+  }
+  const objective = args.objective.trim()
+  const input: StrategicDecisionInput = {
+    objective,
+    snapshotHash: args.snapshotHash,
+    historySnapshotHashes: [...args.historySnapshotHashes].sort(),
+    decisionTime: args.decisionTime,
+    maximumAgeHours: args.maximumAgeHours,
+    specialists: [...args.specialists],
+    analysisMode: config.analysisMode,
+    subagentProvider: config.subagentProvider,
+    providerSettingsFingerprint: providerSettingsFingerprint(ctx, config.subagentProvider),
+    featureEngineVersion: STRATEGIC_ENGINE_VERSION,
+    workflowVersion: STRATEGIC_WORKFLOW_VERSION,
+  }
+  const store = new StrategicDecisionStore(config.stateRoot)
+  const cached = await store.getByInput(input)
+  if (cached !== undefined) {
+    return {
+      ...cached.result,
+      decisionId: cached.decisionId,
+      createdAt: cached.createdAt,
+      cacheHit: true,
+      agentsStarted: 0,
+    }
+  }
+  void requireFreshProvider(ctx, config.subagentProvider)
+  const snapshots = ctx.get('marketSnapshots')
+  if (snapshots === undefined) throw new Error('MAOQ strategic tool requires the marketSnapshots service')
+  const current = preloadedCurrent ?? await snapshots.getByHash(args.snapshotHash)
+  if (current === undefined) throw new Error(`MAOQ current market snapshot ${args.snapshotHash} was not found`)
+  if (current.identity.contentHash !== args.snapshotHash) throw new Error('MAOQ preloaded current snapshot does not match the requested hash')
+  const history = await Promise.all(args.historySnapshotHashes.map(hash => snapshots.getByHash(hash)))
+  const missing = args.historySnapshotHashes.find((_hash, index) => history[index] === undefined)
+  if (missing !== undefined) throw new Error(`MAOQ history market snapshot ${missing} was not found`)
+  const features = computeStrategicFeatures(current, history as MarketSnapshot[])
+  const run: WorkflowRun = ctx.workflowEngine.start({
+    script: STRATEGIC_SCRIPT,
+    meta: config.analysisMode === 'deep' ? STRATEGIC_META : QUICK_STRATEGIC_META,
+    args: {
+      analysisMode: config.analysisMode,
+      objective,
+      specialists: args.specialists,
+      features,
+      maoMethods: MAO_METHOD_CATALOG,
+    },
+    subagentProvider: config.subagentProvider,
+    maxTotalAgents: config.analysisMode === 'deep' ? args.specialists.length + 2 : 2,
+    parent: exec.agent,
+    signal: exec.signal,
+  })
+  const onAbort = (): void => { run.cancel('parent step aborted') }
+  exec.signal.addEventListener('abort', onAbort, { once: true })
+  if (exec.signal.aborted) run.cancel('parent step aborted')
+  try {
+    const settled = await run.result
+    const error = workflowError(settled)
+    if (error !== undefined) throw new Error(error)
+    const value = readWorkflowValue(settled.value, args.specialists, features, config.analysisMode)
+    const { marketRegime: _market, emotionCycle: _emotion, selectedSpecialists: _selected, ...draft } = value.decision
+    const state = buildStrategicStateRecord(features, draft, args.decisionTime, args.maximumAgeHours)
+    const approved = (value.risk as Record<string, unknown>)['approved'] === true
+    const result: StrategicDecisionResult = {
+      runId: run.id,
+      agentsStarted: settled.agentsStarted,
+      analysisMode: config.analysisMode,
+      status: approved ? 'approved' as const : 'vetoed' as const,
+      actionable: approved && state.actionable,
+      features: features as unknown as JsonValue,
+      reports: enrichReports(value.reports),
+      interpretation: state.interpretation as unknown as JsonValue,
+      risk: value.risk,
+      tokenUsage: value.tokenUsage,
+    }
+    const record = await store.put(input, result, features.tradingDate, features.cutoffTime)
+    return {
+      ...record.result,
+      decisionId: record.decisionId,
+      createdAt: record.createdAt,
+      cacheHit: false,
+    }
+  } finally {
+    exec.signal.removeEventListener('abort', onAbort)
+    await run.dispose()
+  }
+}
+
+async function dailyStrategicArgs(ctx: Context, config: ResolvedConfig): Promise<{
+  readonly args: StrategicCallArgs
+  readonly current: MarketSnapshot
+}> {
+  if (config.maxSpecialists < MAOQ_DAILY_STATE_SPECIALISTS.length) {
+    throw new Error(`MAOQ daily state requires maxSpecialists >= ${String(MAOQ_DAILY_STATE_SPECIALISTS.length)}`)
+  }
+  const snapshots = ctx.get('marketSnapshots')
+  if (snapshots === undefined) throw new Error('MAOQ daily state requires the marketSnapshots service')
+  const summaries = await snapshots.listSummaries(config.maxSnapshotFiles)
+  const dates = new Set<string>()
+  const window = summaries.filter((summary) => {
+    if (dates.has(summary.tradingDate)) return false
+    dates.add(summary.tradingDate)
+    return true
+  }).slice(0, 3)
+  if (window.length < 3) throw new Error('MAOQ daily state requires snapshots for at least three distinct trading dates')
+  const currentSummary = window[0]
+  if (currentSummary === undefined) throw new Error('MAOQ daily state did not select a current snapshot')
+  const current = await snapshots.getByHash(currentSummary.contentHash)
+  if (current === undefined) throw new Error(`MAOQ current market snapshot ${currentSummary.contentHash} was not found`)
+  return {
+    current,
+    args: {
+      objective: MAOQ_DAILY_STATE_OBJECTIVE,
+      snapshotHash: current.identity.contentHash,
+      historySnapshotHashes: window.slice(1).map(summary => summary.contentHash),
+      decisionTime: current.identity.cutoffTime,
+      maximumAgeHours: config.dailyStateMaximumAgeHours,
+      specialists: [...MAOQ_DAILY_STATE_SPECIALISTS],
+    },
+  }
+}
+
 /**
  * Register the P2 evidence-bound strategic-state tool.
  * @param ctx - Active plugin context that owns tools, workflows, subagents, and optional snapshot service.
@@ -316,121 +479,30 @@ export function registerStrategicStateTool(ctx: Context, getConfig: () => Resolv
       specialists: { type: 'array', required: true, items: { type: 'string', enum: STRATEGIC_SPECIALISTS }, description: 'Ordered smallest sufficient P2 specialist subset.' },
     },
     output: {
-      schema: {
-        type: 'object',
-        additionalProperties: false,
-        properties: {
-          runId: { type: 'string', required: true },
-          decisionId: { type: 'string', required: true },
-          createdAt: { type: 'string', required: true },
-          cacheHit: { type: 'boolean', required: true },
-          agentsStarted: { type: 'integer', required: true },
-          analysisMode: { type: 'string', required: true, enum: ['quick', 'deep'] },
-          status: { type: 'string', required: true, enum: ['approved', 'vetoed'] },
-          actionable: { type: 'boolean', required: true },
-          features: { type: 'json', required: true },
-          reports: { type: 'json', required: true },
-          interpretation: { type: 'json', required: true },
-          risk: { type: 'json', required: true },
-          tokenUsage: { type: 'json', required: true },
-        },
-      },
+      schema: STRATEGIC_OUTPUT_SCHEMA,
       render: (_args, value) => [{ type: 'text', text: render(value as Record<string, unknown>, getConfig().maxResultChars) }],
     },
     async execute(args, exec) {
-      const config = getConfig()
-      if (exec.agent === undefined) throw new Error('MAOQ strategic tool requires a calling agent')
-      if (args.objective.trim().length === 0) throw new Error('MAOQ strategic objective must be non-empty')
-      if (args.specialists.length < 1
-        || args.specialists.length > config.maxSpecialists
-        || new Set(args.specialists).size !== args.specialists.length) {
-        throw new Error('MAOQ strategic specialist selection is empty, duplicated, or exceeds the deployment limit')
-      }
-      const objective = args.objective.trim()
-      const input: StrategicDecisionInput = {
-        objective,
-        snapshotHash: args.snapshotHash,
-        historySnapshotHashes: [...args.historySnapshotHashes].sort(),
-        decisionTime: args.decisionTime,
-        maximumAgeHours: args.maximumAgeHours,
-        specialists: [...args.specialists],
-        analysisMode: config.analysisMode,
-        subagentProvider: config.subagentProvider,
-        providerSettingsFingerprint: providerSettingsFingerprint(ctx, config.subagentProvider),
-        featureEngineVersion: STRATEGIC_ENGINE_VERSION,
-        workflowVersion: STRATEGIC_WORKFLOW_VERSION,
-      }
-      const store = new StrategicDecisionStore(config.stateRoot)
-      const cached = await store.getByInput(input)
-      if (cached !== undefined) {
-        return {
-          ...cached.result,
-          decisionId: cached.decisionId,
-          createdAt: cached.createdAt,
-          cacheHit: true,
-          agentsStarted: 0,
-        }
-      }
-      void requireFreshProvider(ctx, config.subagentProvider)
-      const snapshots = ctx.get('marketSnapshots')
-      if (snapshots === undefined) throw new Error('MAOQ strategic tool requires the marketSnapshots service')
-      const current = await snapshots.getByHash(args.snapshotHash)
-      if (current === undefined) throw new Error(`MAOQ current market snapshot ${args.snapshotHash} was not found`)
-      const history = await Promise.all(args.historySnapshotHashes.map(hash => snapshots.getByHash(hash)))
-      const missing = args.historySnapshotHashes.find((_hash, index) => history[index] === undefined)
-      if (missing !== undefined) throw new Error(`MAOQ history market snapshot ${missing} was not found`)
-      const features = computeStrategicFeatures(current, history as MarketSnapshot[])
-      const run: WorkflowRun = ctx.workflowEngine.start({
-        script: STRATEGIC_SCRIPT,
-        meta: config.analysisMode === 'deep' ? STRATEGIC_META : QUICK_STRATEGIC_META,
-        args: {
-          analysisMode: config.analysisMode,
-          objective,
-          specialists: args.specialists,
-          features,
-          maoMethods: MAO_METHOD_CATALOG,
-        },
-        subagentProvider: config.subagentProvider,
-        maxTotalAgents: config.analysisMode === 'deep' ? args.specialists.length + 2 : 2,
-        parent: exec.agent,
-        signal: exec.signal,
-      })
-      const onAbort = (): void => { run.cancel('parent step aborted') }
-      exec.signal.addEventListener('abort', onAbort, { once: true })
-      if (exec.signal.aborted) run.cancel('parent step aborted')
-      try {
-        const settled = await run.result
-        const error = workflowError(settled)
-        if (error !== undefined) throw new Error(error)
-        const value = readWorkflowValue(settled.value, args.specialists, features, config.analysisMode)
-        const { marketRegime: _market, emotionCycle: _emotion, selectedSpecialists: _selected, ...draft } = value.decision
-        const state = buildStrategicStateRecord(features, draft, args.decisionTime, args.maximumAgeHours)
-        const approved = (value.risk as Record<string, unknown>)['approved'] === true
-        const result: StrategicDecisionResult = {
-          runId: run.id,
-          agentsStarted: settled.agentsStarted,
-          analysisMode: config.analysisMode,
-          status: approved ? 'approved' as const : 'vetoed' as const,
-          actionable: approved && state.actionable,
-          features: features as unknown as JsonValue,
-          reports: enrichReports(value.reports),
-          interpretation: state.interpretation as unknown as JsonValue,
-          risk: value.risk,
-          tokenUsage: value.tokenUsage,
-        }
-        const record = await store.put(input, result, features.tradingDate, features.cutoffTime)
-        return {
-          ...record.result,
-          decisionId: record.decisionId,
-          createdAt: record.createdAt,
-          cacheHit: false,
-        }
-      } finally {
-        exec.signal.removeEventListener('abort', onAbort)
-        await run.dispose()
-      }
+      return executeStrategicAnalysis(ctx, getConfig(), args, exec)
     },
     presentCall: (args: StrategicCallArgs): ToolCallView => ({ card: 'generic', title: 'MAOQ strategic state', rawInput: args.objective }),
     presentResult: (_args: StrategicCallArgs, _result: { content: ContentBlock[]; isError: boolean }): ToolResultView => ({ card: 'generic' }),
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'maoq_state_refresh_daily',
+    description: 'Generate or reuse the one canonical daily MAOQ strategic state. The host selects the newest three distinct trading-day snapshots and fixes the objective, specialist lenses, decision time, and age policy; the model cannot vary them. This tool cannot rank stocks or place orders.',
+    parameters: {},
+    output: {
+      schema: STRATEGIC_OUTPUT_SCHEMA,
+      render: (_args, value) => [{ type: 'text', text: render(value as Record<string, unknown>, getConfig().maxResultChars) }],
+    },
+    async execute(_args, exec) {
+      const config = getConfig()
+      const daily = await dailyStrategicArgs(ctx, config)
+      return executeStrategicAnalysis(ctx, config, daily.args, exec, daily.current)
+    },
+    presentCall: (): ToolCallView => ({ card: 'generic', title: 'Refresh canonical MAOQ daily state' }),
+    presentResult: (_args: unknown, _result: { content: ContentBlock[]; isError: boolean }): ToolResultView => ({ card: 'generic' }),
   }))
 }

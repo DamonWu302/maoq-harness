@@ -31,7 +31,7 @@ The profile also mounts the lazy `long-short-stock-mysql` adapter. Configure `MA
 
 For market work, choose **MAOQ Market mode** in the new-task preset switch before sending the first message. The preset is fixed after a task starts. This mode keeps the MAOQ snapshot and decision tools plus web research and user questions, while omitting shell, filesystem search/editing, todo, goal, and generic delegation controls. Snapshot questions therefore go directly to the snapshot catalog instead of searching the workspace. **Standard mode** remains available for repository development.
 
-The MAOQ profile also mounts dedicated browser rows that show business names such as “Browse snapshot catalog”, “Generate trading-day snapshots”, “Read latest market strategy state”, and “MAOQ strategic analysis” instead of the generic tool-call fallback. Completed strategic decisions are persisted under `.maoq/decisions`; exact repeated analysis inputs and latest/history queries reuse those mirrors without starting new council children.
+The MAOQ profile also mounts dedicated browser rows that show business names such as “Browse snapshot catalog”, “Generate trading-day snapshots”, “Generate canonical daily strategy state”, and “MAOQ strategic analysis” instead of the generic tool-call fallback. Completed strategic decisions are persisted under `.maoq/decisions`. The no-argument daily refresh selects a host-canonical three-day window, and repeated refreshes reuse the same mirror without starting new council children.
 
 <a id="operate-and-recover"></a>
 ## Operate and recover
