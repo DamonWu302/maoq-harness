@@ -781,6 +781,9 @@ describe('the shipped MAOQ market-mode composition', () => {
         'maoq_snapshot_inspect',
         'maoq_snapshot_list',
         'maoq_snapshot_sources',
+        'maoq_state_get',
+        'maoq_state_history',
+        'maoq_state_latest',
         'web_fetch',
         'web_search',
       ])

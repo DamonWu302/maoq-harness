@@ -106,7 +106,11 @@ async function setup(analysisMode: 'quick' | 'deep' = 'deep') {
   ctx.subagents.registerProvider(new StubProvider())
   await ctx.plugin(StubEngine)
   await ctx.plugin(MarketSnapshotService, { root })
-  await ctx.plugin(toolMaoqDecision, { subagentProvider: 'fresh', analysisMode })
+  await ctx.plugin(toolMaoqDecision, {
+    subagentProvider: 'fresh',
+    analysisMode,
+    stateRoot: join(root, 'decisions'),
+  })
   return { ctx, engine: ctx.workflowEngine as StubEngine, snapshots, parent: { id: SessionId('commander'), options: {} } as unknown as Agent }
 }
 
@@ -150,18 +154,19 @@ function workflowValue(features: StrategicFeatureRecord, badRef = false) {
 describe('maoq_analyze_strategy', () => {
   it('uses only synthesis plus independent risk review in quick mode', async () => {
     const { ctx, engine, snapshots, parent } = await setup('quick')
+    const arguments_ = {
+      objective: '快速判断市场状态。',
+      snapshotHash: snapshots[2]!.identity.contentHash,
+      historySnapshotHashes: snapshots.slice(0, 2).map(item => item.identity.contentHash),
+      decisionTime: '2026-08-28T16:00:00+08:00',
+      maximumAgeHours: 24,
+      specialists: ['market_regime'],
+    } as const
     const pending = ctx.tools.execute({
       signal: new AbortController().signal,
       callId: ToolCallId('strategy-quick'),
       name: 'maoq_analyze_strategy',
-      arguments: {
-        objective: '快速判断市场状态。',
-        snapshotHash: snapshots[2]!.identity.contentHash,
-        historySnapshotHashes: snapshots.slice(0, 2).map(item => item.identity.contentHash),
-        decisionTime: '2026-08-28T16:00:00+08:00',
-        maximumAgeHours: 24,
-        specialists: ['market_regime'],
-      },
+      arguments: arguments_,
       agent: parent,
     })
     await vi.waitFor(() => { expect(engine.requests).toHaveLength(1) }, { timeout: 4_000 })
@@ -175,7 +180,99 @@ describe('maoq_analyze_strategy', () => {
     const result = await pending
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected quick strategic result')
-    expect(result.value).toMatchObject({ analysisMode: 'quick', agentsStarted: 2 })
+    expect(result.value).toMatchObject({ analysisMode: 'quick', agentsStarted: 2, cacheHit: false })
+    if (typeof result.value !== 'object' || result.value === null || Array.isArray(result.value)) {
+      throw new Error('expected strategic result object')
+    }
+    const decisionIdValue: unknown = result.value['decisionId']
+    if (typeof decisionIdValue !== 'string') throw new Error('expected strategic decision id')
+    expect(decisionIdValue).toMatch(/^[a-f0-9]{64}$/)
+
+    const repeatedResults = []
+    for (let index = 1; index < 10; index += 1) {
+      repeatedResults.push(await ctx.tools.execute({
+        signal: new AbortController().signal,
+        callId: ToolCallId(`strategy-quick-repeated-${String(index)}`),
+        name: 'maoq_analyze_strategy',
+        arguments: arguments_,
+        agent: parent,
+      }))
+    }
+    expect(engine.requests).toHaveLength(1)
+    for (const repeated of repeatedResults) {
+      expect(repeated.isError).toBe(false)
+      if (repeated.isError) throw new Error('expected cached strategic result')
+      expect(repeated.value).toMatchObject({
+        decisionId: decisionIdValue,
+        analysisMode: 'quick',
+        agentsStarted: 0,
+        cacheHit: true,
+      })
+    }
+
+    const latest = await ctx.tools.execute({
+      signal: new AbortController().signal,
+      callId: ToolCallId('strategy-latest'),
+      name: 'maoq_state_latest',
+      arguments: {
+        asOfTime: '2026-08-28T16:00:00+08:00',
+        currentSnapshotHash: snapshots[2]!.identity.contentHash,
+      },
+    })
+    expect(latest.isError).toBe(false)
+    if (latest.isError) throw new Error('expected latest state')
+    expect(latest.value).toMatchObject({
+      found: true,
+      freshness: { status: 'fresh', currentUseAllowed: true, reasons: [] },
+      state: { decisionId: decisionIdValue },
+    })
+
+    const stale = await ctx.tools.execute({
+      signal: new AbortController().signal,
+      callId: ToolCallId('strategy-latest-stale'),
+      name: 'maoq_state_latest',
+      arguments: {
+        asOfTime: '2026-08-30T16:00:00+08:00',
+        currentSnapshotHash: snapshots[1]!.identity.contentHash,
+      },
+    })
+    expect(stale.isError).toBe(false)
+    if (stale.isError) throw new Error('expected stale state result')
+    expect(stale.value).toMatchObject({
+      found: true,
+      freshness: {
+        status: 'stale',
+        currentUseAllowed: false,
+        reasons: ['maximum_age_exceeded', 'snapshot_changed'],
+      },
+    })
+
+    const history = await ctx.tools.execute({
+      signal: new AbortController().signal,
+      callId: ToolCallId('strategy-history'),
+      name: 'maoq_state_history',
+      arguments: { limit: 10 },
+    })
+    expect(history.isError).toBe(false)
+    if (history.isError) throw new Error('expected strategic history')
+    expect(history.value).toMatchObject({
+      count: 1,
+      states: [{ decisionId: decisionIdValue, principalContradiction: '风险偏好修复与分歧压力的矛盾' }],
+    })
+
+    const byId = await ctx.tools.execute({
+      signal: new AbortController().signal,
+      callId: ToolCallId('strategy-by-id'),
+      name: 'maoq_state_get',
+      arguments: { decisionId: decisionIdValue, asOfTime: '2026-08-28T16:00:00+08:00' },
+    })
+    expect(byId.isError).toBe(false)
+    if (byId.isError) throw new Error('expected strategic state by id')
+    expect(byId.value).toMatchObject({
+      found: true,
+      freshness: { status: 'fresh', currentUseAllowed: true },
+      state: { decisionId: decisionIdValue },
+    })
   })
 
   it('loads immutable snapshots, preserves deterministic labels, and exposes sourced Mao method attribution', async () => {

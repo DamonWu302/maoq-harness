@@ -1,11 +1,12 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
-import type { MarketSnapshot } from '@deepseek-ai/dsh-market-snapshot'
+import { contentHash, type MarketSnapshot } from '@deepseek-ai/dsh-market-snapshot'
 import {
   buildStrategicStateRecord,
   computeStrategicFeatures,
   MAO_METHOD_CATALOG,
   resolveMaoMethodApplication,
+  STRATEGIC_ENGINE_VERSION,
   type MaoMethodApplication,
   type MaoMethodId,
   type StrategicFeatureRecord,
@@ -16,6 +17,12 @@ import type { ToolCallView, ToolResultView } from '@deepseek-ai/dsh-tools'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { WorkflowRun } from '@deepseek-ai/dsh-workflow'
 import { requireFreshProvider, type MaoqAnalysisMode, type ResolvedConfig, workflowError } from './index.ts'
+import {
+  StrategicDecisionStore,
+  STRATEGIC_WORKFLOW_VERSION,
+  type StrategicDecisionInput,
+  type StrategicDecisionResult,
+} from './strategic-store.ts'
 
 const STRATEGIC_SPECIALISTS = [
   'market_regime',
@@ -284,6 +291,13 @@ function render(value: Record<string, unknown>, maxChars: number): string {
   return maxChars <= suffix.length ? suffix.slice(0, maxChars) : `${text.slice(0, maxChars - suffix.length)}${suffix}`
 }
 
+function providerSettingsFingerprint(ctx: Context, providerName: string): string {
+  const settings = ctx.get('settings')
+  if (settings === undefined) return 'unavailable'
+  const providerSettings = settings.describe().find(item => item.ns === `subagent-codex-${providerName}`)?.value
+  return providerSettings === undefined ? 'unavailable' : contentHash(providerSettings)
+}
+
 /**
  * Register the P2 evidence-bound strategic-state tool.
  * @param ctx - Active plugin context that owns tools, workflows, subagents, and optional snapshot service.
@@ -307,6 +321,9 @@ export function registerStrategicStateTool(ctx: Context, getConfig: () => Resolv
         additionalProperties: false,
         properties: {
           runId: { type: 'string', required: true },
+          decisionId: { type: 'string', required: true },
+          createdAt: { type: 'string', required: true },
+          cacheHit: { type: 'boolean', required: true },
           agentsStarted: { type: 'integer', required: true },
           analysisMode: { type: 'string', required: true, enum: ['quick', 'deep'] },
           status: { type: 'string', required: true, enum: ['approved', 'vetoed'] },
@@ -329,6 +346,31 @@ export function registerStrategicStateTool(ctx: Context, getConfig: () => Resolv
         || new Set(args.specialists).size !== args.specialists.length) {
         throw new Error('MAOQ strategic specialist selection is empty, duplicated, or exceeds the deployment limit')
       }
+      const objective = args.objective.trim()
+      const input: StrategicDecisionInput = {
+        objective,
+        snapshotHash: args.snapshotHash,
+        historySnapshotHashes: [...args.historySnapshotHashes].sort(),
+        decisionTime: args.decisionTime,
+        maximumAgeHours: args.maximumAgeHours,
+        specialists: [...args.specialists],
+        analysisMode: config.analysisMode,
+        subagentProvider: config.subagentProvider,
+        providerSettingsFingerprint: providerSettingsFingerprint(ctx, config.subagentProvider),
+        featureEngineVersion: STRATEGIC_ENGINE_VERSION,
+        workflowVersion: STRATEGIC_WORKFLOW_VERSION,
+      }
+      const store = new StrategicDecisionStore(config.stateRoot)
+      const cached = await store.getByInput(input)
+      if (cached !== undefined) {
+        return {
+          ...cached.result,
+          decisionId: cached.decisionId,
+          createdAt: cached.createdAt,
+          cacheHit: true,
+          agentsStarted: 0,
+        }
+      }
       void requireFreshProvider(ctx, config.subagentProvider)
       const snapshots = ctx.get('marketSnapshots')
       if (snapshots === undefined) throw new Error('MAOQ strategic tool requires the marketSnapshots service')
@@ -343,7 +385,7 @@ export function registerStrategicStateTool(ctx: Context, getConfig: () => Resolv
         meta: config.analysisMode === 'deep' ? STRATEGIC_META : QUICK_STRATEGIC_META,
         args: {
           analysisMode: config.analysisMode,
-          objective: args.objective.trim(),
+          objective,
           specialists: args.specialists,
           features,
           maoMethods: MAO_METHOD_CATALOG,
@@ -364,7 +406,7 @@ export function registerStrategicStateTool(ctx: Context, getConfig: () => Resolv
         const { marketRegime: _market, emotionCycle: _emotion, selectedSpecialists: _selected, ...draft } = value.decision
         const state = buildStrategicStateRecord(features, draft, args.decisionTime, args.maximumAgeHours)
         const approved = (value.risk as Record<string, unknown>)['approved'] === true
-        return {
+        const result: StrategicDecisionResult = {
           runId: run.id,
           agentsStarted: settled.agentsStarted,
           analysisMode: config.analysisMode,
@@ -375,6 +417,13 @@ export function registerStrategicStateTool(ctx: Context, getConfig: () => Resolv
           interpretation: state.interpretation as unknown as JsonValue,
           risk: value.risk,
           tokenUsage: value.tokenUsage,
+        }
+        const record = await store.put(input, result, features.tradingDate, features.cutoffTime)
+        return {
+          ...record.result,
+          decisionId: record.decisionId,
+          createdAt: record.createdAt,
+          cacheHit: false,
         }
       } finally {
         exec.signal.removeEventListener('abort', onAbort)

@@ -11,11 +11,11 @@ afterEach(cleanup)
 type RowProps = Parameters<typeof MaoqToolRow>[0]
 const t = ((key: keyof typeof zh) => zh[key]) as RowProps['t']
 
-function props(toolName: keyof typeof MAOQ_TOOL_TITLES, args: Record<string, unknown>): RowProps {
+function props(toolName: keyof typeof MAOQ_TOOL_TITLES, args: Record<string, unknown>, result = '{"ok":true}'): RowProps {
   const block: ToolResultNode = {
     kind: 'tool-result', seq: 2, time: 2, callTime: 1, callId: 'call-1',
     call: { name: toolName, argsRaw: JSON.stringify(args) },
-    content: [{ type: 'text', text: '{"ok":true}' }], isError: false, subCalls: [],
+    content: [{ type: 'text', text: result }], isError: false, subCalls: [],
   }
   return {
     callId: 'call-1', toolName, block, sessionId: 'session-1',
@@ -31,6 +31,9 @@ describe('MAOQ business tool rows', () => {
     ['maoq_snapshot_inspect', '核验单日快照'],
     ['maoq_analyze_strategy', 'MAOQ 战略研判'],
     ['maoq_decide', 'MAOQ 风险决策会'],
+    ['maoq_state_latest', '读取最新市场战略状态'],
+    ['maoq_state_history', '查看历史战略状态'],
+    ['maoq_state_get', '读取指定战略状态'],
   ] as const)('renders %s with a business-language title', (toolName, title) => {
     render(<MaoqToolRow {...props(toolName, { objective: '判断主攻方向', limit: 10 })} />)
     expect(screen.getByText(title)).toBeTruthy()
@@ -41,6 +44,14 @@ describe('MAOQ business tool rows', () => {
     expect(screen.getByText('10 日 · 2026-08-28')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /生成交易日快照/ }))
     expect(screen.getByLabelText('结构化结果').textContent).toContain('"ok":true')
+  })
+
+  it.each([
+    ['fresh', '当前可用'],
+    ['stale', '已失效 · 仅供复盘'],
+  ] as const)('surfaces %s strategic-state freshness before expansion', (status, label) => {
+    render(<MaoqToolRow {...props('maoq_state_latest', {}, JSON.stringify({ freshness: { status } }))} />)
+    expect(screen.getByText(label)).toBeTruthy()
   })
 })
 

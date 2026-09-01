@@ -13,6 +13,7 @@ import type { ToolCallView, ToolResultView } from '@deepseek-ai/dsh-tools'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { WorkflowResult, WorkflowRun } from '@deepseek-ai/dsh-workflow'
 import type {} from '@deepseek-ai/dsh-settings'
+import { registerStrategicStateQueryTools } from './strategic-query.ts'
 import { registerStrategicStateTool } from './strategic.ts'
 
 export const name = 'tool-maoq-decision'
@@ -46,6 +47,10 @@ export interface Config {
   maxResultChars?: number
   /** Strategic-analysis depth used by new calls (default `quick`). */
   analysisMode?: MaoqAnalysisMode
+  /** Directory containing persisted strategic decision mirrors (default `.maoq/decisions`). */
+  stateRoot?: string
+  /** Maximum decision files a latest/history query may scan (default 500). */
+  maxStateFiles?: number
 }
 
 /** Schemastery configuration for the MAOQ decision tool. */
@@ -54,6 +59,8 @@ export const Config: z<Config> = z.object({
   maxSpecialists: z.number().step(1).min(1).max(SPECIALIST_ROLES.length).default(4),
   maxResultChars: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(32_768),
   analysisMode: z.union([...MAOQ_ANALYSIS_MODES]).default('quick'),
+  stateRoot: z.string().default('.maoq/decisions'),
+  maxStateFiles: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(500),
 })
 
 /** Validated deployment values shared by both MAOQ tool registrations. */
@@ -62,6 +69,8 @@ export interface ResolvedConfig {
   readonly maxSpecialists: number
   readonly maxResultChars: number
   readonly analysisMode: MaoqAnalysisMode
+  readonly stateRoot: string
+  readonly maxStateFiles: number
 }
 
 interface MaoqCallArgs {
@@ -234,6 +243,8 @@ function resolveConfig(config: Config): ResolvedConfig {
   const maxSpecialists = config.maxSpecialists ?? 4
   const maxResultChars = config.maxResultChars ?? 32_768
   const analysisMode = config.analysisMode ?? 'quick'
+  const stateRoot = config.stateRoot ?? '.maoq/decisions'
+  const maxStateFiles = config.maxStateFiles ?? 500
   if (subagentProvider.length === 0 || subagentProvider !== subagentProvider.trim()) {
     throw new TypeError('subagentProvider must be a non-empty normalized string')
   }
@@ -243,7 +254,11 @@ function resolveConfig(config: Config): ResolvedConfig {
   if (!Number.isSafeInteger(maxResultChars) || maxResultChars < 1) {
     throw new TypeError('maxResultChars must be a positive safe integer')
   }
-  return { subagentProvider, maxSpecialists, maxResultChars, analysisMode }
+  if (stateRoot.trim().length === 0) throw new TypeError('stateRoot must be a non-empty path')
+  if (!Number.isSafeInteger(maxStateFiles) || maxStateFiles < 1) {
+    throw new TypeError('maxStateFiles must be a positive safe integer')
+  }
+  return { subagentProvider, maxSpecialists, maxResultChars, analysisMode, stateRoot, maxStateFiles }
 }
 
 /**
@@ -363,9 +378,10 @@ export function apply(ctx: Context, config: Config): void {
   ctx.systemPrompt.section({
     name: 'tool:maoq-decision',
     order: ctx.systemPrompt.getSectionOrder('TOOL_WORKFLOW'),
-    text: 'For a strategic market decision grounded in an immutable snapshot, call maoq_analyze_strategy with the smallest sufficient specialist set. Its deterministic market regime, emotion cycle, sector battlefield features, evidence references, Mao method attributions, and independent risk veto are binding. Use maoq_decide only for council-runtime diagnostics. Neither tool can place a live order or rank stocks in the P2 strategic-state phase.',
+    text: 'For current-state or multi-day review questions, read the persisted decision mirrors with maoq_state_latest, maoq_state_history, or maoq_state_get before considering a new analysis. A persisted mirror is current only when freshness.currentUseAllowed is true; otherwise use it for history only and obtain a new immutable snapshot before analysis. Call maoq_analyze_strategy with the smallest sufficient specialist set only when no matching current state exists or a new immutable snapshot requires one; exact repeated inputs return the persisted state without starting agents. Its deterministic features, evidence references, Mao method attributions, and independent risk veto are binding. Use maoq_decide only for council-runtime diagnostics. None of these tools can place a live order or rank stocks in the P2 strategic-state phase.',
   })
   registerStrategicStateTool(ctx, current)
+  registerStrategicStateQueryTools(ctx, current)
   ctx.tools.register(defineTool({
     name: 'maoq_decide',
     description: DESCRIPTION,

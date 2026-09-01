@@ -14,6 +14,9 @@ export const MAOQ_TOOL_TITLES = {
   maoq_snapshot_inspect: 'inspect.title',
   maoq_analyze_strategy: 'strategy.title',
   maoq_decide: 'decision.title',
+  maoq_state_latest: 'stateLatest.title',
+  maoq_state_history: 'stateHistory.title',
+  maoq_state_get: 'stateGet.title',
 } as const satisfies Record<string, MaoqToolKey>
 
 type MaoqToolName = keyof typeof MAOQ_TOOL_TITLES
@@ -34,13 +37,34 @@ function argsOf(block: ToolCallViewProps['block']): Record<string, unknown> {
   } catch { return {} }
 }
 
-function summary(toolName: MaoqToolName, block: ToolCallViewProps['block']): string {
+function freshnessOf(block: ToolCallViewProps['block']): 'fresh' | 'stale' | undefined {
+  if (!('kind' in block)) return undefined
+  const text = block.content.find(item => item.type === 'text')?.text
+  if (text === undefined) return undefined
+  try {
+    const parsed: unknown = JSON.parse(text)
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return undefined
+    const freshness: unknown = (parsed as Record<string, unknown>)['freshness']
+    if (typeof freshness !== 'object' || freshness === null || Array.isArray(freshness)) return undefined
+    const status: unknown = (freshness as Record<string, unknown>)['status']
+    return status === 'fresh' || status === 'stale' ? status : undefined
+  } catch { return undefined }
+}
+
+function summary(toolName: MaoqToolName, block: ToolCallViewProps['block'], t: RowProps['t']): string {
   const args = argsOf(block)
   if (toolName === 'maoq_snapshot_generate') return `${scalar(args['count'])} 日 · ${scalar(args['beforeOrOn'])}`
   if (toolName === 'maoq_snapshot_list') {
     return `最近 ${scalar(args['limit'])} 条${typeof args['beforeOrOn'] === 'string' ? ` · 截至 ${args['beforeOrOn']}` : ''}`
   }
   if (toolName === 'maoq_snapshot_inspect') return typeof args['hash'] === 'string' ? `${args['hash'].slice(0, 12)}…` : ''
+  if (toolName === 'maoq_state_history') return `最近 ${scalar(args['limit'])} 条`
+  if (toolName === 'maoq_state_get' || toolName === 'maoq_state_latest') {
+    const freshness = freshnessOf(block)
+    if (freshness !== undefined) return t(freshness === 'fresh' ? 'state.fresh' : 'state.stale')
+    if (toolName === 'maoq_state_get' && typeof args['decisionId'] === 'string') return `${args['decisionId'].slice(0, 12)}…`
+    return t('state.mirror')
+  }
   if (toolName === 'maoq_analyze_strategy' || toolName === 'maoq_decide') return typeof args['objective'] === 'string' ? firstLine(args['objective']) : ''
   return '不可变市场事实'
 }
@@ -86,7 +110,7 @@ export function MaoqToolRow({ toolName, block, inspect, t }: RowProps) {
         </span>
         {state !== 'ok' ? <span className={css.visuallyHidden}>{t(state === 'running' ? 'row.running' : state === 'error' ? 'row.failed' : 'row.stopped')}</span> : null}
         <span className={css.title}>{t(MAOQ_TOOL_TITLES[name])}</span><span className={css.separator} aria-hidden />
-        <span className={`${css.summary} ${state === 'error' ? css.error : ''}`}>{summary(name, block)}</span>
+        <span className={`${css.summary} ${state === 'error' ? css.error : ''}`}>{summary(name, block, t)}</span>
       </div>
       {shown ? <pre className={`${css.result} ${state === 'error' ? css.error : ''}`} aria-label={t('row.result')}>{result}</pre> : null}
       {inspect !== undefined ? <button type="button" className={css.inspect} onClick={inspect}><IconInspectOutline12 /> {t('row.inspect')}</button> : null}

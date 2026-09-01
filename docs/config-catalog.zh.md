@@ -2533,7 +2533,7 @@ export type CodexPermissionMode =
   | 'dangerously-bypass-approvals-and-sandbox'
 ```
 
-来源：[`packages/subagent/subagent-codex/src/index.ts:38`](../packages/subagent/subagent-codex/src/index.ts)
+来源：[`packages/subagent/subagent-codex/src/index.ts:47`](../packages/subagent/subagent-codex/src/index.ts)
 
 <a id="deepseek-aidsh-subagent-dsh-sdk"></a>
 
@@ -2943,10 +2943,19 @@ export interface Config {
   maxSpecialists?: number
   /** Maximum characters in the rendered parent-facing result (default 32768). */
   maxResultChars?: number
+  /** Strategic-analysis depth used by new calls (default `quick`). */
+  analysisMode?: MaoqAnalysisMode
+  /** Directory containing persisted strategic decision mirrors (default `.maoq/decisions`). */
+  stateRoot?: string
+  /** Maximum decision files a latest/history query may scan (default 500). */
+  maxStateFiles?: number
 }
+
+/** Strategic-analysis execution depth. */
+export type MaoqAnalysisMode = typeof MAOQ_ANALYSIS_MODES[number]
 ```
 
-来源：[`packages/workflow/tool-maoq-decision/src/index.ts:32`](../packages/workflow/tool-maoq-decision/src/index.ts)
+来源：[`packages/workflow/tool-maoq-decision/src/index.ts:41`](../packages/workflow/tool-maoq-decision/src/index.ts)
 
 <a id="deepseek-aidsh-tool-maoq-snapshot"></a>
 

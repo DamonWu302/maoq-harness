@@ -34,7 +34,7 @@
 | `@deepseek-ai/dsh-tool-goal` | `create_goal`、`get_goal`、`update_goal` | `ctx.tools`、`ctx.agents`、`ctx.goals`、`ctx.systemPrompt`、`a calling Agent in an authorized open turn` | `tool/call`、`goal/change for mutations`、`tool/result` | - | create、edit、pause 和 resume 要求直接来自人类的根权限；complete 和 blocked 也接受确切的当前 Goal Round。blocked 的默认下限是 3 个获准的 Round。 |
 | `@deepseek-ai/dsh-schedule` | `schedule_create`、`schedule_delete`、`schedule_list` | `ctx.tools`、`ctx.sessions`、Session 持久化、未来创建的 live 根 Agent | `tool/call`、`schedule/change create or delete`、`tool/result` | - | 仅在选择启用的 Schedule 插件加载后创建的 live 根 Agent scope 内注册。版本 1 接受 after_seconds、显式绝对 at 和有界固定速率 every_seconds，并披露 session-local 交付；管理读取与变更必须通过共享的 Session 持久化 barrier。 |
 | `@deepseek-ai/dsh-tool-lsp` | `lsp` | `ctx.tools`、`ctx.lsp`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，因此其模型可见 schema 在更换提供方时保持稳定。运行时要求已注册提供方，例如 `@deepseek-ai/dsh-lsp-stdio`；如果没有提供方，查询会返回结构化 `LSP_UNAVAILABLE` 错误，而不会改变 schema。 |
-| `@deepseek-ai/dsh-tool-maoq-decision` | `maoq_analyze_strategy`、`maoq_decide` | `ctx.tools`、`ctx.workflowEngine`、`ctx.subagents`、`ctx.systemPrompt`、`a calling Agent` | `tool/call`、`tool/result`、`workflow and child session events during execution` | - | 战略路径先计算不可变快照特征，再运行所选专家，把解释约束到证据和获准毛选方法，并在模型控制之外保留独立风险否决；诊断路径用于检验议事组运行时。 |
+| `@deepseek-ai/dsh-tool-maoq-decision` | `maoq_analyze_strategy`、`maoq_decide`、`maoq_state_get`、`maoq_state_history`、`maoq_state_latest` | `ctx.tools`、`ctx.workflowEngine`、`ctx.subagents`、`ctx.systemPrompt`、`a calling Agent` | `tool/call`、`tool/result`、`workflow and child session events during execution` | - | 战略路径先计算不可变快照特征，再运行所选专家，把解释约束到证据和获准毛选方法，并在模型控制之外保留独立风险否决；诊断路径用于检验议事组运行时。 |
 | `@deepseek-ai/dsh-tool-maoq-snapshot` | `maoq_snapshot_generate`、`maoq_snapshot_inspect`、`maoq_snapshot_list`、`maoq_snapshot_sources` | `ctx.tools`、`ctx.marketSnapshots`、`ctx.systemPrompt` | `tool/call`、`generation writes immutable market snapshot files`、`tool/result` | - | 四个有界工具用于发现来源能力、生成精确不可变窗口、列出经过校验的本地哈希，以及检查一个快照而不暴露全部股票行。生成必须使用部署允许的适配器，且绝不删除或覆盖源数据。 |
 | `@deepseek-ai/dsh-tool-ralph` | `ralph` | `ctx.tools`、`ctx.workflowEngine`、`ctx.subagents`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents every fresh round)` | `tool/call`、`tool/result`、`workflow and child session events during execution` | - | 固定的前台工作流会在每个 Round 启动一个全新的结构化子级；模型只能选择不可变目标和可选的 Round 上限。 |
 | `@deepseek-ai/dsh-tool-skill` | `skill` | `ctx.tools`、`ctx.agents`、`ctx.skills` | `tool/call`、`tool/result`、`user/message replacement catalogs via agent.inject()` | - | - |
@@ -1345,6 +1345,78 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
     "objective",
     "specialists"
   ]
+}
+```
+
+来源：[`packages/workflow/tool-maoq-decision/src/index.ts`](../packages/workflow/tool-maoq-decision/src/index.ts)
+
+### `maoq_state_get`
+
+按决策 ID 读取一份完整的持久化 MAOQ 战略决策镜像，不启动 Agent。用于当前决策前必须检查 freshness.currentUseAllowed。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "decisionId": {
+      "type": "string",
+      "description": "Lowercase SHA-256 strategic decision ID."
+    },
+    "asOfTime": {
+      "type": "string",
+      "description": "Optional ISO time for replayable freshness evaluation; defaults to the current host time."
+    },
+    "currentSnapshotHash": {
+      "type": "string",
+      "description": "Optional latest snapshot hash. A different hash makes the persisted state historical."
+    }
+  },
+  "required": [
+    "decisionId"
+  ]
+}
+```
+
+来源：[`packages/workflow/tool-maoq-decision/src/index.ts`](../packages/workflow/tool-maoq-decision/src/index.ts)
+
+### `maoq_state_history`
+
+列出近期持久化 MAOQ 战略状态摘要，不启动 Agent。用于多日复盘和趋势问题。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "limit": {
+      "type": "integer",
+      "description": "Number of newest state summaries to return (1-100)."
+    }
+  },
+  "required": [
+    "limit"
+  ]
+}
+```
+
+来源：[`packages/workflow/tool-maoq-decision/src/index.ts`](../packages/workflow/tool-maoq-decision/src/index.ts)
+
+### `maoq_state_latest`
+
+读取最新的持久化 MAOQ 战略决策镜像，不启动任何 Agent，也不重算市场数据。用于当前决策前必须检查 freshness.currentUseAllowed。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "asOfTime": {
+      "type": "string",
+      "description": "Optional ISO time for replayable freshness evaluation; defaults to the current host time."
+    },
+    "currentSnapshotHash": {
+      "type": "string",
+      "description": "Optional latest snapshot hash. A different hash makes the persisted state historical."
+    }
+  }
 }
 ```
 

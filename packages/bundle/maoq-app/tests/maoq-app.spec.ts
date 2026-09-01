@@ -20,7 +20,7 @@ describe('@deepseek-ai/dsh-maoq-app', () => {
       config: { reuseCodexLogin: boolean; providers: Record<string, unknown> }
     }
     const clientInsertion = patches[3] as { insert: Array<{ id: string; name: string }> }
-    const insertion = patches[4] as { insert: Array<{ id: string; name: string }> }
+    const insertion = patches[4] as { insert: Array<{ id: string; name: string; config?: unknown }> }
 
     expect(prompt.config.persona).toContain('smallest sufficient specialist council')
     expect(prompt.config.persona).toContain('final veto power')
@@ -65,8 +65,13 @@ describe('@deepseek-ai/dsh-maoq-app', () => {
     expect(insertion.insert).toContainEqual(expect.objectContaining({
       id: 'tool-maoq-decision',
       name: '@deepseek-ai/dsh-tool-maoq-decision',
-      config: expect.objectContaining({ analysisMode: 'quick' }),
     }))
+    const decisionTool = insertion.insert.find(item => item.id === 'tool-maoq-decision')
+    expect(decisionTool?.config).toMatchObject({
+      analysisMode: 'quick',
+      stateRoot: '.maoq/decisions',
+      maxStateFiles: 500,
+    })
     expect(insertion.insert).toContainEqual(expect.objectContaining({
       id: 'tool-maoq-snapshot',
       name: '@deepseek-ai/dsh-tool-maoq-snapshot',

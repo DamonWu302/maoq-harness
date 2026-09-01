@@ -3,7 +3,6 @@ import type { ReactNode } from 'react'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { CodexCouncilSettings, MaoqDecisionSettings } from './index.ts'
-import type { MaoqToolKey } from './locales.ts'
 import css from './MaoqSettingsSection.module.css'
 
 interface MaoqSettingsInjected {
@@ -91,8 +90,8 @@ export function MaoqSettingsSection(props: MaoqSettingsSectionProps): ReactNode 
               disabled={!writable}
               onClick={() => { void selectMode(option) }}
             >
-              <strong>{props.t(`settings.${option}` as MaoqToolKey)}</strong>
-              <span>{props.t(`settings.${option}Detail` as MaoqToolKey)}</span>
+              <strong>{props.t(`settings.${option}`)}</strong>
+              <span>{props.t(`settings.${option}Detail`)}</span>
             </button>
           ))}
         </div>
