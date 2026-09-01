@@ -65,6 +65,7 @@ export interface StrategicDecisionSummary {
 
 export const STRATEGIC_STATE_STALE_REASONS = [
   'maximum_age_exceeded',
+  'current_snapshot_unverified',
   'snapshot_changed',
   'feature_engine_changed',
   'workflow_changed',
@@ -87,6 +88,7 @@ export interface StrategicStateFreshness {
 /** Runtime facts that can invalidate an otherwise valid persisted mirror. */
 export interface StrategicStateFreshnessContext {
   readonly evaluatedAt: string
+  readonly currentSnapshotVerified: boolean
   readonly currentSnapshotHash?: string
   readonly featureEngineVersion: string
   readonly workflowVersion: string
@@ -178,6 +180,7 @@ export function evaluateStrategicStateFreshness(
   const expiresAtMs = cutoffTime + record.input.maximumAgeHours * 60 * 60 * 1_000
   const reasons: StrategicStateStaleReason[] = []
   if (evaluatedAt > expiresAtMs) reasons.push('maximum_age_exceeded')
+  if (!context.currentSnapshotVerified) reasons.push('current_snapshot_unverified')
   if (context.currentSnapshotHash !== undefined && context.currentSnapshotHash !== record.input.snapshotHash) reasons.push('snapshot_changed')
   if (context.featureEngineVersion !== record.input.featureEngineVersion) reasons.push('feature_engine_changed')
   if (context.workflowVersion !== record.input.workflowVersion) reasons.push('workflow_changed')

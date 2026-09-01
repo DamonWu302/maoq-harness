@@ -114,6 +114,7 @@ describe('StrategicDecisionStore', () => {
     )
     expect(evaluateStrategicStateFreshness(record, {
       evaluatedAt: '2026-08-29T15:30:00+08:00',
+      currentSnapshotVerified: true,
       currentSnapshotHash: 'a'.repeat(64),
       featureEngineVersion: 'maoq-strategic-v1',
       workflowVersion: STRATEGIC_WORKFLOW_VERSION,
@@ -122,6 +123,7 @@ describe('StrategicDecisionStore', () => {
     })).toMatchObject({ status: 'fresh', currentUseAllowed: true, reasons: [] })
     expect(evaluateStrategicStateFreshness(record, {
       evaluatedAt: '2026-08-29T15:30:00.001+08:00',
+      currentSnapshotVerified: true,
       currentSnapshotHash: 'b'.repeat(64),
       featureEngineVersion: 'maoq-strategic-v2',
       workflowVersion: 'maoq-strategic-workflow-v2',
@@ -138,6 +140,29 @@ describe('StrategicDecisionStore', () => {
         'analysis_mode_changed',
         'provider_route_changed',
       ],
+    })
+  })
+
+  it('fails current use closed when the snapshot catalog cannot be verified', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'maoq-decision-unverified-'))
+    roots.push(root)
+    const record = await new StrategicDecisionStore(root).put(
+      input('a'.repeat(64), '2026-08-28T16:00:00+08:00'),
+      result('run-unverified'),
+      '2026-08-28',
+      '2026-08-28T15:30:00+08:00',
+    )
+    expect(evaluateStrategicStateFreshness(record, {
+      evaluatedAt: '2026-08-28T16:00:00+08:00',
+      currentSnapshotVerified: false,
+      featureEngineVersion: 'maoq-strategic-v1',
+      workflowVersion: STRATEGIC_WORKFLOW_VERSION,
+      analysisMode: 'quick',
+      subagentProvider: 'codex',
+    })).toMatchObject({
+      status: 'stale',
+      currentUseAllowed: false,
+      reasons: ['current_snapshot_unverified'],
     })
   })
 })

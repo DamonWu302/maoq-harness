@@ -2949,6 +2949,8 @@ export interface Config {
   stateRoot?: string
   /** Maximum decision files a latest/history query may scan (default 500). */
   maxStateFiles?: number
+  /** Maximum snapshot files a freshness query may verify (default 500). */
+  maxSnapshotFiles?: number
 }
 
 /** Strategic-analysis execution depth. */

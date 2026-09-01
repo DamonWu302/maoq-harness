@@ -71,6 +71,7 @@ describe('@deepseek-ai/dsh-maoq-app', () => {
       analysisMode: 'quick',
       stateRoot: '.maoq/decisions',
       maxStateFiles: 500,
+      maxSnapshotFiles: 500,
     })
     expect(insertion.insert).toContainEqual(expect.objectContaining({
       id: 'tool-maoq-snapshot',

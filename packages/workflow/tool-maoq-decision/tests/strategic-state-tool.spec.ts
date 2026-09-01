@@ -111,7 +111,7 @@ async function setup(analysisMode: 'quick' | 'deep' = 'deep') {
     analysisMode,
     stateRoot: join(root, 'decisions'),
   })
-  return { ctx, engine: ctx.workflowEngine as StubEngine, snapshots, parent: { id: SessionId('commander'), options: {} } as unknown as Agent }
+  return { ctx, engine: ctx.workflowEngine as StubEngine, snapshots, snapshotStore: store, parent: { id: SessionId('commander'), options: {} } as unknown as Agent }
 }
 
 function workflowValue(features: StrategicFeatureRecord, badRef = false) {
@@ -153,13 +153,13 @@ function workflowValue(features: StrategicFeatureRecord, badRef = false) {
 
 describe('maoq_analyze_strategy', () => {
   it('uses only synthesis plus independent risk review in quick mode', async () => {
-    const { ctx, engine, snapshots, parent } = await setup('quick')
+    const { ctx, engine, snapshots, snapshotStore, parent } = await setup('quick')
     const arguments_ = {
       objective: '快速判断市场状态。',
       snapshotHash: snapshots[2]!.identity.contentHash,
       historySnapshotHashes: snapshots.slice(0, 2).map(item => item.identity.contentHash),
       decisionTime: '2026-08-28T16:00:00+08:00',
-      maximumAgeHours: 24,
+      maximumAgeHours: 48,
       specialists: ['market_regime'],
     } as const
     const pending = ctx.tools.execute({
@@ -216,7 +216,6 @@ describe('maoq_analyze_strategy', () => {
       name: 'maoq_state_latest',
       arguments: {
         asOfTime: '2026-08-28T16:00:00+08:00',
-        currentSnapshotHash: snapshots[2]!.identity.contentHash,
       },
     })
     expect(latest.isError).toBe(false)
@@ -227,13 +226,13 @@ describe('maoq_analyze_strategy', () => {
       state: { decisionId: decisionIdValue },
     })
 
+    await snapshotStore.put(buildMarketSnapshot(datedDraft('2026-08-29', 3)))
     const stale = await ctx.tools.execute({
       signal: new AbortController().signal,
       callId: ToolCallId('strategy-latest-stale'),
       name: 'maoq_state_latest',
       arguments: {
-        asOfTime: '2026-08-30T16:00:00+08:00',
-        currentSnapshotHash: snapshots[1]!.identity.contentHash,
+        asOfTime: '2026-08-29T16:00:00+08:00',
       },
     })
     expect(stale.isError).toBe(false)
@@ -243,7 +242,7 @@ describe('maoq_analyze_strategy', () => {
       freshness: {
         status: 'stale',
         currentUseAllowed: false,
-        reasons: ['maximum_age_exceeded', 'snapshot_changed'],
+        reasons: ['snapshot_changed'],
       },
     })
 

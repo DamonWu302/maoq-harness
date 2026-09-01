@@ -75,6 +75,7 @@
         maxResultChars: 32768
         stateRoot: .maoq/decisions
         maxStateFiles: 500
+        maxSnapshotFiles: 500
 
     - id: tool-maoq-snapshot
       name: '@deepseek-ai/dsh-tool-maoq-snapshot'

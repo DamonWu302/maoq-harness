@@ -15,7 +15,6 @@ import {
 
 interface FreshnessArgs {
   readonly asOfTime?: string
-  readonly currentSnapshotHash?: string
 }
 
 function render(value: unknown, maxChars: number): string {
@@ -32,17 +31,27 @@ function resultView(_args: unknown, _result: { content: ContentBlock[]; isError:
 /** Register zero-agent queries over persisted MAOQ strategic decision mirrors. */
 export function registerStrategicStateQueryTools(ctx: Context, getConfig: () => ResolvedConfig): void {
   const store = (): StrategicDecisionStore => new StrategicDecisionStore(getConfig().stateRoot)
-  const freshness = (record: StrategicDecisionRecord, args: FreshnessArgs) => evaluateStrategicStateFreshness(record, {
-    evaluatedAt: args.asOfTime ?? new Date().toISOString(),
-    ...(args.currentSnapshotHash === undefined ? {} : { currentSnapshotHash: args.currentSnapshotHash }),
-    featureEngineVersion: STRATEGIC_ENGINE_VERSION,
-    workflowVersion: STRATEGIC_WORKFLOW_VERSION,
-    analysisMode: getConfig().analysisMode,
-    subagentProvider: getConfig().subagentProvider,
-  })
+  const freshness = async (record: StrategicDecisionRecord, args: FreshnessArgs) => {
+    const evaluatedAt = args.asOfTime ?? new Date().toISOString()
+    const evaluatedAtMs = Date.parse(evaluatedAt)
+    if (!Number.isFinite(evaluatedAtMs)) throw new TypeError('strategic state evaluation time must be a valid ISO timestamp')
+    const snapshots = ctx.get('marketSnapshots')
+    const currentSnapshot = snapshots === undefined
+      ? undefined
+      : (await snapshots.listSummaries(getConfig().maxSnapshotFiles))
+        .find(summary => Date.parse(summary.cutoffTime) <= evaluatedAtMs)
+    return evaluateStrategicStateFreshness(record, {
+      evaluatedAt,
+      currentSnapshotVerified: currentSnapshot !== undefined,
+      ...(currentSnapshot === undefined ? {} : { currentSnapshotHash: currentSnapshot.contentHash }),
+      featureEngineVersion: STRATEGIC_ENGINE_VERSION,
+      workflowVersion: STRATEGIC_WORKFLOW_VERSION,
+      analysisMode: getConfig().analysisMode,
+      subagentProvider: getConfig().subagentProvider,
+    })
+  }
   const freshnessParameters = {
     asOfTime: { type: 'string' as const, description: 'Optional ISO time for replayable freshness evaluation; defaults to the current host time.' },
-    currentSnapshotHash: { type: 'string' as const, description: 'Optional latest snapshot hash. A different hash makes the persisted state historical.' },
   }
 
   ctx.tools.register(defineTool({
@@ -65,7 +74,7 @@ export function registerStrategicStateQueryTools(ctx: Context, getConfig: () => 
       const record = await store().latest(getConfig().maxStateFiles)
       return {
         found: record !== undefined,
-        freshness: (record === undefined ? null : freshness(record, args)) as unknown as JsonValue,
+        freshness: (record === undefined ? null : await freshness(record, args)) as unknown as JsonValue,
         state: (record ?? null) as unknown as JsonValue,
       }
     },
@@ -125,7 +134,7 @@ export function registerStrategicStateQueryTools(ctx: Context, getConfig: () => 
       const record = await store().get(args.decisionId)
       return {
         found: record !== undefined,
-        freshness: (record === undefined ? null : freshness(record, args)) as unknown as JsonValue,
+        freshness: (record === undefined ? null : await freshness(record, args)) as unknown as JsonValue,
         state: (record ?? null) as unknown as JsonValue,
       }
     },

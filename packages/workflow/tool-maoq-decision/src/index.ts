@@ -51,6 +51,8 @@ export interface Config {
   stateRoot?: string
   /** Maximum decision files a latest/history query may scan (default 500). */
   maxStateFiles?: number
+  /** Maximum snapshot files a freshness query may verify (default 500). */
+  maxSnapshotFiles?: number
 }
 
 /** Schemastery configuration for the MAOQ decision tool. */
@@ -61,6 +63,7 @@ export const Config: z<Config> = z.object({
   analysisMode: z.union([...MAOQ_ANALYSIS_MODES]).default('quick'),
   stateRoot: z.string().default('.maoq/decisions'),
   maxStateFiles: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(500),
+  maxSnapshotFiles: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(500),
 })
 
 /** Validated deployment values shared by both MAOQ tool registrations. */
@@ -71,6 +74,7 @@ export interface ResolvedConfig {
   readonly analysisMode: MaoqAnalysisMode
   readonly stateRoot: string
   readonly maxStateFiles: number
+  readonly maxSnapshotFiles: number
 }
 
 interface MaoqCallArgs {
@@ -245,6 +249,7 @@ function resolveConfig(config: Config): ResolvedConfig {
   const analysisMode = config.analysisMode ?? 'quick'
   const stateRoot = config.stateRoot ?? '.maoq/decisions'
   const maxStateFiles = config.maxStateFiles ?? 500
+  const maxSnapshotFiles = config.maxSnapshotFiles ?? 500
   if (subagentProvider.length === 0 || subagentProvider !== subagentProvider.trim()) {
     throw new TypeError('subagentProvider must be a non-empty normalized string')
   }
@@ -258,7 +263,10 @@ function resolveConfig(config: Config): ResolvedConfig {
   if (!Number.isSafeInteger(maxStateFiles) || maxStateFiles < 1) {
     throw new TypeError('maxStateFiles must be a positive safe integer')
   }
-  return { subagentProvider, maxSpecialists, maxResultChars, analysisMode, stateRoot, maxStateFiles }
+  if (!Number.isSafeInteger(maxSnapshotFiles) || maxSnapshotFiles < 1) {
+    throw new TypeError('maxSnapshotFiles must be a positive safe integer')
+  }
+  return { subagentProvider, maxSpecialists, maxResultChars, analysisMode, stateRoot, maxStateFiles, maxSnapshotFiles }
 }
 
 /**

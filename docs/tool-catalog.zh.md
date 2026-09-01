@@ -1365,10 +1365,6 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
     "asOfTime": {
       "type": "string",
       "description": "Optional ISO time for replayable freshness evaluation; defaults to the current host time."
-    },
-    "currentSnapshotHash": {
-      "type": "string",
-      "description": "Optional latest snapshot hash. A different hash makes the persisted state historical."
     }
   },
   "required": [
@@ -1411,10 +1407,6 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
     "asOfTime": {
       "type": "string",
       "description": "Optional ISO time for replayable freshness evaluation; defaults to the current host time."
-    },
-    "currentSnapshotHash": {
-      "type": "string",
-      "description": "Optional latest snapshot hash. A different hash makes the persisted state historical."
     }
   }
 }

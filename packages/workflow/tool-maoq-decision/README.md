@@ -37,13 +37,14 @@ The strategic result stores deterministic features separately from interpretatio
 | `analysisMode` | `quick` | `quick` runs synthesis plus independent risk; `deep` adds selected specialist reports. |
 | `stateRoot` | `.maoq/decisions` | Directory containing immutable strategic decision mirrors. |
 | `maxStateFiles` | `500` | Maximum files scanned by latest and history queries. |
+| `maxSnapshotFiles` | `500` | Maximum immutable snapshots scanned to verify the newest usable market input. |
 
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 
 The orchestration script, schemas, provider route, and child cap are deployment-owned. Before loading snapshots or resolving a child provider, the strategic path derives a SHA-256 decision ID from the exact objective, snapshot hashes, decision time, age bound, specialist set, analysis mode, feature/workflow versions, provider route, and available Codex-provider settings fingerprint. A matching persisted record returns immediately with `cacheHit: true` and `agentsStarted: 0`. A miss loads snapshots by exact hash, computes versioned features, runs the selected workflow, and atomically publishes the completed result under that ID. Failed workflows are never cached. Quick mode applies the selected roles as synthesis lenses and starts exactly two children: synthesis, then independent risk review. Deep mode runs selected specialists with `Promise.all`, followed by the same two fresh children. Each child schema enumerates the exact evidence refs available in that feature record, while the host still rejects role drift, rewritten deterministic labels, unknown evidence refs, unrecognized method IDs, inconsistent risk fields, and any attempt to make stale or incomplete inputs actionable. The optional settings provider exposes `maoq-decision`; changes affect the next call without a restart.
 
-The latest and by-ID query tools evaluate current use without mutating the mirror. Maximum age, a changed snapshot hash, feature/workflow version drift, analysis-mode drift, or provider-route drift produces `freshness.status: stale` and `currentUseAllowed: false`, with explicit reasons. The record remains available for replay, but cannot silently become a current recommendation.
+The latest and by-ID query tools evaluate current use without mutating the mirror. They resolve the newest cutoff-safe snapshot from the host catalog rather than trusting a model-supplied hash. Maximum age, an unverifiable or changed snapshot, feature/workflow version drift, analysis-mode drift, or provider-route drift produces `freshness.status: stale` and `currentUseAllowed: false`, with explicit reasons. The record remains available for replay, but cannot silently become a current recommendation.
 
 The Loader composition fixture proves both tools load with the profile services. Focused workflow fixtures prove that selected roles remain bounded, evidence references close over the deterministic catalog, resolved answers name the Mao source work, and an independent veto remains final.
 

@@ -1359,10 +1359,6 @@ Read one full persisted MAOQ strategic decision mirror by decision ID without st
     "asOfTime": {
       "type": "string",
       "description": "Optional ISO time for replayable freshness evaluation; defaults to the current host time."
-    },
-    "currentSnapshotHash": {
-      "type": "string",
-      "description": "Optional latest snapshot hash. A different hash makes the persisted state historical."
     }
   },
   "required": [
@@ -1405,10 +1401,6 @@ Read the newest persisted MAOQ strategic decision mirror without starting agents
     "asOfTime": {
       "type": "string",
       "description": "Optional ISO time for replayable freshness evaluation; defaults to the current host time."
-    },
-    "currentSnapshotHash": {
-      "type": "string",
-      "description": "Optional latest snapshot hash. A different hash makes the persisted state historical."
     }
   }
 }
