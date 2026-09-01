@@ -16,6 +16,8 @@ Published tactic returns are not comparable when each implementation chooses its
 
 Current daily decisions continue to use full immutable market snapshots, whose stock prices are already adjusted. Historical research reads the existing production tables through `LongShortStockTacticHistoryAdapter`. It streams content-addressed bounded chunks that pair an adjusted feature sequence with a raw execution sequence from the same daily, adjustment, limit, quality, and point-in-time sector facts. Required joins must preserve every selected daily-price row.
 
+Multi-year evaluation feeds those chunks through `DailyHistoryFeatureStream`, which preserves batch feature semantics while retaining only each symbol's 252-session observation window. The production adapter obtains price facts and overlapping sector periods with separate bounded reads, then attaches the latest effective membership deterministically; this avoids a range-wide database window sort without changing point-in-time meaning.
+
 ## Alternatives considered
 
 - Generate a complete market snapshot for every historical date. This preserves one shape but needlessly repeats policy, news, and strategic acquisition for execution-only tests.
@@ -32,4 +34,4 @@ Current daily decisions continue to use full immutable market snapshots, whose s
 
 ## Verification
 
-Gold tests cover content-addressed chunk stability and corruption rejection, adjusted-feature/raw-execution separation, required-join row preservation, point-in-time sectors, 252-session features, adjustment-factor continuity, missing sessions, sector changes, next-session timing, both-side costs, opening limit-up rejection, suspension, invalid lots, duplicate orders, cash, positions, and immutable results.
+Gold tests cover content-addressed chunk stability and corruption rejection, adjusted-feature/raw-execution separation, required-join row preservation, deterministic overlapping point-in-time sectors, batch/stream parity through 252 sessions, adjustment-factor continuity, missing sessions, sector changes, next-session timing, both-side costs, opening limit-up rejection, suspension, invalid lots, duplicate orders, cash, positions, and immutable results.

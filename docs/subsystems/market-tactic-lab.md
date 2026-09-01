@@ -8,13 +8,15 @@ The market tactic lab subsystem supplies the point-in-time measurements and one 
 
 `TacticLabHistoryAdapter.load()` streams caller-bounded, strictly ascending `TacticLabHistoryChunk` values for an inclusive date range. Each chunk contains one adjusted feature session and one raw execution session for every date. Construction rejects empty input, mismatched dates, nonascending sessions, and invalid session hashes; it sorts source versions and hashes the canonical chunk body. Persisted chunks can therefore be verified and cited without loading the complete research period.
 
-The production implementation in [`@deepseek-ai/dsh-market-snapshot-mysql`](../../packages/market/market-snapshot-mysql/README.md) selects only quality-approved dates. Required adjustment, turnover, and price-limit joins must preserve the daily-price row count. It applies HFQ only to feature prices, retains raw executable prices and exact limits separately, and chooses SW L1 membership effective on each trading date.
+The production implementation in [`@deepseek-ai/dsh-market-snapshot-mysql`](../../packages/market/market-snapshot-mysql/README.md) selects only quality-approved dates. Required adjustment, turnover, and price-limit joins must preserve the daily-price row count. It applies HFQ only to feature prices, retains raw executable prices and exact limits separately, and fetches overlapping SW L1 membership periods separately so it can choose the latest membership effective on each trading date without a range-wide SQL window sort.
 
 ## Daily-history features
 
 `computeDailyHistoryFeatures()` sorts immutable daily inputs, rejects duplicate trading dates or invalid content hashes, and computes features only at the newest supplied cutoff. Snapshot stock prices are already adjusted and are used as-is; volume and amount remain raw. Complete session windows produce 1-, 5-, 20-, and 60-session adjusted returns, 20- and 252-session distance from adjusted highs, turnover and amount means, limit-up counts and streaks, and 5- and 20-session sector-relative returns. Sector returns compound daily relative levels rather than dividing them as though they were a continuous index.
 
 A missing symbol session makes every affected window unavailable instead of silently shortening the lookback. Sector-relative returns require one unchanged point-in-time sector across the window. The record stores all input snapshot hashes and exact stock evidence references; it reads no process clock.
+
+`DailyHistoryFeatureStream` consumes each strictly ascending session once for a multi-year replay. It retains at most 252 observations per symbol and emits the same feature semantics as the batch function at every cutoff, preventing repeated full-window scans from dominating strategy evaluation.
 
 ## Next-open execution
 

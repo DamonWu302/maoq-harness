@@ -61,6 +61,7 @@ function fixture(options: {
   noDates?: boolean
   invalidDateChunk?: boolean
   rowsForDate?: (date: string) => DailyFixtureRow[]
+  memberships?: DailyFixtureRow[]
 } = {}): MarketSnapshotQuery {
   return {
     rows: async <T extends object>(sql: string, parameters: readonly unknown[]): Promise<T[]> => {
@@ -71,6 +72,35 @@ function fixture(options: {
           trading_date,
           expected_rows: options.expectedRows ?? 1,
         })) as T[]
+      }
+      if (sql.includes('maoq:tactic-history-sectors')) {
+        if (options.memberships !== undefined) {
+          return options.memberships.map(row => ({
+            symbol: row.symbol,
+            sector_id: row.sector_id,
+            sector_name: row.sector_name,
+            in_date: row.in_date,
+            out_date: row.out_date,
+            sector_source: row.sector_source,
+            sector_version: row.sector_version,
+          })) as T[]
+        }
+        const end = String(parameters[0])
+        const start = String(parameters[1])
+        const memberships = DATES
+          .filter(date => date >= start && date <= end)
+          .flatMap(date => options.rowsForDate?.(date) ?? [daily(date)])
+          .filter(row => row.sector_id !== null)
+          .map(row => ({
+            symbol: row.symbol,
+            sector_id: row.sector_id,
+            sector_name: row.sector_name,
+            in_date: row.in_date,
+            out_date: row.out_date,
+            sector_source: row.sector_source,
+            sector_version: row.sector_version,
+          }))
+        return [...new Map(memberships.map(row => [JSON.stringify(row), row])).values()] as T[]
       }
       if (sql.includes('maoq:tactic-history-daily')) {
         const start = String(parameters[0])
@@ -175,6 +205,7 @@ describe('long_short_stock tactic history adapter', () => {
         list_date: '2099-01-01',
         delist_date: null,
         sector_name: null,
+        out_date: '2099-12-31',
       }),
       daily(date, '10', {
         symbol: '000005',
@@ -228,12 +259,46 @@ describe('long_short_stock tactic history adapter', () => {
     expect(chunks[0]?.featureSessions[0]?.sectors).toEqual([])
   })
 
+  it('selects the latest effective membership deterministically', async () => {
+    const memberships = [
+      daily(DATES[0], '11', {
+        sector_id: '801750.SI',
+        sector_name: '计算机',
+        in_date: '2025-01-01',
+        sector_version: null,
+      }),
+      daily(DATES[0], '11', {
+        sector_id: '801760.SI',
+        sector_name: '传媒',
+        in_date: '2025-01-01',
+        sector_version: '2026-08-28T18:00:00.000000+08:00',
+      }),
+      daily(DATES[0], '11', {
+        sector_id: '801780.SI',
+        sector_name: '银行',
+        in_date: '2025-01-01',
+        sector_version: '2026-08-28T19:00:00.000000+08:00',
+      }),
+      daily(DATES[0], '11', {
+        sector_id: '801790.SI',
+        sector_name: '非银金融',
+        in_date: '2025-01-01',
+        sector_version: '2026-08-28T19:00:00.000000+08:00',
+      }),
+      daily(DATES[0], '11', {
+        sector_id: '801880.SI',
+        sector_name: '汽车',
+        in_date: null,
+      }),
+    ]
+    const chunks = await collect(new LongShortStockTacticHistoryAdapter(fixture({ memberships })))
+    expect(chunks[0]?.featureSessions[0]?.sectors[0]?.sectorId).toBe('801780.SI')
+  })
+
   it('rejects malformed required numeric and membership facts', async () => {
     const invalidRows = [
       (date: string): DailyFixtureRow[] => [daily(date, '11', { adj_factor: null })],
       (date: string): DailyFixtureRow[] => [daily(date, '11', { open_price: 'not-a-number' })],
-      (date: string): DailyFixtureRow[] => [daily(date, '11', { in_date: null })],
-      (date: string): DailyFixtureRow[] => [daily(date, '11', { in_date: '' })],
     ]
     for (const rowsForDate of invalidRows) {
       await expect(collect(new LongShortStockTacticHistoryAdapter(fixture({ rowsForDate })))).rejects.toThrow(

@@ -3,4 +3,5 @@
 export * from './chunk.ts'
 export * from './execution.ts'
 export * from './history.ts'
+export * from './stream.ts'
 export * from './types.ts'

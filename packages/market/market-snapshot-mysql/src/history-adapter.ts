@@ -17,7 +17,7 @@ import {
 import type { MarketSnapshotQuery } from './adapter.ts'
 
 /** Provider mapping version included in every frozen historical chunk. */
-export const LONG_SHORT_STOCK_HISTORY_MAPPING_VERSION = 'long-short-stock-history-v1' as const
+export const LONG_SHORT_STOCK_HISTORY_MAPPING_VERSION = 'long-short-stock-history-v2' as const
 
 interface AvailableHistoryDateRow {
   trading_date: string
@@ -59,6 +59,19 @@ interface HistoryDailyRow {
   sector_version: string | null
 }
 
+type HistoryDailyCoreRow = Omit<HistoryDailyRow,
+  'sector_id' | 'sector_name' | 'in_date' | 'out_date' | 'sector_source' | 'sector_version'>
+
+interface HistorySectorRow {
+  symbol: string
+  sector_id: string
+  sector_name: string | null
+  in_date: string | null
+  out_date: string | null
+  sector_source: string | null
+  sector_version: string | null
+}
+
 const HISTORY_DATES_SQL = `/* maoq:tactic-history-dates */
 SELECT DATE_FORMAT(p.trade_date, '%Y-%m-%d') trading_date, COUNT(*) expected_rows
 FROM daily_price_bar p
@@ -71,8 +84,7 @@ HAVING COUNT(*) >= GREATEST(COALESCE(q.minimum_required_rows, 0), ?)
 ORDER BY p.trade_date`
 
 const HISTORY_DAILY_SQL = `/* maoq:tactic-history-daily */
-WITH ranked AS (
- SELECT
+SELECT
   DATE_FORMAT(p.trade_date, '%Y-%m-%d') trade_date,
   p.symbol, p.open_price, p.high_price, p.low_price, p.close_price, p.volume, p.amount,
   p.source price_source, DATE_FORMAT(p.updated_at, '%Y-%m-%dT%H:%i:%s.%f+08:00') price_version,
@@ -81,21 +93,22 @@ WITH ranked AS (
   l.pre_close, l.up_limit, l.down_limit, l.source limit_source, DATE_FORMAT(l.fetched_at, '%Y-%m-%dT%H:%i:%s.%f+08:00') limit_version,
   s.list_status, DATE_FORMAT(s.list_date, '%Y-%m-%d') list_date, DATE_FORMAT(s.delist_date, '%Y-%m-%d') delist_date,
   COALESCE(s.source, 'daily_price_bar:first-observed') lifecycle_source,
-  COALESCE(DATE_FORMAT(s.fetched_at, '%Y-%m-%dT%H:%i:%s.%f+08:00'), DATE_FORMAT(p.updated_at, '%Y-%m-%dT%H:%i:%s.%f+08:00')) lifecycle_version,
-  m.index_code sector_id, m.industry_name sector_name, DATE_FORMAT(m.in_date, '%Y-%m-%d') in_date,
-  DATE_FORMAT(m.out_date, '%Y-%m-%d') out_date, m.source sector_source,
-  DATE_FORMAT(m.fetched_at, '%Y-%m-%dT%H:%i:%s.%f+08:00') sector_version,
-  ROW_NUMBER() OVER (PARTITION BY p.trade_date, p.symbol ORDER BY m.in_date DESC, m.fetched_at DESC, m.index_code) membership_rank
- FROM daily_price_bar p
- JOIN daily_adjustment_factor a ON a.trade_date=p.trade_date AND a.symbol=p.symbol
- JOIN daily_basic_factor b ON b.trade_date=p.trade_date AND b.symbol=p.symbol
- JOIN daily_price_limit l ON l.trade_date=p.trade_date AND l.symbol=p.symbol
- LEFT JOIN security_lifecycle s ON s.symbol=p.symbol
- LEFT JOIN security_industry_period m ON m.symbol=p.symbol AND m.industry_level='L1'
-  AND m.in_date <= p.trade_date AND (m.out_date IS NULL OR m.out_date >= p.trade_date)
- WHERE p.trade_date BETWEEN ? AND ?
-)
-SELECT * FROM ranked WHERE membership_rank=1 ORDER BY trade_date, symbol`
+  COALESCE(DATE_FORMAT(s.fetched_at, '%Y-%m-%dT%H:%i:%s.%f+08:00'), DATE_FORMAT(p.updated_at, '%Y-%m-%dT%H:%i:%s.%f+08:00')) lifecycle_version
+FROM daily_price_bar p
+JOIN daily_adjustment_factor a ON a.trade_date=p.trade_date AND a.symbol=p.symbol
+JOIN daily_basic_factor b ON b.trade_date=p.trade_date AND b.symbol=p.symbol
+JOIN daily_price_limit l ON l.trade_date=p.trade_date AND l.symbol=p.symbol
+LEFT JOIN security_lifecycle s ON s.symbol=p.symbol
+WHERE p.trade_date BETWEEN ? AND ?
+ORDER BY trade_date, symbol`
+
+const HISTORY_SECTOR_SQL = `/* maoq:tactic-history-sectors */
+SELECT symbol, index_code sector_id, industry_name sector_name,
+ DATE_FORMAT(in_date, '%Y-%m-%d') in_date, DATE_FORMAT(out_date, '%Y-%m-%d') out_date,
+ source sector_source, DATE_FORMAT(fetched_at, '%Y-%m-%dT%H:%i:%s.%f+08:00') sector_version
+FROM security_industry_period
+WHERE industry_level='L1' AND in_date <= ? AND (out_date IS NULL OR out_date >= ?)
+ORDER BY symbol, in_date DESC, fetched_at DESC, index_code`
 
 /** Rejected production history evidence. */
 export class MarketTacticHistoryMysqlError extends Error {
@@ -113,11 +126,6 @@ function numberOf(value: string | number | null, field: string): number {
   const result = Number(value)
   if (!Number.isFinite(result)) throw new MarketTacticHistoryMysqlError(`${field} is missing or non-numeric`)
   return result
-}
-
-function requiredText(value: string | null, field: string): string {
-  if (value === null || value.length === 0) throw new MarketTacticHistoryMysqlError(`${field} is missing`)
-  return value
 }
 
 function rounded(value: number): number {
@@ -260,7 +268,7 @@ function sectors(date: string, rows: readonly HistoryDailyRow[]): SectorDailySna
         .map(item => item.row.symbol),
       members: members.map(row => ({
         symbol: row.symbol,
-        effectiveFrom: requiredText(row.in_date, `${date}:${row.symbol}.sector.in_date`),
+        effectiveFrom: row.in_date as string,
         effectiveTo: row.out_date,
       })).sort((left, right) => left.symbol.localeCompare(right.symbol)),
       provenance: provenance(
@@ -305,6 +313,34 @@ function executionSession(date: string, rows: readonly HistoryDailyRow[], versio
   }
 }
 
+function attachSectors(rows: readonly HistoryDailyCoreRow[], memberships: readonly HistorySectorRow[]): HistoryDailyRow[] {
+  const bySymbol = new Map<string, HistorySectorRow[]>()
+  for (const membership of memberships) {
+    bySymbol.set(membership.symbol, [...bySymbol.get(membership.symbol) ?? [], membership])
+  }
+  for (const candidates of bySymbol.values()) {
+    candidates.sort((left, right) =>
+      (right.in_date ?? '').localeCompare(left.in_date ?? '')
+      || (right.sector_version ?? '').localeCompare(left.sector_version ?? '')
+      || left.sector_id.localeCompare(right.sector_id))
+  }
+  return rows.map((row) => {
+    const membership = bySymbol.get(row.symbol)?.find(candidate =>
+      candidate.in_date !== null
+      && candidate.in_date <= row.trade_date
+      && (candidate.out_date === null || candidate.out_date >= row.trade_date))
+    return {
+      ...row,
+      sector_id: membership?.sector_id ?? null,
+      sector_name: membership?.sector_name ?? null,
+      in_date: membership?.in_date ?? null,
+      out_date: membership?.out_date ?? null,
+      sector_source: membership?.sector_source ?? null,
+      sector_version: membership?.sector_version ?? null,
+    }
+  })
+}
+
 function validateRequest(request: TacticLabHistoryRequest): void {
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(request.startDate) || !/^\d{4}-\d{2}-\d{2}$/u.test(request.endDate)) {
     throw new MarketTacticHistoryMysqlError('dates must use YYYY-MM-DD')
@@ -342,7 +378,9 @@ export class LongShortStockTacticHistoryAdapter implements TacticLabHistoryAdapt
       const start = dates[offset]?.trading_date
       const end = dates[Math.min(offset + request.chunkSessions, dates.length) - 1]?.trading_date
       if (start === undefined || end === undefined) throw new MarketTacticHistoryMysqlError('date chunk is incomplete')
-      const rows = await this.query.rows<HistoryDailyRow>(HISTORY_DAILY_SQL, [start, end])
+      const coreRows = await this.query.rows<HistoryDailyCoreRow>(HISTORY_DAILY_SQL, [start, end])
+      const memberships = await this.query.rows<HistorySectorRow>(HISTORY_SECTOR_SQL, [end, start])
+      const rows = attachSectors(coreRows, memberships)
       const byDate = new Map<string, HistoryDailyRow[]>()
       for (const row of rows) byDate.set(row.trade_date, [...byDate.get(row.trade_date) ?? [], row])
       const completeSessions: { date: string; rows: HistoryDailyRow[] }[] = []

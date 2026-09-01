@@ -31,6 +31,8 @@ Pass ordered or unordered immutable daily sessions to `computeDailyHistoryFeatur
 const features = computeDailyHistoryFeatures(snapshots)
 ```
 
+For a multi-year full-universe replay, push each ascending session once through `DailyHistoryFeatureStream`. It preserves the batch feature semantics while retaining only each symbol's bounded 252-session window, rather than rescanning the full lookback for every decision date.
+
 History providers implement `TacticLabHistoryAdapter` and stream bounded `TacticLabHistoryChunk` values. `buildTacticLabHistoryChunk()` validates one-to-one date pairing, sorts source versions, records the inclusive range, and freezes a SHA-256 content address so evaluators can cite exact inputs without holding a multi-year universe in memory.
 
 Pass a separate raw, unadjusted execution sequence with exact daily up/down limits and close-authored orders to `simulateNextOpenExecution()`. The default policy starts with paper cash and conservative explicit costs. An order fills once on the next market session or records one stable rejection reason.
@@ -47,7 +49,7 @@ const result = simulateNextOpenExecution(snapshots, orders)
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-Snapshot stock prices are already adjusted by their acquisition adapter, so research uses them directly and never applies the adjustment factor twice. Volume and amount remain raw. Feature windows follow market sessions, require complete symbol observations, cite immutable inputs, and never read an ambient clock. Multi-session sector returns compound each session's relative sector level instead of treating those daily levels as a continuous index.
+Snapshot stock prices are already adjusted by their acquisition adapter, so research uses them directly and never applies the adjustment factor twice. Volume and amount remain raw. Feature windows follow market sessions, require complete symbol observations, cite immutable inputs, and never read an ambient clock. Multi-session sector returns compound each session's relative sector level instead of treating those daily levels as a continuous index. The incremental engine produces the same feature record as the batch engine for each cutoff and bounds retained observations per symbol.
 
 Execution uses raw unadjusted prices. Orders authored after session `t` can first fill at session `t+1`; a missing or suspended bar never advances to a later favorable session. Buys at an opening limit-up and sells at an opening limit-down are rejected. Slippage is applied against the open and clipped to the observed daily range. Positions retain acquisition dates, sell checks enforce T+1, and final equity marks remaining shares to the latest observed raw close.
 

@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildTacticLabHistoryChunk,
   computeDailyHistoryFeatures,
+  DailyHistoryFeatureStream,
   DEFAULT_A_SHARE_EXECUTION_POLICY,
   simulateNextOpenExecution,
   type DailyExecutionBar,
@@ -124,6 +125,93 @@ function executionSession(index: number, overrides: Partial<DailyExecutionBar> =
 }
 
 describe('daily history research features', () => {
+  it('matches batch semantics while incrementally replaying a rolling 252-session universe', () => {
+    const snapshots = Array.from({ length: 253 }, (_, index) => snapshot(index, {
+      limitStatus: index >= 250 ? 'limit-up' : 'none',
+      turnoverRate: 0.01 + index / 100_000,
+      amount: 10_000_000 + index * 10_000,
+    }))
+    const stream = new DailyHistoryFeatureStream()
+    let streamed
+    for (const item of snapshots) streamed = stream.push(item)
+    expect(streamed).toEqual(computeDailyHistoryFeatures(snapshots))
+    expect(Object.isFrozen(streamed)).toBe(true)
+  })
+
+  it('matches batch failure-closed windows after missing sessions and sector changes', () => {
+    const snapshots = Array.from({ length: 22 }, (_, index) => snapshot(
+      index,
+      {},
+      index < 10 ? 'old' : 'new',
+    ))
+    snapshots[15] = { ...snapshots[15]!, stocks: [] }
+    const stream = new DailyHistoryFeatureStream()
+    for (const item of snapshots) stream.push(item)
+    expect(stream.push(snapshot(22, {}, 'new'))).toEqual(computeDailyHistoryFeatures([
+      ...snapshots,
+      snapshot(22, {}, 'new'),
+    ]))
+  })
+
+  it('rejects invalid hashes, nonascending dates, duplicate stocks, and duplicate sector membership', () => {
+    const invalidHash = new DailyHistoryFeatureStream()
+    expect(() => invalidHash.push({
+      ...snapshot(0),
+      identity: { ...snapshot(0).identity, contentHash: 'invalid' },
+    })).toThrow(/content hash is not SHA-256/)
+
+    const dates = new DailyHistoryFeatureStream()
+    dates.push(snapshot(0))
+    expect(() => dates.push(snapshot(0))).toThrow(/is not later/)
+
+    const duplicateStocks = new DailyHistoryFeatureStream()
+    const stock = snapshot(0).stocks[0]!
+    expect(() => duplicateStocks.push({ ...snapshot(0), stocks: [stock, stock] })).toThrow(/duplicate symbols/)
+
+    const duplicateSectors = new DailyHistoryFeatureStream()
+    const base = snapshot(0)
+    expect(() => duplicateSectors.push({ ...base, sectors: [sector(dateAt(0), 100, 'one'), sector(dateAt(0), 100, 'two')] }))
+      .toThrow(/multiple sectors/)
+  })
+
+  it('fails sector and return windows closed for unavailable, inactive, or nonpositive evidence', () => {
+    const noSector = new DailyHistoryFeatureStream()
+    const withoutSector = { ...snapshot(0), sectors: [] }
+    expect(noSector.push(withoutSector).stocks[0]?.sectorRelativeReturn5).toBeNull()
+
+    const datedMembership = new DailyHistoryFeatureStream()
+    const dated = snapshot(0)
+    const datedSector = {
+      ...dated.sectors[0]!,
+      members: [
+        { symbol: 'wrong', effectiveFrom: '2020-01-01', effectiveTo: null },
+        { symbol: '000001.SZ', effectiveFrom: '2099-01-01', effectiveTo: null },
+        { symbol: '000001.SZ', effectiveFrom: '2020-01-01', effectiveTo: '2020-01-02' },
+        { symbol: '000001.SZ', effectiveFrom: '2020-01-01', effectiveTo: '2099-01-01' },
+      ],
+    }
+    expect(datedMembership.push({ ...dated, sectors: [datedSector] }).stocks[0]?.sectorId).toBe('bank')
+
+    const nonpositive = new DailyHistoryFeatureStream()
+    const nonpositiveSnapshots = Array.from({ length: 7 }, (_, index) => snapshot(index, {
+      close: index === 0 || index === 6 ? 0 : 10,
+      high: index === 0 || index === 6 ? 0 : 10,
+    }))
+    for (const item of nonpositiveSnapshots.slice(0, 6)) nonpositive.push(item)
+    expect(nonpositive.push(nonpositiveSnapshots[6]!).stocks[0]?.adjustedReturn1).toBeNull()
+
+    const missingSectorClose = new DailyHistoryFeatureStream()
+    let result
+    for (let index = 0; index < 6; index += 1) {
+      const item = snapshot(index)
+      result = missingSectorClose.push({
+        ...item,
+        sectors: [{ ...item.sectors[0]!, close: null as unknown as number }],
+      })
+    }
+    expect(result?.stocks[0]?.sectorRelativeReturn5).toBeNull()
+  })
+
   it('content-addresses paired feature and raw-execution chunks', () => {
     const chunk = buildTacticLabHistoryChunk({
       adapterVersion: 'fixture-v1',
