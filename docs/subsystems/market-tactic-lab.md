@@ -14,11 +14,11 @@ The production implementation in [`@deepseek-ai/dsh-market-snapshot-mysql`](../.
 
 ## Daily-history features
 
-`computeDailyHistoryFeatures()` sorts immutable daily inputs, rejects duplicate trading dates or invalid content hashes, and computes features only at the newest supplied cutoff. Snapshot stock prices are already adjusted and are used as-is; volume and amount remain raw. Complete session windows produce 1-, 5-, 20-, and 60-session adjusted returns, 20- and 252-session distance from adjusted highs, turnover and amount means, limit-up counts and streaks, and 5- and 20-session sector-relative returns. Sector returns compound daily relative levels rather than dividing them as though they were a continuous index.
+`computeDailyHistoryFeatures()` sorts immutable daily inputs, rejects duplicate trading dates or invalid content hashes, and computes features only at the newest supplied cutoff. Snapshot stock prices are already adjusted and are used as-is; volume and amount remain raw. Complete session windows produce 1-, 5-, 20-, and 60-session adjusted returns, 20-session realized volatility, distance from adjusted highs, turnover and amount means, limit-up structure, and sector-relative returns. The schema also records compounded sector returns, sector realized volatility, and canonical 20-session sector-correlation pairs.
 
 A missing symbol session makes every affected window unavailable instead of silently shortening the lookback. Sector-relative returns require one unchanged point-in-time sector across the window. The record stores all input snapshot hashes and exact stock evidence references; it reads no process clock.
 
-`DailyHistoryFeatureStream` consumes each strictly ascending session once for a multi-year replay. It retains at most 252 observations per symbol and emits the same feature semantics as the batch function at every cutoff, preventing repeated full-window scans from dominating strategy evaluation.
+`DailyHistoryFeatureStream` consumes each strictly ascending session once for a multi-year replay. It retains at most 252 observations per symbol and 20 complete sector sessions, then emits the same feature semantics as the batch function at every cutoff.
 
 ## Next-open execution
 
@@ -28,13 +28,13 @@ The fill price applies side-aware slippage and remains inside the observed daily
 
 ## Versioned signals and evaluation
 
-`generateResearchTacticSignal()` implements the first fixed trials for the three P3 candidates. Regime-signed breakout/pullback requires positive 20-session market breadth and ranks liquid near-high stocks with positive sector-relative continuation. Executable emotion leadership requires a bounded market-wide limit-up ratio and ranks liquid one-to-four-board leaders; the execution engine still rejects an opening limit-up. Industry-relative repair requires improving daily breadth without a broad 20-session uptrend, positive sector breadth, an idiosyncratic negative sector residual, exhausted turnover, and a positive reversal day.
+`generateResearchTacticSignal()` implements six fixed P3 trials. The first three cover regime-signed breakout/pullback, executable emotion leadership, and industry-relative repair. The second wave groups sectors whose 20-session correlation is at least 0.75 before ranking a leading cluster, ranks positive stock residuals only inside qualifying sectors, and selects lower-volatility leaders during non-acceleration states. The second-wave trials accept new entries once every five sessions; every threshold and portfolio setting is versioned rather than model-tunable.
 
 `evaluateResearchTactic()` converts ranked signals into a declared maximum number of positions using only the signal-date raw close, fixed holding periods, and the shared next-open engine. It records a daily marked equity curve, chronological folds, net and annualized return, Sharpe, maximum drawdown, turnover, fill rate, positive-fold ratio, and a complete replay with doubled trading costs. These are research measurements: the result remains `research` and names missing Deflated Sharpe, PBO, and market-regime concentration evidence as blockers.
 
 ## Model-facing research consumer
 
-[`@deepseek-ai/dsh-tool-maoq-tactic-research`](../../packages/market/tool-maoq-tactic-research/README.md) lists the registered providers and three fixed tactic versions without scanning history. One `maoq_tactic_backtest` call evaluates exactly one tactic over one bounded date range. Deployment configuration owns the source allowlist, stock-count floor, chunk size, maximum calendar span, timeout, and compact recent-signal limit; the model cannot weaken those values.
+[`@deepseek-ai/dsh-tool-maoq-tactic-research`](../../packages/market/tool-maoq-tactic-research/README.md) lists the registered providers and six fixed tactic versions without scanning history. One `maoq_tactic_backtest` call evaluates exactly one tactic over one bounded date range. Deployment configuration owns the source allowlist, stock-count floor, chunk size, maximum calendar span, timeout, and compact recent-signal limit; the model cannot weaken those values.
 
 The report contains source hashes, fixed trial identity, execution counts, base and doubled-cost metrics, chronological folds, recent non-empty candidates, and every promotion blocker. It omits full market rows and the full equity curve from model context.
 

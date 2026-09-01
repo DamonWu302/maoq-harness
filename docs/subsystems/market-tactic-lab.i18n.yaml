@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/subsystems/market-tactic-lab.md
-market-tactic-lab.md: 235eade0d69bb48fb800434f11c313159ae36a6f
-market-tactic-lab.zh.md: 3dcc978b1f59a6f8c27f3f0b5504c95a861e647f
+market-tactic-lab.md: f0d177a5347925a7f642b24f1bab015898c60eae
+market-tactic-lab.zh.md: 764e5b19f8442f554a45820c8ca9627daf461b45

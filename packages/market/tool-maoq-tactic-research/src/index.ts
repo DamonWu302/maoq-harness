@@ -24,6 +24,9 @@ export const RESEARCH_TACTIC_IDS = [
   'regime_signed_breakout_pullback',
   'openable_emotion_leader',
   'industry_relative_exhaustion_repair',
+  'correlation_cluster_sector_rotation',
+  'sector_residual_strength',
+  'low_volatility_sector_leader',
 ] as const satisfies readonly ResearchTacticId[]
 
 /** Model guidance that prevents history evaluation from becoming live-trading authority. */

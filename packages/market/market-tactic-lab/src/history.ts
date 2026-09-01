@@ -5,6 +5,8 @@ import {
   TACTIC_LAB_FEATURE_SCHEMA_VERSION,
   type DailyHistoryFeatureRecord,
   type DailyHistorySnapshot,
+  type DailySectorCorrelation20,
+  type DailySectorResearchFeatures,
   type DailyStockResearchFeatures,
 } from './types.ts'
 
@@ -63,6 +65,22 @@ function meanAt(
   const window = exactWindow(series, sessions)
   if (window === undefined) return null
   return rounded(window.reduce((sum, observation) => sum + value(observation.bar as StockDailyBar), 0) / sessions)
+}
+
+function sampleVolatility(values: readonly number[]): number | null {
+  if (values.length < 2) return null
+  const average = values.reduce((sum, value) => sum + value, 0) / values.length
+  return rounded(Math.sqrt(values.reduce((sum, value) => sum + (value - average) ** 2, 0) / (values.length - 1)))
+}
+
+function stockVolatility20(series: readonly SessionObservation[]): number | null {
+  const window = exactWindow(series, 21)
+  if (window === undefined) return null
+  const returns = window.slice(1).map((observation, index) => {
+    const previous = window[index]?.bar
+    return previous === undefined ? null : ratioReturn((observation.bar as StockDailyBar).close, previous.close)
+  })
+  return returns.some(value => value === null) ? null : sampleVolatility(returns as number[])
 }
 
 function distanceFromHigh(series: readonly SessionObservation[], sessions: number): number | null {
@@ -156,6 +174,7 @@ function featureFor(symbol: string, snapshots: readonly DailyHistorySnapshot[]):
     adjustedReturn5: returnAt(series, 5),
     adjustedReturn20: returnAt(series, 20),
     adjustedReturn60: returnAt(series, 60),
+    realizedVolatility20: stockVolatility20(series),
     distanceFromHigh20: distanceFromHigh(series, 20),
     distanceFromHigh252: distanceFromHigh(series, 252),
     sectorRelativeReturn5: sectorRelativeReturn(series, 5, sectorId),
@@ -173,6 +192,65 @@ function featureFor(symbol: string, snapshots: readonly DailyHistorySnapshot[]):
     listingDays: current.listingDays,
     evidenceRefs: evidenceRefs(series, symbol),
   }
+}
+
+function sectorDailyReturn(sector: SectorDailySnapshot): number {
+  return rounded(sector.close / 100 - 1)
+}
+
+function correlation(left: readonly number[], right: readonly number[]): number | null {
+  if (left.length !== right.length || left.length < 2) return null
+  const leftMean = left.reduce((sum, value) => sum + value, 0) / left.length
+  const rightMean = right.reduce((sum, value) => sum + value, 0) / right.length
+  const covariance = left.reduce((sum, value, index) => sum + (value - leftMean) * ((right[index] as number) - rightMean), 0)
+  const leftScale = Math.sqrt(left.reduce((sum, value) => sum + (value - leftMean) ** 2, 0))
+  const rightScale = Math.sqrt(right.reduce((sum, value) => sum + (value - rightMean) ** 2, 0))
+  return leftScale === 0 || rightScale === 0 ? null : rounded(covariance / leftScale / rightScale)
+}
+
+/**
+ * Compute bounded sector features shared by batch and incremental stock engines.
+ *
+ * @param input Ordered daily snapshots ending at the decision session.
+ * @returns Current sector features and canonical pairwise 20-session correlations.
+ */
+export function computeDailySectorResearchFeatures(input: readonly DailyHistorySnapshot[]): {
+  readonly sectors: readonly DailySectorResearchFeatures[]
+  readonly correlations: readonly DailySectorCorrelation20[]
+} {
+  const current = input.at(-1)
+  if (current === undefined) return { sectors: [], correlations: [] }
+  const returns = new Map<string, number[]>()
+  for (const snapshot of input.slice(-20)) {
+    for (const sector of snapshot.sectors) {
+      returns.set(sector.sectorId, [...returns.get(sector.sectorId) ?? [], sectorDailyReturn(sector)])
+    }
+  }
+  const sectors = current.sectors.map((sector): DailySectorResearchFeatures => {
+    const values = returns.get(sector.sectorId) ?? []
+    return {
+      sectorId: sector.sectorId,
+      historySessions: values.length,
+      adjustedReturn1: sectorDailyReturn(sector),
+      adjustedReturn20: values.length === 20 ? rounded(values.reduce((growth, value) => growth * (1 + value), 1) - 1) : null,
+      realizedVolatility20: values.length === 20 ? sampleVolatility(values) : null,
+      advancingRatio: sector.advancingRatio,
+      amount: sector.amount,
+      dispersion: sector.dispersion,
+      leaders: [...sector.leaders],
+    }
+  }).sort((left, right) => left.sectorId.localeCompare(right.sectorId))
+  const complete = sectors.filter(sector => sector.historySessions === 20).map(sector => sector.sectorId)
+  const correlations: DailySectorCorrelation20[] = []
+  for (let leftIndex = 0; leftIndex < complete.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < complete.length; rightIndex += 1) {
+      const leftSectorId = complete[leftIndex] as string
+      const rightSectorId = complete[rightIndex] as string
+      const value = correlation(returns.get(leftSectorId) as number[], returns.get(rightSectorId) as number[])
+      if (value !== null) correlations.push({ leftSectorId, rightSectorId, correlation: value })
+    }
+  }
+  return { sectors, correlations }
 }
 
 function normalizeSnapshots(input: readonly DailyHistorySnapshot[]): readonly DailyHistorySnapshot[] {
@@ -200,6 +278,7 @@ export function computeDailyHistoryFeatures(input: readonly DailyHistorySnapshot
   const current = last(snapshots) as DailyHistorySnapshot
   const symbols = current.stocks.map(bar => bar.symbol).sort()
   if (new Set(symbols).size !== symbols.length) throw new DailyHistoryFeatureError('current snapshot contains duplicate symbols')
+  const sectorFeatures = computeDailySectorResearchFeatures(snapshots)
   return deepFreeze({
     schemaVersion: TACTIC_LAB_FEATURE_SCHEMA_VERSION,
     engineVersion: TACTIC_LAB_FEATURE_ENGINE_VERSION,
@@ -208,5 +287,7 @@ export function computeDailyHistoryFeatures(input: readonly DailyHistorySnapshot
     tradingDate: current.identity.tradingDate,
     sessions: snapshots.length,
     stocks: symbols.map(symbol => featureFor(symbol, snapshots)),
+    sectors: sectorFeatures.sectors,
+    sectorCorrelations20: sectorFeatures.correlations,
   })
 }

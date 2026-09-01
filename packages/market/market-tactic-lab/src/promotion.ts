@@ -5,6 +5,7 @@ import type { ResearchTacticId, ResearchTacticSignal } from './signals.ts'
 /** Versioned statistical audit used by the P3 registered-tactic suite. */
 export const TACTIC_PROMOTION_AUDIT_VERSION = 'maoq-tactic-promotion-audit-v1' as const
 
+/** Multiple-testing-adjusted Sharpe evidence for one registered tactic. */
 export interface DeflatedSharpeEvidence {
   readonly observations: number
   readonly attemptedTrials: number
@@ -16,6 +17,7 @@ export interface DeflatedSharpeEvidence {
   readonly passed: boolean
 }
 
+/** Suite-level probability-of-backtest-overfitting evidence. */
 export interface BacktestOverfittingEvidence {
   readonly tactics: number
   readonly folds: number
@@ -24,8 +26,10 @@ export interface BacktestOverfittingEvidence {
   readonly passed: boolean
 }
 
+/** Coarse market regime used to detect concentrated sources of profit. */
 export type ResearchMarketState = 'emotion-attack' | 'trend-attack' | 'breadth-repair' | 'defensive'
 
+/** Attribution evidence that rejects profit dominated by a single market regime. */
 export interface MarketStateProfitConcentration {
   readonly positiveProfit: number
   readonly profitByState: Readonly<Record<ResearchMarketState, number>>
@@ -34,6 +38,7 @@ export interface MarketStateProfitConcentration {
   readonly passed: boolean
 }
 
+/** Execution-capacity evidence derived from filled notional and observed market amount. */
 export interface CapacityEvidence {
   readonly buyFills: number
   readonly missingAmountFills: number
@@ -43,6 +48,7 @@ export interface CapacityEvidence {
   readonly passed: boolean
 }
 
+/** Per-tactic statistical evidence and remaining promotion blockers. */
 export interface TacticPromotionStatistics {
   readonly deflatedSharpe: DeflatedSharpeEvidence
   readonly marketStateProfitConcentration: MarketStateProfitConcentration
@@ -50,6 +56,7 @@ export interface TacticPromotionStatistics {
   readonly blockers: readonly string[]
 }
 
+/** Aggregate audit for the complete pre-registered tactic suite. */
 export interface ResearchTacticSuiteAudit {
   readonly version: typeof TACTIC_PROMOTION_AUDIT_VERSION
   readonly attemptedTrials: number
@@ -296,6 +303,10 @@ function capacityEvidence(evaluation: ResearchTacticEvaluation): CapacityEvidenc
 /**
  * Audit all pre-registered tactics together so multiple-testing evidence is not fabricated from one curve.
  * The caller must include every attempted fixed trial, including rejected trials.
+ *
+ * @param input Evaluations for every supplied fixed tactic.
+ * @param attemptedTrials Total attempted trials, including rejected trials not selected for promotion.
+ * @returns Frozen suite audit with DSR, PBO, concentration, capacity, and blockers.
  */
 export function auditResearchTacticSuite(
   input: readonly ResearchTacticEvaluation[],

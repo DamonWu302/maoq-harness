@@ -27,7 +27,7 @@ import type {
 } from './types.ts'
 
 /** Current deterministic tactic-evaluation implementation. */
-export const TACTIC_EVALUATION_ENGINE_VERSION = 'maoq-tactic-walk-forward-v1' as const
+export const TACTIC_EVALUATION_ENGINE_VERSION = 'maoq-tactic-walk-forward-v2' as const
 
 /** Predeclared portfolio construction for one tactic. */
 export interface ResearchTacticBacktestConfig {
@@ -35,6 +35,7 @@ export interface ResearchTacticBacktestConfig {
   readonly maximumPositions: number
   readonly targetPositionFraction: number
   readonly holdingSessions: number
+  readonly entryIntervalSessions: number
   readonly foldSessions: number
 }
 
@@ -45,6 +46,7 @@ export const DEFAULT_RESEARCH_TACTIC_BACKTEST_CONFIGS: Readonly<Record<ResearchT
     maximumPositions: 5,
     targetPositionFraction: 0.18,
     holdingSessions: 20,
+    entryIntervalSessions: 1,
     foldSessions: 126,
   },
   openable_emotion_leader: {
@@ -52,6 +54,7 @@ export const DEFAULT_RESEARCH_TACTIC_BACKTEST_CONFIGS: Readonly<Record<ResearchT
     maximumPositions: 5,
     targetPositionFraction: 0.15,
     holdingSessions: 3,
+    entryIntervalSessions: 1,
     foldSessions: 126,
   },
   industry_relative_exhaustion_repair: {
@@ -59,6 +62,31 @@ export const DEFAULT_RESEARCH_TACTIC_BACKTEST_CONFIGS: Readonly<Record<ResearchT
     maximumPositions: 5,
     targetPositionFraction: 0.18,
     holdingSessions: 5,
+    entryIntervalSessions: 1,
+    foldSessions: 126,
+  },
+  correlation_cluster_sector_rotation: {
+    tacticId: 'correlation_cluster_sector_rotation',
+    maximumPositions: 6,
+    targetPositionFraction: 0.15,
+    holdingSessions: 10,
+    entryIntervalSessions: 5,
+    foldSessions: 126,
+  },
+  sector_residual_strength: {
+    tacticId: 'sector_residual_strength',
+    maximumPositions: 6,
+    targetPositionFraction: 0.15,
+    holdingSessions: 15,
+    entryIntervalSessions: 5,
+    foldSessions: 126,
+  },
+  low_volatility_sector_leader: {
+    tacticId: 'low_volatility_sector_leader',
+    maximumPositions: 8,
+    targetPositionFraction: 0.11,
+    holdingSessions: 20,
+    entryIntervalSessions: 5,
     foldSessions: 126,
   },
 })
@@ -153,6 +181,9 @@ function validateConfig(config: ResearchTacticBacktestConfig): void {
   if (!Number.isSafeInteger(config.holdingSessions) || config.holdingSessions < 1) {
     throw new Error('holdingSessions must be a positive safe integer')
   }
+  if (!Number.isSafeInteger(config.entryIntervalSessions) || config.entryIntervalSessions < 1) {
+    throw new Error('entryIntervalSessions must be a positive safe integer')
+  }
   if (!Number.isSafeInteger(config.foldSessions) || config.foldSessions < 2) {
     throw new Error('foldSessions must be an integer of at least two')
   }
@@ -202,7 +233,7 @@ class ResearchOrderPlanner {
       this.planned.delete(position.symbol)
     }
     const available = this.config.maximumPositions - this.planned.size
-    if (available > 0) {
+    if (available > 0 && this.index % this.config.entryIntervalSessions === 0) {
       const closeBySymbol = new Map(session.bars.map(bar => [bar.symbol, bar.close]))
       for (const selected of item.candidates.slice(0, available)) {
         if (this.planned.has(selected.symbol)) continue
@@ -468,6 +499,13 @@ export async function evaluateResearchTacticHistory(
  * Stream production history once and evaluate all fixed trials on identical sessions.
  * This is the only valid path for suite-level DSR/PBO evidence because a single curve
  * cannot reveal selection overfitting.
+ *
+ * @param adapter Production-history source used for every registered trial.
+ * @param request Bounded date range and data-quality requirements for the replay.
+ * @param configs Complete set of pre-registered fixed tactic configurations.
+ * @param attemptedTrials Total number of attempted trials included in statistical correction.
+ * @param policy Shared next-session A-share execution policy.
+ * @returns Evaluation results and suite-level overfitting evidence for every fixed trial.
  */
 export async function evaluateResearchTacticSuiteHistory(
   adapter: TacticLabHistoryAdapter,

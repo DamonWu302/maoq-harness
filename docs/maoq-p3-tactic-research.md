@@ -129,6 +129,7 @@ The multiple-testing controls follow Bailey et al., [The Probability of Backtest
 7. **Runtime consumer complete:** mount the production adapter registry and bounded single-tactic model tool.
 8. **First production-history baseline complete:** the three-tactic suite was audited over 969 strictly quality-approved sessions from 2022-01-04 through 2025-12-31; no active tactic was promoted.
 9. Promote only candidates that actually pass; retain the others as visible rejected research evidence.
+10. **Second-wave fixed trials complete:** the three added tactics replayed the same 969 production-history sessions with five-session entry intervals and the shared execution policy; all produced negative returns and remain `research`.
 
 ## 2022–2025 production-history baseline
 
@@ -186,3 +187,15 @@ Volatility management is a shared allocator rather than another stock-selection 
 `first_board_openability_v1` remains deferred because the public implementation enters at 09:30 and exits at 11:28 or 14:50, outside the daily-plus-sector contract. Do not sweep small changes over `industry_relative_exhaustion_repair_v1` or `openable_emotion_leader_v1`; a new holding path, entry clock, or first-board definition is a separately counted trial.
 
 The academic overnight-intraday reversal headline is explicitly rejected for the current contract. One paper reports long-short annualized Sharpe as high as 18.02, but the trade requires forming positions after observing the opening gap and realizing the result at the same close. It contains a broadly infeasible short leg and conflicts with both A-share T+1 and MAOQ's close-data decision clock.
+
+### Second-wave production-history result
+
+The fixed second-wave versions use the same 969 quality-approved sessions from 2022-01-04 through 2025-12-31, next-open execution, A-share T+1, and cost policy as the first round. Each accepts new entries once every five sessions; suite `attemptedTrials` is 6. The sealed holdout remains unopened.
+
+| Tactic | Annualized return | Sharpe | Maximum drawdown | Doubled-cost Sharpe | Positive folds | DSR probability | Conclusion |
+|---|---:|---:|---:|---:|---:|---:|---|
+| Correlation-cluster sector rotation | -8.75% | -0.447 | 50.72% | -0.500 | 37.5% | 0.28% | Published industry long-short evidence did not transfer to the current long-only, next-open stock mapping. |
+| Sector-residual strength | -8.95% | -0.214 | 48.41% | -0.308 | 25.0% | The current sector-relative residual still selects stocks that subsequently reverse and has no positive net evidence. |
+| Low-volatility sector leader | -8.14% | -0.512 | 44.97% | -0.614 | 37.5% | The low-volatility screen reduces turnover but does not produce defensive returns and fails profit-concentration evidence. |
+
+The six-tactic suite PBO is 0%, but this is not success: PBO only says foldwise relative selection did not exhibit that overfitting signal and cannot rescue candidates whose absolute results all fail. All three second-wave tactics pass the 1% capacity limit, but fail Sharpe, drawdown, fold stability, doubled-cost, and DSR evidence. They do not enter the paper-candidate pool and must not be retuned around these observed results.

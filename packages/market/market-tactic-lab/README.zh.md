@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-`dsh-market-tactic-lab` 为 MAOQ 战法研究提供统一的测量、信号、执行和评估基础。它在 `ctx.marketTacticHistory` 上注册生产历史提供方，为有界的复权特征交易时段与原始执行交易时段对生成内容地址，计算日线研究特征，生成三种带版本 P3 候选信号，并且只允许收盘后生成的订单在次一市场交易时段开盘成交，同时显式执行 A 股交易规则和成本。
+`dsh-market-tactic-lab` 为 MAOQ 战法研究提供统一的测量、信号、执行和评估基础。它在 `ctx.marketTacticHistory` 上注册生产历史提供方，为有界的复权特征交易时段与原始执行交易时段对生成内容地址，计算个股及板块日线研究特征，生成六种带版本 P3 候选信号，并且只允许收盘后生成的订单在次一市场交易时段开盘成交，同时显式执行 A 股交易规则和成本。
 
 ## 目录
 
@@ -43,7 +43,7 @@ const features = computeDailyHistoryFeatures(snapshots)
 const result = simulateNextOpenExecution(snapshots, orders)
 ```
 
-`generateResearchTacticSignal()` 实现状态签名突破／回踩、可成交情绪龙头和行业相对抛压衰竭修复的首轮固定试验。`evaluateResearchTactic()` 把排名候选转成有界仓位，应用固定持有期，产生按时间排列的 126 个交易时段折，并用翻倍成本重复回放。`evaluateResearchTacticSuiteHistory()` 只读取一次生产历史并并行评估三个预登记战法；`auditResearchTacticSuite()` 计算 Deflated Sharpe、组合对称交叉验证 PBO、市场状态利润集中度和容量。最终封存留出集完成前，它仍保持 `research`。
+`generateResearchTacticSignal()` 实现六项固定试验：首批突破／回踩、情绪龙头和行业相对修复信号，以及相关性聚类板块轮动、板块残差强势和低波板块领涨。`evaluateResearchTactic()` 把排名候选转成有界仓位，应用固定入场间隔与持有期，产生按时间排列的 126 个交易时段折，并用翻倍成本重复回放。`evaluateResearchTacticSuiteHistory()` 只读取一次生产历史并并行评估全部预登记战法；`auditResearchTacticSuite()` 计算 Deflated Sharpe、组合对称交叉验证 PBO、市场状态利润集中度和容量。最终封存留出集完成前，所有结果都保持 `research`。
 
 -----
 
@@ -53,7 +53,7 @@ const result = simulateNextOpenExecution(snapshots, orders)
 <details>
 <summary>实现内部细节——点击展开</summary>
 
-快照个股价格已经由取得适配器完成复权，因此研究会直接使用这些价格，绝不重复应用复权因子。成交量和成交额保持原始值。特征窗口按市场交易时段推进，要求个股观察完整，引用不可变输入，并且从不读取环境时钟。板块多交易时段收益会复合每个交易时段的相对板块水平，不会把这些单日水平误当作连续指数。增量引擎在每个截止点产生与批处理引擎相同的特征记录，并且对每只股票保留的观察数设有上限。
+快照个股价格已经由取得适配器完成复权，因此研究会直接使用这些价格，绝不重复应用复权因子。成交量和成交额保持原始值。特征窗口按市场交易时段推进，要求个股观察完整，引用不可变输入，并且从不读取环境时钟。特征记录包含个股 20 交易时段波动率、复合板块收益、板块波动率及规范顺序的板块相关性对。增量引擎在每个截止点产生与批处理引擎相同的特征记录，并且只保留有界的个股和板块观察。
 
 执行使用未复权原始价格。交易时段 `t` 收盘后生成的订单最早只能在 `t+1` 成交；缺少行情或停牌时不会顺延到之后更有利的交易时段。开盘涨停的买单和开盘跌停的卖单均被拒绝。滑点相对开盘价计算，并限制在当日观察区间内。持仓保留取得日期，卖出检查强制执行 T+1，最终权益使用最新观察到的未复权收盘价标记剩余股份。
 

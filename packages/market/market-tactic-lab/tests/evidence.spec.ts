@@ -8,6 +8,9 @@ describe('public tactic evidence', () => {
       'regime_signed_breakout_pullback',
       'openable_emotion_leader',
       'industry_relative_exhaustion_repair',
+      'correlation_cluster_sector_rotation',
+      'sector_residual_strength',
+      'low_volatility_sector_leader',
     ]))
     for (const item of PUBLIC_TACTIC_EVIDENCE) {
       expect(item.sourceUrl).toMatch(/^https:\/\//u)

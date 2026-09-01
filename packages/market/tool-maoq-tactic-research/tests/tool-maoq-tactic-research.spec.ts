@@ -47,7 +47,7 @@ describe('MAOQ tactic research tools', () => {
     const tactics = (sources.value as {
       tactics: { tacticId: string; publicEvidence: { evidenceId: string; decisionUse: string }[] }[]
     }).tactics
-    expect(tactics).toHaveLength(3)
+    expect(tactics).toHaveLength(6)
     expect(tactics[0]).toMatchObject({ tacticId: 'regime_signed_breakout_pullback' })
     expect(tactics[0]?.publicEvidence).toEqual(expect.arrayContaining([
       expect.objectContaining({ evidenceId: 'china-factor-momentum-jef-2024', decisionUse: 'architecture-benchmark' }),

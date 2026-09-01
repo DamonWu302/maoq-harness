@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-market-tactic-lab` supplies the common measurement, signal, execution, and evaluation foundation for MAOQ tactic research. It registers production history providers on `ctx.marketTacticHistory`, content-addresses bounded pairs of adjusted feature sessions and raw execution sessions, computes daily research features, generates three versioned P3 candidate signals, and replays close-authored orders only at the next market session's open under explicit A-share trading rules and costs.
+`dsh-market-tactic-lab` supplies the common measurement, signal, execution, and evaluation foundation for MAOQ tactic research. It registers production history providers on `ctx.marketTacticHistory`, content-addresses bounded pairs of adjusted feature sessions and raw execution sessions, computes daily stock and sector research features, generates six versioned P3 candidate signals, and replays close-authored orders only at the next market session's open under explicit A-share trading rules and costs.
 
 ## Table of Contents
 
@@ -43,7 +43,7 @@ Pass a separate raw, unadjusted execution sequence with exact daily up/down limi
 const result = simulateNextOpenExecution(snapshots, orders)
 ```
 
-`generateResearchTacticSignal()` implements the fixed first trials for regime-signed breakout/pullback, executable emotion leadership, and industry-relative exhaustion repair. `evaluateResearchTactic()` turns their ranked candidates into bounded positions, applies fixed holding periods, produces chronological 126-session folds, and repeats the replay with doubled costs. `evaluateResearchTacticSuiteHistory()` reads production history once and evaluates all three preregistered tactics in parallel; `auditResearchTacticSuite()` computes Deflated Sharpe, combinatorially symmetric cross-validation PBO, market-state profit concentration, and capacity. It remains `research` until the final sealed holdout is complete.
+`generateResearchTacticSignal()` implements six fixed trials: the initial breakout/pullback, emotion leadership, and industry-relative repair signals plus correlation-cluster sector rotation, sector-residual strength, and low-volatility sector leadership. `evaluateResearchTactic()` turns ranked candidates into bounded positions, applies fixed entry intervals and holding periods, produces chronological 126-session folds, and repeats the replay with doubled costs. `evaluateResearchTacticSuiteHistory()` reads production history once and evaluates all preregistered tactics in parallel; `auditResearchTacticSuite()` computes Deflated Sharpe, combinatorially symmetric cross-validation PBO, market-state profit concentration, and capacity. Every result remains `research` until the final sealed holdout is complete.
 
 -----
 
@@ -53,7 +53,7 @@ const result = simulateNextOpenExecution(snapshots, orders)
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-Snapshot stock prices are already adjusted by their acquisition adapter, so research uses them directly and never applies the adjustment factor twice. Volume and amount remain raw. Feature windows follow market sessions, require complete symbol observations, cite immutable inputs, and never read an ambient clock. Multi-session sector returns compound each session's relative sector level instead of treating those daily levels as a continuous index. The incremental engine produces the same feature record as the batch engine for each cutoff and bounds retained observations per symbol.
+Snapshot stock prices are already adjusted by their acquisition adapter, so research uses them directly and never applies the adjustment factor twice. Volume and amount remain raw. Feature windows follow market sessions, require complete symbol observations, cite immutable inputs, and never read an ambient clock. The feature record includes 20-session stock volatility, compounded sector returns, sector volatility, and canonical sector-correlation pairs. The incremental engine produces the same feature record as the batch engine for each cutoff and retains bounded observations per stock and sector.
 
 Execution uses raw unadjusted prices. Orders authored after session `t` can first fill at session `t+1`; a missing or suspended bar never advances to a later favorable session. Buys at an opening limit-up and sells at an opening limit-down are rejected. Slippage is applied against the open and clipped to the observed daily range. Positions retain acquisition dates, sell checks enforce T+1, and final equity marks remaining shares to the latest observed raw close.
 

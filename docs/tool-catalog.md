@@ -1547,7 +1547,10 @@ Run one fixed MAOQ tactic through quality-gated daily history, next-open A-share
       "enum": [
         "regime_signed_breakout_pullback",
         "openable_emotion_leader",
-        "industry_relative_exhaustion_repair"
+        "industry_relative_exhaustion_repair",
+        "correlation_cluster_sector_rotation",
+        "sector_residual_strength",
+        "low_volatility_sector_leader"
       ]
     },
     "startDate": {

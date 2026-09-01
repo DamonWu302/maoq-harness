@@ -32,6 +32,7 @@ function stock(symbol: string, date: string, overrides: Partial<DailyStockResear
     adjustedReturn5: 0.05,
     adjustedReturn20: 0.12,
     adjustedReturn60: 0.2,
+    realizedVolatility20: 0.02,
     distanceFromHigh20: -0.02,
     distanceFromHigh252: -0.1,
     sectorRelativeReturn5: 0.02,
@@ -59,13 +60,19 @@ function feature(index: number, targets: readonly string[] = ['TARGET']): DailyH
     amountMean20: 1,
   }))
   return {
-    schemaVersion: 1,
-    engineVersion: 'maoq-daily-history-v1',
+    schemaVersion: 2,
+    engineVersion: 'maoq-daily-history-v2',
     currentSnapshotHash: hash,
     inputSnapshotHashes: [hash],
     tradingDate: date,
     sessions: 252 + index,
     stocks: [...targets.map(symbol => stock(symbol, date)), ...backgrounds],
+    sectors: [{
+      sectorId: 'sector-a', historySessions: 20, adjustedReturn1: 0.01, adjustedReturn20: 0.08,
+      realizedVolatility20: 0.015, advancingRatio: 0.6, amount: 2_000_000_000,
+      dispersion: 0.02, leaders: ['TARGET'],
+    }],
+    sectorCorrelations20: [],
   }
 }
 
@@ -101,6 +108,7 @@ function config(overrides: Partial<ResearchTacticBacktestConfig> = {}): Research
     maximumPositions: 1,
     targetPositionFraction: 0.2,
     holdingSessions: 2,
+    entryIntervalSessions: 1,
     foldSessions: 3,
     ...overrides,
   }
@@ -307,6 +315,8 @@ describe('P3 tactic walk-forward evaluation', () => {
       config({ maximumPositions: 2, targetPositionFraction: 0.6 }),
       config({ holdingSessions: 0 }),
       config({ holdingSessions: 1.5 }),
+      config({ entryIntervalSessions: 0 }),
+      config({ entryIntervalSessions: 1.5 }),
       config({ foldSessions: 1 }),
       config({ foldSessions: 2.5 }),
     ]
@@ -350,14 +360,17 @@ describe('P3 tactic walk-forward evaluation', () => {
     )
     expect(loads).toBe(1)
     expect(Object.keys(result.evaluations).sort()).toEqual([
+      'correlation_cluster_sector_rotation',
       'industry_relative_exhaustion_repair',
+      'low_volatility_sector_leader',
       'openable_emotion_leader',
       'regime_signed_breakout_pullback',
+      'sector_residual_strength',
     ])
     expect(result.sourceExecutionHashes).toHaveLength(64)
     expect(result.promotionAudit).toMatchObject({
-      attemptedTrials: 3,
-      backtestOverfitting: { probability: null, passed: false },
+      attemptedTrials: 6,
+      backtestOverfitting: { passed: false },
     })
   })
 

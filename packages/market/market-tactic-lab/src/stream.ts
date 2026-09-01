@@ -7,7 +7,7 @@ import {
   type DailyHistorySnapshot,
   type DailyStockResearchFeatures,
 } from './types.ts'
-import { DailyHistoryFeatureError } from './history.ts'
+import { computeDailySectorResearchFeatures, DailyHistoryFeatureError } from './history.ts'
 
 interface StreamObservation {
   readonly sessionIndex: number
@@ -71,6 +71,21 @@ function meanAt(
   return rounded(window.reduce((sum, observation) => sum + value(observation.bar), 0) / sessions)
 }
 
+function realizedVolatility20(
+  observations: readonly StreamObservation[],
+  currentIndex: number,
+): number | null {
+  const window = exactWindow(observations, 21, currentIndex)
+  if (window === undefined) return null
+  const values = window.slice(1).map((observation, index) => (
+    ratioReturn(observation.bar.close, (window[index] as StreamObservation).bar.close)
+  ))
+  if (values.some(value => value === null)) return null
+  const returns = values as number[]
+  const average = returns.reduce((sum, value) => sum + value, 0) / returns.length
+  return rounded(Math.sqrt(returns.reduce((sum, value) => sum + (value - average) ** 2, 0) / (returns.length - 1)))
+}
+
 function distanceFromHigh(observations: readonly StreamObservation[], sessions: number, currentIndex: number): number | null {
   const window = exactWindow(observations, sessions, currentIndex)
   const current = window?.at(-1)
@@ -127,6 +142,7 @@ function featureFor(stream: SymbolStream, currentIndex: number): DailyStockResea
     adjustedReturn5: returnAt(observations, 5, currentIndex),
     adjustedReturn20: returnAt(observations, 20, currentIndex),
     adjustedReturn60: returnAt(observations, 60, currentIndex),
+    realizedVolatility20: realizedVolatility20(observations, currentIndex),
     distanceFromHigh20: distanceFromHigh(observations, 20, currentIndex),
     distanceFromHigh252: distanceFromHigh(observations, 252, currentIndex),
     sectorRelativeReturn5: sectorRelativeReturn(observations, 5, currentIndex, current.sectorId),
@@ -150,6 +166,7 @@ function featureFor(stream: SymbolStream, currentIndex: number): DailyStockResea
 export class DailyHistoryFeatureStream {
   private readonly hashes: string[] = []
   private readonly symbols = new Map<string, SymbolStream>()
+  private readonly sectorSnapshots: DailyHistorySnapshot[] = []
   private previousDate: string | undefined
 
   /**
@@ -172,6 +189,8 @@ export class DailyHistoryFeatureStream {
     const sessionIndex = this.hashes.length
     const sectors = memberships(snapshot)
     this.hashes.push(snapshot.identity.contentHash)
+    this.sectorSnapshots.push(snapshot)
+    if (this.sectorSnapshots.length > 20) this.sectorSnapshots.shift()
     this.previousDate = date
     for (const bar of snapshot.stocks) {
       const stream = this.symbols.get(bar.symbol) ?? { observations: [], contiguousSessions: 0 }
@@ -191,6 +210,7 @@ export class DailyHistoryFeatureStream {
     const stocks = [...stockSymbols].sort().map((symbol) => {
       return featureFor(this.symbols.get(symbol) as SymbolStream, sessionIndex)
     })
+    const sectorFeatures = computeDailySectorResearchFeatures(this.sectorSnapshots)
     return deepFreeze({
       schemaVersion: TACTIC_LAB_FEATURE_SCHEMA_VERSION,
       engineVersion: TACTIC_LAB_FEATURE_ENGINE_VERSION,
@@ -199,6 +219,8 @@ export class DailyHistoryFeatureStream {
       tradingDate: date,
       sessions: this.hashes.length,
       stocks,
+      sectors: sectorFeatures.sectors,
+      sectorCorrelations20: sectorFeatures.correlations,
     })
   }
 }

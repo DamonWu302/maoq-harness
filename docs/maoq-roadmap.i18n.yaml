@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/maoq-roadmap.md
-maoq-roadmap.md: cf4fadf5480ce4717d2c15148f131611f3d22233
-maoq-roadmap.zh.md: ee6f9039720c2829d5ededa5ce931610d435a394
+maoq-roadmap.md: 15ae6ebc82e9cdfb99e7c506d341168fa2c95536
+maoq-roadmap.zh.md: 648a601a62514bc4367eb3847377e8a66d4a82ab

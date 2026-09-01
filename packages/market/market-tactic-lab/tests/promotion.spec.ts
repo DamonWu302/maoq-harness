@@ -72,6 +72,7 @@ function evaluation(tacticId: ResearchTacticId, tacticIndex: number): ResearchTa
       maximumPositions: 5,
       targetPositionFraction: 0.15,
       holdingSessions: 5,
+      entryIntervalSessions: 1,
       foldSessions: 16,
     },
     policy: DEFAULT_A_SHARE_EXECUTION_POLICY,

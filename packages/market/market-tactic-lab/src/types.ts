@@ -1,9 +1,9 @@
 import type { MarketSnapshot, StockDailyBar } from '@deepseek-ai/dsh-market-snapshot'
 
 /** Current daily-history feature schema. */
-export const TACTIC_LAB_FEATURE_SCHEMA_VERSION = 1 as const
+export const TACTIC_LAB_FEATURE_SCHEMA_VERSION = 2 as const
 /** Current feature implementation identity. */
-export const TACTIC_LAB_FEATURE_ENGINE_VERSION = 'maoq-daily-history-v1' as const
+export const TACTIC_LAB_FEATURE_ENGINE_VERSION = 'maoq-daily-history-v2' as const
 /** Current execution result schema. */
 export const TACTIC_LAB_EXECUTION_SCHEMA_VERSION = 1 as const
 /** Current execution implementation identity. */
@@ -21,6 +21,7 @@ export interface DailyStockResearchFeatures {
   readonly adjustedReturn5: number | null
   readonly adjustedReturn20: number | null
   readonly adjustedReturn60: number | null
+  readonly realizedVolatility20: number | null
   readonly distanceFromHigh20: number | null
   readonly distanceFromHigh252: number | null
   readonly sectorRelativeReturn5: number | null
@@ -37,6 +38,26 @@ export interface DailyStockResearchFeatures {
   readonly evidenceRefs: readonly string[]
 }
 
+/** Deterministic daily measurements for one point-in-time sector. */
+export interface DailySectorResearchFeatures {
+  readonly sectorId: string
+  readonly historySessions: number
+  readonly adjustedReturn1: number
+  readonly adjustedReturn20: number | null
+  readonly realizedVolatility20: number | null
+  readonly advancingRatio: number
+  readonly amount: number
+  readonly dispersion: number
+  readonly leaders: readonly string[]
+}
+
+/** Rolling daily-return correlation for one canonical sector pair. */
+export interface DailySectorCorrelation20 {
+  readonly leftSectorId: string
+  readonly rightSectorId: string
+  readonly correlation: number
+}
+
 /** Replay-stable feature universe for the newest supplied immutable snapshot. */
 export interface DailyHistoryFeatureRecord {
   readonly schemaVersion: typeof TACTIC_LAB_FEATURE_SCHEMA_VERSION
@@ -46,6 +67,8 @@ export interface DailyHistoryFeatureRecord {
   readonly tradingDate: string
   readonly sessions: number
   readonly stocks: readonly DailyStockResearchFeatures[]
+  readonly sectors: readonly DailySectorResearchFeatures[]
+  readonly sectorCorrelations20: readonly DailySectorCorrelation20[]
 }
 
 /** Explicit next-session order authored after one daily close. */

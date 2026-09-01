@@ -1553,7 +1553,10 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
       "enum": [
         "regime_signed_breakout_pullback",
         "openable_emotion_leader",
-        "industry_relative_exhaustion_repair"
+        "industry_relative_exhaustion_repair",
+        "correlation_cluster_sector_rotation",
+        "sector_residual_strength",
+        "low_volatility_sector_leader"
       ]
     },
     "startDate": {

@@ -6,12 +6,18 @@ export type ResearchTacticId =
   | 'regime_signed_breakout_pullback'
   | 'openable_emotion_leader'
   | 'industry_relative_exhaustion_repair'
+  | 'correlation_cluster_sector_rotation'
+  | 'sector_residual_strength'
+  | 'low_volatility_sector_leader'
 
 /** Stable implementation identities. Parameter changes require a new version. */
 export const RESEARCH_TACTIC_VERSIONS: Readonly<Record<ResearchTacticId, string>> = deepFreeze({
   regime_signed_breakout_pullback: 'regime-signed-breakout-pullback-v1',
   openable_emotion_leader: 'openable-emotion-leader-v1',
   industry_relative_exhaustion_repair: 'industry-relative-exhaustion-repair-v1',
+  correlation_cluster_sector_rotation: 'correlation-cluster-sector-rotation-v1',
+  sector_residual_strength: 'sector-residual-strength-v1',
+  low_volatility_sector_leader: 'low-volatility-sector-leader-v1',
 })
 
 /** One ranked stock whose complete deterministic gates passed at the close. */
@@ -157,6 +163,119 @@ function repair(
   }
 }
 
+function correlatedSectorClusters(record: DailyHistoryFeatureRecord): readonly ReadonlySet<string>[] {
+  const parents = new Map(record.sectors.map(sector => [sector.sectorId, sector.sectorId]))
+  const root = (sectorId: string): string => {
+    const parent = parents.get(sectorId)
+    if (parent === undefined || parent === sectorId) return sectorId
+    const value = root(parent)
+    parents.set(sectorId, value)
+    return value
+  }
+  for (const pair of record.sectorCorrelations20) {
+    if (pair.correlation < 0.75) continue
+    const left = root(pair.leftSectorId)
+    const right = root(pair.rightSectorId)
+    if (left !== right) {
+      const canonical = left < right ? left : right
+      parents.set(left, canonical)
+      parents.set(right, canonical)
+    }
+  }
+  const clusters = new Map<string, Set<string>>()
+  for (const sectorId of parents.keys()) {
+    const key = root(sectorId)
+    const cluster = clusters.get(key) ?? new Set<string>()
+    cluster.add(sectorId)
+    clusters.set(key, cluster)
+  }
+  return [...clusters.values()]
+}
+
+function correlationClusterRotation(
+  record: DailyHistoryFeatureRecord,
+  market: MarketCrossSection,
+): Pick<ResearchTacticSignal, 'gatePassed' | 'gateReason' | 'candidates'> {
+  const sectorById = new Map(record.sectors.map(sector => [sector.sectorId, sector]))
+  const rankedClusters = correlatedSectorClusters(record).flatMap((sectorIds) => {
+    const sectors = [...sectorIds]
+      .map(sectorId => sectorById.get(sectorId))
+      .filter((value): value is NonNullable<typeof value> => value !== undefined)
+    if (sectors.length === 0 || sectors.some(sector => !finite(sector.adjustedReturn20) || !finite(sector.realizedVolatility20))) return []
+    const return20 = sectors.reduce((sum, sector) => sum + (sector.adjustedReturn20 as number), 0) / sectors.length
+    const volatility20 = sectors.reduce((sum, sector) => sum + (sector.realizedVolatility20 as number), 0) / sectors.length
+    const breadth = sectors.reduce((sum, sector) => sum + sector.advancingRatio, 0) / sectors.length
+    if (return20 <= 0.03 || breadth < 0.5) return []
+    return [{ sectorIds, score: return20 / Math.max(volatility20, 0.002) + breadth }]
+  }).sort((left, right) => right.score - left.score)
+  const selectedSectors = rankedClusters[0]?.sectorIds ?? new Set<string>()
+  const gatePassed = market.breadth20 >= 0.5 && market.breadth1 >= 0.45 && selectedSectors.size > 0
+  const candidates = gatePassed ? record.stocks.flatMap((stock) => {
+    const { adjustedReturn20: return20, sectorRelativeReturn20: relative20, realizedVolatility20: volatility20,
+      turnover5To20Ratio: turnoverRatio, amountMean20: amount20 } = stock
+    if (stock.sectorId === null || !selectedSectors.has(stock.sectorId) || stock.tradingStatus !== 'trading'
+      || stock.limitStatus !== 'none' || stock.listingDays < 120 || !finite(return20) || !finite(relative20)
+      || !finite(volatility20) || !finite(turnoverRatio) || !finite(amount20)) return []
+    if (return20 <= 0.02 || return20 > 0.35 || relative20 < -0.02 || volatility20 > 0.045
+      || turnoverRatio < 0.6 || turnoverRatio > 1.8 || amount20 < 50_000_000) return []
+    return [candidate(stock, return20 + relative20 * 2 - volatility20 * 3 + Math.log10(amount20) * 0.005)]
+  }) : []
+  return {
+    gatePassed,
+    gateReason: gatePassed ? 'correlated_sector_cluster_leads' : 'no_attackable_sector_cluster',
+    candidates: ranked(candidates),
+  }
+}
+
+function residualStrength(
+  record: DailyHistoryFeatureRecord,
+  market: MarketCrossSection,
+): Pick<ResearchTacticSignal, 'gatePassed' | 'gateReason' | 'candidates'> {
+  const strongSectors = new Set(record.sectors.filter(sector => finite(sector.adjustedReturn20)
+    && sector.adjustedReturn20 > 0.015 && sector.advancingRatio >= 0.45).map(sector => sector.sectorId))
+  const gatePassed = market.breadth20 >= 0.45 && strongSectors.size > 0
+  const candidates = gatePassed ? record.stocks.flatMap((stock) => {
+    const { adjustedReturn20: return20, adjustedReturn60: return60, sectorRelativeReturn20: relative20,
+      realizedVolatility20: volatility20, amountMean20: amount20, turnover5To20Ratio: turnoverRatio } = stock
+    if (stock.sectorId === null || !strongSectors.has(stock.sectorId) || stock.tradingStatus !== 'trading'
+      || stock.limitStatus !== 'none' || stock.listingDays < 120 || !finite(return20) || !finite(return60)
+      || !finite(relative20) || !finite(volatility20) || !finite(amount20) || !finite(turnoverRatio)) return []
+    if (return20 <= 0.03 || return20 > 0.35 || return60 <= 0 || relative20 <= 0.04 || volatility20 > 0.05
+      || amount20 < 50_000_000 || turnoverRatio < 0.7 || turnoverRatio > 1.8) return []
+    return [candidate(stock, relative20 * 3 + return20 + return60 * 0.25 - volatility20 * 4)]
+  }) : []
+  return {
+    gatePassed,
+    gateReason: gatePassed ? 'positive_sector_residual_regime' : 'sector_residual_regime_absent',
+    candidates: ranked(candidates),
+  }
+}
+
+function lowVolatilityLeader(
+  record: DailyHistoryFeatureRecord,
+  market: MarketCrossSection,
+): Pick<ResearchTacticSignal, 'gatePassed' | 'gateReason' | 'candidates'> {
+  const strongSectors = new Set(record.sectors.filter(sector => finite(sector.adjustedReturn20)
+    && sector.adjustedReturn20 > 0 && sector.advancingRatio >= 0.45).map(sector => sector.sectorId))
+  const gatePassed = market.breadth20 >= 0.35 && market.breadth20 <= 0.65
+    && market.limitUpRatio <= 0.015 && strongSectors.size > 0
+  const candidates = gatePassed ? record.stocks.flatMap((stock) => {
+    const { adjustedReturn20: return20, sectorRelativeReturn20: relative20, realizedVolatility20: volatility20,
+      distanceFromHigh20: distance20, amountMean20: amount20 } = stock
+    if (stock.sectorId === null || !strongSectors.has(stock.sectorId) || stock.tradingStatus !== 'trading'
+      || stock.limitStatus !== 'none' || stock.listingDays < 180 || !finite(return20) || !finite(relative20)
+      || !finite(volatility20) || !finite(distance20) || !finite(amount20)) return []
+    if (return20 <= 0.01 || return20 > 0.2 || relative20 <= 0 || volatility20 > 0.025
+      || distance20 < -0.12 || amount20 < 100_000_000 || stock.limitUpSessions20 > 1) return []
+    return [candidate(stock, return20 + relative20 * 2 - volatility20 * 6 + (distance20 + 0.12) * 0.2)]
+  }) : []
+  return {
+    gatePassed,
+    gateReason: gatePassed ? 'rotation_defensive_low_volatility' : 'low_volatility_regime_absent',
+    candidates: ranked(candidates),
+  }
+}
+
 /**
  * Generate one deterministic post-close signal from an immutable feature record.
  * @param tacticId - Fixed versioned research tactic to evaluate.
@@ -169,11 +288,15 @@ export function generateResearchTacticSignal(
 ): ResearchTacticSignal {
   if (!/^[a-f0-9]{64}$/u.test(record.currentSnapshotHash)) throw new Error('feature hash is not SHA-256')
   const market = crossSection(record.stocks)
-  const result = tacticId === 'regime_signed_breakout_pullback'
-    ? breakout(record, market)
-    : tacticId === 'openable_emotion_leader'
-      ? emotion(record, market)
-      : repair(record, market)
+  let result: Pick<ResearchTacticSignal, 'gatePassed' | 'gateReason' | 'candidates'>
+  switch (tacticId) {
+    case 'regime_signed_breakout_pullback': result = breakout(record, market); break
+    case 'openable_emotion_leader': result = emotion(record, market); break
+    case 'industry_relative_exhaustion_repair': result = repair(record, market); break
+    case 'correlation_cluster_sector_rotation': result = correlationClusterRotation(record, market); break
+    case 'sector_residual_strength': result = residualStrength(record, market); break
+    case 'low_volatility_sector_leader': result = lowVolatilityLeader(record, market); break
+  }
   return deepFreeze({
     tacticId,
     tacticVersion: RESEARCH_TACTIC_VERSIONS[tacticId],

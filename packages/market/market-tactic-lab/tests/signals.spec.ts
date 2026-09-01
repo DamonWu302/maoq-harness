@@ -3,6 +3,7 @@ import {
   generateResearchTacticSignal,
   RESEARCH_TACTIC_VERSIONS,
   type DailyHistoryFeatureRecord,
+  type DailySectorResearchFeatures,
   type DailyStockResearchFeatures,
   type ResearchTacticId,
 } from '../src/index.ts'
@@ -20,6 +21,7 @@ function stock(symbol: string, overrides: Partial<DailyStockResearchFeatures> = 
     adjustedReturn5: 0.02,
     adjustedReturn20: 0.12,
     adjustedReturn60: 0.2,
+    realizedVolatility20: 0.02,
     distanceFromHigh20: -0.02,
     distanceFromHigh252: -0.1,
     sectorRelativeReturn5: 0.02,
@@ -38,15 +40,32 @@ function stock(symbol: string, overrides: Partial<DailyStockResearchFeatures> = 
   }
 }
 
+function sector(sectorId = 'sector-a', overrides: Partial<DailySectorResearchFeatures> = {}): DailySectorResearchFeatures {
+  return {
+    sectorId,
+    historySessions: 20,
+    adjustedReturn1: 0.01,
+    adjustedReturn20: 0.08,
+    realizedVolatility20: 0.015,
+    advancingRatio: 0.6,
+    amount: 2_000_000_000,
+    dispersion: 0.02,
+    leaders: ['TARGET'],
+    ...overrides,
+  }
+}
+
 function record(stocks: readonly DailyStockResearchFeatures[], hash = HASH): DailyHistoryFeatureRecord {
   return {
-    schemaVersion: 1,
-    engineVersion: 'maoq-daily-history-v1',
+    schemaVersion: 2,
+    engineVersion: 'maoq-daily-history-v2',
     currentSnapshotHash: hash,
     inputSnapshotHashes: [hash],
     tradingDate: DATE,
     sessions: 252,
     stocks,
+    sectors: [sector()],
+    sectorCorrelations20: [],
   }
 }
 
@@ -125,6 +144,16 @@ describe('deterministic P3 tactic signals', () => {
   it('requires both market and sector breadth before ranking industry-relative repair', () => {
     const result = signal('industry_relative_exhaustion_repair', repairUniverse())
     expect(result).toMatchObject({ gatePassed: true, gateReason: 'breadth_repair_confirmed' })
+    expect(result.candidates.map(item => item.symbol)).toEqual(['TARGET'])
+  })
+
+  it.each([
+    ['correlation_cluster_sector_rotation', 'correlated_sector_cluster_leads'],
+    ['sector_residual_strength', 'positive_sector_residual_regime'],
+    ['low_volatility_sector_leader', 'rotation_defensive_low_volatility'],
+  ] as const)('ranks the fixed second-wave %s candidate', (tacticId, gateReason) => {
+    const result = signal(tacticId, breakoutUniverse())
+    expect(result).toMatchObject({ gatePassed: true, gateReason, tacticVersion: RESEARCH_TACTIC_VERSIONS[tacticId] })
     expect(result.candidates.map(item => item.symbol)).toEqual(['TARGET'])
   })
 

@@ -16,7 +16,7 @@ describe('MAOQ P3 production canary CLI', () => {
       database: 'long_short_stock',
       connectTimeoutMs: 5000,
       queryTimeoutMs: 60000,
-      attemptedTrials: 3,
+      attemptedTrials: 6,
     })
   })
 
@@ -54,7 +54,7 @@ describe('MAOQ P3 production canary CLI', () => {
       mode: 'evaluate-suite',
       chunkSessions: 10,
       tacticId: 'industry_relative_exhaustion_repair',
-      attemptedTrials: 3,
+      attemptedTrials: 6,
     })
   })
 
@@ -66,7 +66,7 @@ describe('MAOQ P3 production canary CLI', () => {
     [['--start', '2026-09-01', '--end', '2026-09-01', '--attempted-trials', '0'], /from 1 through/],
     [[
       '--start', '2026-09-01', '--end', '2026-09-01', '--mode', 'evaluate-suite', '--attempted-trials', '2',
-    ], /at least 3/],
+    ], /at least 6/],
   ] as const)('rejects unsafe or irreproducible arguments %#', (args, message) => {
     expect(() => parseP3CanaryOptions(args, {})).toThrow(message)
   })
