@@ -6,7 +6,7 @@ English | [中文](maoq-roadmap.zh.md)
 
 This document turns the MAOQ direction into an executable sequence. The outcome is not a chatbot that discusses stocks, but a research and paper-trading agent that can identify the principal contradiction, select the least-resistance battlefield, choose tactics for the current market state, rank stocks, state invalidation conditions, and accept an independent risk veto.
 
-The current focus is **P3 tactic eligibility**. P0 through P2 are complete: full label fixtures, the corrected 12-snapshot/10-evaluation-day production canary, and the current Local Codex route canary are recorded in the [MAOQ operations runbook](maoq-operations.md#p2-canary).
+The current focus is **P3 tactic coverage and P3.5 dynamic routing**. P0 through P2 are complete: full label fixtures, the corrected 12-snapshot/10-evaluation-day production canary, and the current Local Codex route canary are recorded in the [MAOQ operations runbook](maoq-operations.md#p2-canary). The proposed [dynamic tactic commander](maoq-dynamic-tactic-commander.md) defines how fixed tactics become a bounded state-dependent choice rather than one full-period winner.
 
 ## Current baseline
 
@@ -36,6 +36,7 @@ The current focus is **P3 tactic eligibility**. P0 through P2 are complete: full
 | P1 — Market snapshot | Freeze one immutable daily market input | Versioned daily-bar, sector, and evidence snapshot schema | The same cutoff always rebuilds the same snapshot; no future data enters |
 | P2 — Strategic state | Identify the market's principal contradiction and least-resistance direction | Market-regime, emotion-cycle, and sector-battlefield engines | Each daily snapshot produces a state, supporting evidence, counter-evidence, and transition conditions |
 | P3 — Tactical pool | Match tactics to the current state | Gated tactic registry with entry, exit, and invalidation rules | Ineligible tactics are deterministically excluded before stock ranking |
+| P3.5 — Dynamic tactic commander | Select the best permitted weapon for the current principal contradiction | Unified tactic catalog, conditional scorecard, deterministic router, constrained DSH synthesis, and risk veto | Every choice is cutoff-correct, catalog-bound, replayable, and attributable against fixed and no-trade baselines |
 | P4 — Stock battlefield | Return actionable short- and medium-horizon candidates | Scenario-aware candidate generation, ranking, and explanation | Every candidate traces to sector, tactic, evidence, risk, and invalidation; walk-forward evaluation is reproducible |
 | P5 — Operating loop | Run the process consistently without live execution | Scheduled research, paper portfolio, review, and drift report | Daily runs are idempotent, auditable, and fail closed on stale or incomplete data |
 
@@ -129,7 +130,7 @@ The deterministic layer owns feature definitions, missing-data behavior, classif
 
 ## P3 — Tactical pool
 
-**Status:** in progress. The initial registry, fail-closed P2 context gates, point-in-time daily-history features, shared next-open A-share execution, content-addressed read-only MySQL history adapter, single-tactic evaluator, and one-read three-tactic suite audit are implemented. The first production-history baseline over 969 strictly quality-approved 2022–2025 sessions is complete: the best trend candidate reached Sharpe 0.735 and suite PBO was 40%, so no active candidate passed promotion and only `defensive_no_trade` remains eligible. The second round preregisters industry-state rotation and risk-budgeted sector trend first; see [MAOQ P3 tactic research](maoq-p3-tactic-research.md).
+**Status:** in progress. The registry and eligibility path, point-in-time daily-history features, shared A-share next-open execution, content-addressed read-only MySQL history adapter, and six fixed research trials are implemented. Two production-history waves span 969 strictly quality-approved sessions from 2022 through 2025; no active candidate passes promotion and only `defensive_no_trade` is eligible. These aggregate results are weapon records, not evidence that MAOQ can select the correct weapon. The [dynamic tactic commander](maoq-dynamic-tactic-commander.md) owns the proposed unified catalog, conditional scorecard, deterministic router, and constrained DSH selection path; see [MAOQ P3 tactic research](maoq-p3-tactic-research.md) for fixed-trial evidence.
 
 | Tactic family | Eligible environment | Primary evidence | Typical invalidation |
 |---|---|---|---|
@@ -141,6 +142,8 @@ The deterministic layer owns feature definitions, missing-data behavior, classif
 | Defensive and no-trade | Risk-off, low edge, stale evidence, or excessive crowding | Drawdown risk, liquidity, dispersion, and uncertainty | Clear regime repair with improving expected payoff |
 
 Every tactic is a module with eligibility gates, candidate features, entry conditions, exit conditions, invalidation, position ceiling, and evaluation protocol. The LLM may select among eligible tactics; it may not bypass a failed deterministic gate.
+
+The target dynamic catalog covers ten distinct active opportunity families plus `defensive_no_trade`; it does not treat nearby parameter variants as new market coverage. P3.5 conditions matured tactic evidence on the state available at each cutoff, produces a deterministic top-three slate, and lets the DSH commander choose at most one primary and one secondary tactic under host validation and the independent risk veto.
 
 ## P4 — Stock selection and evaluation
 

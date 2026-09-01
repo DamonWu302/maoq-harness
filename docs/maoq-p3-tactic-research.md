@@ -199,3 +199,7 @@ The fixed second-wave versions use the same 969 quality-approved sessions from 2
 | Low-volatility sector leader | -8.14% | -0.512 | 44.97% | -0.614 | 37.5% | The low-volatility screen reduces turnover but does not produce defensive returns and fails profit-concentration evidence. |
 
 The six-tactic suite PBO is 0%, but this is not success: PBO only says foldwise relative selection did not exhibit that overfitting signal and cannot rescue candidates whose absolute results all fail. All three second-wave tactics pass the 1% capacity limit, but fail Sharpe, drawdown, fold stability, doubled-cost, and DSR evidence. They do not enter the paper-candidate pool and must not be retuned around these observed results.
+
+## Dynamic selection boundary
+
+Fixed-trial evidence is a weapon record, not the final MAOQ decision policy. The proposed [dynamic tactic commander](maoq-dynamic-tactic-commander.md) uses one unified catalog, context-conditioned matured outcomes, a deterministic top-three router, constrained DSH synthesis, and the independent risk veto to choose a primary tactic, a secondary tactic, or `defensive_no_trade` at each cutoff. It keeps every fixed failure visible and evaluates whether dynamic selection adds value over fixed and equal-allocation baselines without letting the model retune tactics from prose.

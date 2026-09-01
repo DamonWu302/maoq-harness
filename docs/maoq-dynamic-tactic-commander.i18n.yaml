@@ -1,6 +1,6 @@
 # Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
-#   pnpm run verify-translation-pairing --write docs/maoq-roadmap.md
-maoq-roadmap.md: 336b5dfbc17e0b6ac8b9c9df00e04c09e66ed69a
-maoq-roadmap.zh.md: 25f0ee18e92b1de4690707f93665bb23cc86f934
+#   pnpm run verify-translation-pairing --write docs/maoq-dynamic-tactic-commander.md
+maoq-dynamic-tactic-commander.md: db98af22df6ca5799b99f33d2d2b17b6ecc29683
+maoq-dynamic-tactic-commander.zh.md: b633ea75c2d8fd4b659f3d9b03fa3b8d51ccfaee
