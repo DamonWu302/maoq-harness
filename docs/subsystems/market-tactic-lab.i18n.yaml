@@ -1,6 +1,6 @@
 # Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
-#   pnpm run verify-translation-pairing --write packages/market/README.md
-README.md: b9d3d1d1d50ed02e8330b978edafb337a1923e2e
-README.zh.md: 7e5ed4a5284ffc8576c8357fd0a871a6f77a9377
+#   pnpm run verify-translation-pairing --write docs/subsystems/market-tactic-lab.md
+market-tactic-lab.md: 2cf06281837ff1477101c36e5f1f7306e549810e
+market-tactic-lab.zh.md: 2b1d688bcc33906c80be5d8108646f352068db83

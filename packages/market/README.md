@@ -28,6 +28,7 @@ The market group turns acquired A-share daily, sector, breadth, emotion, and new
 | [`market-snapshot-json`](market-snapshot-json/README.md) | Imports audited provider-neutral drafts by exact snapshot identity | registered adapter |
 | [`market-snapshot-mysql`](market-snapshot-mysql/README.md) | Acquires quality-gated daily facts from the existing MySQL pipeline | registered adapter |
 | [`market-strategic-state`](market-strategic-state/README.md) | Computes replay-stable strategic features and validates evidence-bound interpretation | library |
+| [`market-tactic-lab`](market-tactic-lab/README.md) | Computes point-in-time daily research features and replays one shared A-share next-open execution policy | library |
 | [`market-tactic-eligibility`](market-tactic-eligibility/README.md) | Registers P3 tactics and rejects unpromoted or context-ineligible tactics before stock ranking | library |
 | [`tool-maoq-snapshot`](tool-maoq-snapshot/README.md) | Exposes bounded snapshot discovery, generation, listing, and inspection | tools |
 
@@ -38,6 +39,7 @@ The market group turns acquired A-share daily, sector, breadth, emotion, and new
 
 - [Market snapshot subsystem](../../docs/subsystems/market-snapshot.md) — persisted facts, identity, cutoff, and adapter rules.
 - [Market strategic state subsystem](../../docs/subsystems/market-strategic-state.md) — deterministic labels, evidence references, and interpretation rules.
+- [Market tactic lab subsystem](../../docs/subsystems/market-tactic-lab.md) — daily-history measurements and realistic shared paper execution.
 - [Market tactic eligibility subsystem](../../docs/subsystems/market-tactic-eligibility.md) — tactic promotion status, deterministic gates, and defense fallback.
 - [MAOQ roadmap](../../docs/maoq-roadmap.md) — P1 scope and acceptance criteria.
 

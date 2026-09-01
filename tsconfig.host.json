@@ -273,6 +273,7 @@
     { "path": "./packages/market/market-snapshot-mysql" },
     { "path": "./packages/market/tool-maoq-snapshot" },
     { "path": "./packages/market/market-strategic-state" },
+    { "path": "./packages/market/market-tactic-lab" },
     { "path": "./packages/market/market-tactic-eligibility" },
     { "path": "./packages/bundle/base" },
     { "path": "./packages/bundle/headless" },

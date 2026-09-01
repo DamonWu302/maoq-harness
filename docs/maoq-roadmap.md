@@ -129,7 +129,7 @@ The deterministic layer owns feature definitions, missing-data behavior, classif
 
 ## P3 — Tactical pool
 
-**Status:** in progress. The initial registry and fail-closed P2 context gates are implemented. The three active candidates remain `research`; only `defensive_no_trade` is eligible until a shared A-share execution simulator and walk-forward evaluation prove promotion. The evidence review and promotion policy are in [MAOQ P3 tactic research](maoq-p3-tactic-research.md).
+**Status:** in progress. The initial registry, fail-closed P2 context gates, point-in-time daily-history feature contract, and shared next-open A-share execution simulator are implemented. The three active candidates remain `research`; only `defensive_no_trade` is eligible until the production history adapter and walk-forward evaluation prove promotion. The evidence review and promotion policy are in [MAOQ P3 tactic research](maoq-p3-tactic-research.md).
 
 | Tactic family | Eligible environment | Primary evidence | Typical invalidation |
 |---|---|---|---|

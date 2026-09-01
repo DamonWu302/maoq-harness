@@ -43,6 +43,7 @@
 | [web.md](web.zh.md) | Web 访问 seam：`WebSearchRequest`/`Result`、`WebFetchRequest`/`Result`、`WebFetchBody`、提供方可用性、`WebError` |
 | [market-snapshot.md](market-snapshot.zh.md) | 不可变日级市场事实、带版本截止点身份、来源谱系、规范哈希和只读查询 |
 | [market-strategic-state.md](market-strategic-state.zh.md) | 确定性市场状态、情绪周期、板块战场、证据约束解释与毛选方法归因 |
+| [market-tactic-lab.md](market-tactic-lab.zh.md) | 时点正确的日线研究测量、A 股次一交易日成交、显式成本与模拟持仓 |
 | [market-tactic-eligibility.md](market-tactic-eligibility.zh.md) | 带版本的 P3 战法定义、晋级状态、确定性状态门禁与防守回退 |
 | [spill.md](spill.zh.md) | spill 存储 seam：`SaveTextSpill`、`SpillOwner`/`SpillSource`、`SpillRef`、品牌类型 `SpillLocator` |
 | [workflow.md](workflow.zh.md) | 工作流 seam：`WorkflowStartRequest`、`WorkflowMeta`、`WorkflowRun`/`Result`、`workflow/*` 事件载荷、`WorkflowError` 致命性 |

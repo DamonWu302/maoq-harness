@@ -106,9 +106,10 @@ The multiple-testing controls follow Bailey et al., [The Probability of Backtest
 
 ## Implementation order
 
-1. Build the versioned tactic registry and fail-closed eligibility result type.
-2. Add gold fixtures proving each strategic gate and the `defensive_no_trade` fallback.
-3. Add the daily-history feature layer needed by 52-week proximity, sector-relative returns, exhaustion, and tradability.
-4. Implement one shared execution simulator before optimizing any tactic.
-5. Backtest the three candidates with identical cost and walk-forward rules.
-6. Promote only the candidates that pass; leave the others visible as rejected research evidence.
+1. **Complete:** build the versioned tactic registry and fail-closed eligibility result type.
+2. **Complete:** add gold fixtures proving each strategic gate and the `defensive_no_trade` fallback.
+3. **Complete at the pure-contract layer:** add point-in-time daily-history features for adjusted returns, 52-week proximity, sector-relative returns, turnover, amount, and limit-up structure.
+4. **Complete for next-open research:** implement one shared execution simulator with lot, cash, T+1, opening price-limit, suspension, commission, stamp-duty, transfer-fee, and slippage rules.
+5. Add a read-only MySQL history adapter and freeze the full research range without materializing full news/strategic snapshots for every historical date.
+6. Backtest the three candidates with identical cost and walk-forward rules.
+7. Promote only the candidates that pass; leave the others visible as rejected research evidence.
