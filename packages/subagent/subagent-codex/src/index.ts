@@ -28,9 +28,18 @@ import {
   type CodexResponsesTransport,
   type CodexRunSpec,
 } from './run.ts'
+import type {} from '@deepseek-ai/dsh-settings'
 
 export const name = 'subagent-codex'
 export const inject = ['subagents', 'subprocess']
+/**
+ * Resolve the settings namespace owned by one profile-named Codex provider instance.
+ * @param providerName - Registered provider route.
+ * @returns The provider-specific settings namespace.
+ */
+export function subagentCodexSettingsNamespace(providerName: string): string {
+  return `subagent-codex-${providerName}`
+}
 
 const DEFAULT_PROVIDER_NAME = 'codex'
 
@@ -83,10 +92,11 @@ class CodexProvider implements SubagentProvider {
   constructor(
     readonly name: string,
     private readonly ctx: Context,
-    private readonly config: ResolvedConfig,
+    private readonly getConfig: () => ResolvedConfig,
   ) {}
 
   start(request: ResolvedSubagentStartRequest) {
+    const config = this.getConfig()
     const parentCwd = request.parent.session.header.cwd
     if (parentCwd === undefined) {
       throw new Error(
@@ -110,14 +120,14 @@ class CodexProvider implements SubagentProvider {
     }
     const spec: CodexRunSpec = {
       cwd,
-      ...this.config.model === undefined ? {} : { model: this.config.model },
-      ...this.config.reasoningEffort === undefined
+      ...config.model === undefined ? {} : { model: config.model },
+      ...config.reasoningEffort === undefined
         ? {}
-        : { reasoningEffort: this.config.reasoningEffort },
-      responsesTransport: this.config.responsesTransport,
-      permissionMode: this.config.permissionMode,
-      env: this.config.env,
-      disposeGraceMs: this.config.disposeGraceMs,
+        : { reasoningEffort: config.reasoningEffort },
+      responsesTransport: config.responsesTransport,
+      permissionMode: config.permissionMode,
+      env: config.env,
+      disposeGraceMs: config.disposeGraceMs,
       spawn: spawnSpec => this.ctx.subprocess.spawn(spawnSpec),
       onError: (error, stopReason) => {
         this.ctx.logger.warn(
@@ -156,9 +166,33 @@ export function apply(ctx: Context, config: Config): void {
       `subagent-codex: disposeGraceMs must be no greater than ${MAX_TIMER_DELAY_MS}`,
     )
   }
+  let source = (): Config => resolved
+  const current = (): ResolvedConfig => {
+    const value = source()
+    return {
+      providerName: resolved.providerName,
+      ...value.model === undefined ? {} : { model: value.model },
+      ...value.reasoningEffort === undefined ? {} : { reasoningEffort: value.reasoningEffort },
+      responsesTransport: value.responsesTransport ?? DEFAULT_CODEX_RESPONSES_TRANSPORT,
+      env: value.env ?? {},
+      permissionMode: value.permissionMode ?? DEFAULT_CODEX_PERMISSION_MODE,
+      disposeGraceMs: value.disposeGraceMs ?? DEFAULT_DISPOSE_GRACE_MS,
+    }
+  }
+  ctx.inject(['settings'], (settingsCtx) => {
+    settingsCtx.settings.installSection(ctx, subagentCodexSettingsNamespace(resolved.providerName), Config, resolved, {
+      validate: (value) => {
+        if ((value.providerName ?? DEFAULT_PROVIDER_NAME) !== resolved.providerName) {
+          throw new Error('subagent-codex providerName cannot change through live settings')
+        }
+      },
+      setSource: (next) => { source = next },
+      onChange: () => {},
+    })
+  })
   ctx.subagents.registerProvider(new CodexProvider(
     resolved.providerName,
     ctx,
-    resolved,
+    current,
   ))
 }

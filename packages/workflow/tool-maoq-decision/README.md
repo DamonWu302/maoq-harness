@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-tool-maoq-decision` gives the commander an evidence-bound `maoq_analyze_strategy` tool and a lower-level `maoq_decide` council diagnostic. The strategic tool computes deterministic market regime, emotion cycle, and sector battlefield features from immutable snapshots before selected specialists run. A fresh child synthesizes the principal contradiction, a separate risk child may veto it, and the host rejects unknown evidence or fabricated Mao method attribution. The package cannot rank stocks in P2 or place live orders.
+`dsh-tool-maoq-decision` gives the commander an evidence-bound `maoq_analyze_strategy` tool and a lower-level `maoq_decide` council diagnostic. The strategic tool computes deterministic market regime, emotion cycle, and sector battlefield features from immutable snapshots. Quick analysis uses one synthesis child and one independent risk child; deep analysis first runs the selected specialists in parallel. The host rejects unknown evidence or fabricated Mao method attribution. The package cannot rank stocks in P2 or place live orders.
 
 ## Table of Contents
 
@@ -34,11 +34,12 @@ The strategic result stores deterministic features separately from interpretatio
 | `subagentProvider` | `spawn` | Fresh structured-output provider for every child. |
 | `maxSpecialists` | `4` | Deployment ceiling for selected specialists. |
 | `maxResultChars` | `32768` | Parent-facing rendered-result ceiling. |
+| `analysisMode` | `quick` | `quick` runs synthesis plus independent risk; `deep` adds selected specialist reports. |
 
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 
-The orchestration script, schemas, provider route, and child cap are deployment-owned. The strategic path loads snapshots by exact hash and computes versioned features before any child runs. Selected specialists run with `Promise.all`; synthesis and risk review run afterward as distinct fresh children. Each child schema enumerates the exact evidence refs available in that feature record, while the host still rejects role drift, rewritten deterministic labels, unknown evidence refs, unrecognized method IDs, inconsistent risk fields, and any attempt to make stale or incomplete inputs actionable.
+The orchestration script, schemas, provider route, and child cap are deployment-owned. The strategic path loads snapshots by exact hash and computes versioned features before any child runs. Quick mode applies the selected roles as synthesis lenses and starts exactly two children: synthesis, then independent risk review. Deep mode runs selected specialists with `Promise.all`, followed by the same two fresh children. Each child schema enumerates the exact evidence refs available in that feature record, while the host still rejects role drift, rewritten deterministic labels, unknown evidence refs, unrecognized method IDs, inconsistent risk fields, and any attempt to make stale or incomplete inputs actionable. The optional settings provider exposes `maoq-decision`; changes affect the next call without a restart.
 
 The Loader composition fixture proves both tools load with the profile services. Focused workflow fixtures prove that selected roles remain bounded, evidence references close over the deterministic catalog, resolved answers name the Mao source work, and an independent veto remains final.
 
@@ -67,7 +68,7 @@ For a strategic market decision grounded in an immutable snapshot, call maoq_ana
 
 #### Token effect
 
-Small fixed parent guidance and two schemas add prefix cost. Each strategic call also presents the selected deterministic feature record; child cost scales with its evidence size, selected specialist count, and exactly two review children.
+Small fixed parent guidance and two schemas add prefix cost. Each strategic call also presents the selected deterministic feature record. Quick mode pays for two child contexts; deep mode adds one context per selected specialist.
 
 #### KV Cache effect
 

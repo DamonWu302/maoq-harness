@@ -18,6 +18,7 @@ import type {
   SubprocessSpawnSpec,
 } from '@deepseek-ai/dsh-subprocess'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
+import { MemorySettings } from '../../../settings/settings/tests/memory.ts'
 import * as codex from '../src/index.ts'
 import * as invariant from '../src/invariant.ts'
 import {
@@ -472,6 +473,40 @@ describe('task admission and package contracts', () => {
     }
     await expect(ctx.plugin(codex, { disposeGraceMs: MAX_TIMER_DELAY_MS + 1 }))
       .rejects.toThrow(`disposeGraceMs must be no greater than ${MAX_TIMER_DELAY_MS}`)
+    await ctx.fiber.dispose()
+  })
+
+  it('applies a saved model and reasoning change to the next child run', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(SubagentRuntime)
+    await ctx.plugin(LocalSubprocessRuntime)
+    await ctx.plugin(MemorySettings)
+    const child = fakeChild()
+    vi.spyOn(ctx.subprocess, 'spawn').mockReturnValue(child.handle)
+    await ctx.plugin(codex, {
+      model: 'gpt-5.6-luna', reasoningEffort: 'low', responsesTransport: 'http', permissionMode: 'never',
+    })
+    await ctx.settings.update(codex.subagentCodexSettingsNamespace('codex'), {
+      model: 'gpt-5.6-terra', reasoningEffort: 'medium',
+    })
+    const starting = ctx.subagents.start('codex', request())
+    const initialize = await child.peer.nextMethod('initialize')
+    child.peer.respond(initialize, { userAgent: 'codex-cli 0.149.1' })
+    await child.peer.nextMethod('initialized')
+    const threadStart = await child.peer.nextMethod('thread/start')
+    expect(threadStart.params).toMatchObject({ model: 'gpt-5.6-terra', modelProvider: 'dsh-openai-http' })
+    child.peer.respond(threadStart, { thread: { id: 'thread-1', ephemeral: true } })
+    const run = await starting
+    const turnStart = await child.peer.nextMethod('turn/start')
+    expect(turnStart.params).toMatchObject({ effort: 'medium' })
+    child.peer.send(
+      { id: turnStart.id, result: { turn: { id: 'turn-1' } } },
+      agentMessage('updated model answer', 'final_answer'),
+      turnCompleted('completed'),
+    )
+    await expect(run.result).resolves.toMatchObject({ stopReason: 'completed' })
+    await run.dispose()
     await ctx.fiber.dispose()
   })
 

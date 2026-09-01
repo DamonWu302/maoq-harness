@@ -65,6 +65,7 @@ describe('@deepseek-ai/dsh-maoq-app', () => {
     expect(insertion.insert).toContainEqual(expect.objectContaining({
       id: 'tool-maoq-decision',
       name: '@deepseek-ai/dsh-tool-maoq-decision',
+      config: expect.objectContaining({ analysisMode: 'quick' }),
     }))
     expect(insertion.insert).toContainEqual(expect.objectContaining({
       id: 'tool-maoq-snapshot',

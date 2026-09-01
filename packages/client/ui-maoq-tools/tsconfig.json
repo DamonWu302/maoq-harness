@@ -6,6 +6,7 @@
     { "path": "../../../vendor/cordis" },
     { "path": "../locale" },
     { "path": "../ui-renderer" },
+    { "path": "../ui-settings" },
     { "path": "../ui-tool" },
     { "path": "../ui-primitives" },
     { "path": "../ui-slots" },

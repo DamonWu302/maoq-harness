@@ -15,7 +15,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ToolCallView, ToolResultView } from '@deepseek-ai/dsh-tools'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { WorkflowRun } from '@deepseek-ai/dsh-workflow'
-import { requireFreshProvider, type ResolvedConfig, workflowError } from './index.ts'
+import { requireFreshProvider, type MaoqAnalysisMode, type ResolvedConfig, workflowError } from './index.ts'
 
 const STRATEGIC_SPECIALISTS = [
   'market_regime',
@@ -109,8 +109,8 @@ const riskSchema = {
   additionalProperties: false,
 }
 
-phase('Strategic specialist research')
-const reportRuns = await Promise.all(args.specialists.map(async role => {
+if (args.analysisMode === 'deep') phase('Strategic specialist research')
+const reportRuns = args.analysisMode === 'deep' ? await Promise.all(args.specialists.map(async role => {
   const result = await agent([
     'You are the MAOQ ' + role + ' strategic specialist. Analyze only your assigned domain.',
     'Use only the deterministic feature record below. Every supporting and counter claim must cite an exact ref from its evidence array.',
@@ -128,12 +128,15 @@ const reportRuns = await Promise.all(args.specialists.map(async role => {
   const report = result === null ? null : result.value
   if (report === null || report.role !== role) throw new Error('strategic specialist ' + role + ' failed to return its structured report')
   return { report, usage: { label: role, phase: 'Strategic specialist research', usage: result.usage } }
-}))
+})) : []
 const reports = reportRuns.map(run => run.report)
 
-phase('Strategic synthesis')
+phase(args.analysisMode === 'deep' ? 'Strategic synthesis' : 'Quick strategic synthesis')
 const decisionResult = await agent([
   'You are the MAOQ commander. Interpret but never rewrite the deterministic feature record.',
+  args.analysisMode === 'quick'
+    ? 'This is a quick analysis. Apply the selected specialist roles as analytical lenses yourself; no specialist reports were run.'
+    : 'This is a deep analysis. Reconcile the independently produced specialist reports.',
   'Identify the principal contradiction and least-resistance sector battlefield. Do not rank stocks or propose live orders.',
   'Every claim must cite exact feature evidence refs. Include supporting evidence, counter-evidence, confidence, and falsifiable transition conditions.',
   'Explain which allowlisted Mao methods support the reasoning, how each applies here, and its limitation. Do not invent quotations.',
@@ -189,6 +192,15 @@ const STRATEGIC_META = {
   ],
 }
 
+const QUICK_STRATEGIC_META = {
+  name: 'maoq-strategic-state-quick',
+  description: 'Run one evidence-bound strategic synthesis, then require an independent risk review.',
+  phases: [
+    { title: 'Quick strategic synthesis', detail: 'The commander applies the selected analytical lenses directly.' },
+    { title: 'Independent strategic risk review', detail: 'A fresh reviewer can veto the interpretation.' },
+  ],
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -221,11 +233,13 @@ function readWorkflowValue(
   value: unknown,
   specialists: readonly StrategicSpecialist[],
   features: StrategicFeatureRecord,
+  analysisMode: MaoqAnalysisMode,
 ): StrategicWorkflowValue {
   if (!isRecord(value) || !Array.isArray(value['reports']) || !isRecord(value['decision']) || !isRecord(value['risk']) || !isRecord(value['tokenUsage'])) {
     throw new Error('MAOQ strategic workflow returned malformed fields')
   }
-  if (value['reports'].length !== specialists.length || !sameStrings(value['decision']['selectedSpecialists'], specialists)) {
+  const expectedReportCount = analysisMode === 'deep' ? specialists.length : 0
+  if (value['reports'].length !== expectedReportCount || !sameStrings(value['decision']['selectedSpecialists'], specialists)) {
     throw new Error('MAOQ strategic workflow changed the selected specialists')
   }
   const expectedMarket = features.marketRegime.status === 'ready' ? features.marketRegime.value.label : 'unavailable'
@@ -235,7 +249,9 @@ function readWorkflowValue(
   }
   const evidence = new Set(features.evidence.map(item => item.ref))
   const reportRoles = value['reports'].map(report => isRecord(report) ? report['role'] : undefined)
-  if (!sameStrings(reportRoles, specialists)) throw new Error('MAOQ strategic workflow returned reports for the wrong specialists')
+  if (analysisMode === 'deep' && !sameStrings(reportRoles, specialists)) {
+    throw new Error('MAOQ strategic workflow returned reports for the wrong specialists')
+  }
   for (const [index, report] of value['reports'].entries()) {
     const item = report as Record<string, unknown>
     refs(item['supportingEvidenceRefs'], evidence, `reports[${String(index)}].supportingEvidenceRefs`)
@@ -273,7 +289,7 @@ function render(value: Record<string, unknown>, maxChars: number): string {
  * @param ctx - Active plugin context that owns tools, workflows, subagents, and optional snapshot service.
  * @param config - Validated shared MAOQ deployment limits.
  */
-export function registerStrategicStateTool(ctx: Context, config: ResolvedConfig): void {
+export function registerStrategicStateTool(ctx: Context, getConfig: () => ResolvedConfig): void {
   ctx.tools.register(defineTool({
     name: 'maoq_analyze_strategy',
     description: 'Compute deterministic market regime, emotion cycle, and sector battlefield features from immutable snapshots, then run evidence-bound interpretation and independent risk review. This tool cannot rank stocks or place orders.',
@@ -292,6 +308,7 @@ export function registerStrategicStateTool(ctx: Context, config: ResolvedConfig)
         properties: {
           runId: { type: 'string', required: true },
           agentsStarted: { type: 'integer', required: true },
+          analysisMode: { type: 'string', required: true, enum: ['quick', 'deep'] },
           status: { type: 'string', required: true, enum: ['approved', 'vetoed'] },
           actionable: { type: 'boolean', required: true },
           features: { type: 'json', required: true },
@@ -301,9 +318,10 @@ export function registerStrategicStateTool(ctx: Context, config: ResolvedConfig)
           tokenUsage: { type: 'json', required: true },
         },
       },
-      render: (_args, value) => [{ type: 'text', text: render(value as Record<string, unknown>, config.maxResultChars) }],
+      render: (_args, value) => [{ type: 'text', text: render(value as Record<string, unknown>, getConfig().maxResultChars) }],
     },
     async execute(args, exec) {
+      const config = getConfig()
       if (exec.agent === undefined) throw new Error('MAOQ strategic tool requires a calling agent')
       if (args.objective.trim().length === 0) throw new Error('MAOQ strategic objective must be non-empty')
       if (args.specialists.length < 1
@@ -322,10 +340,16 @@ export function registerStrategicStateTool(ctx: Context, config: ResolvedConfig)
       const features = computeStrategicFeatures(current, history as MarketSnapshot[])
       const run: WorkflowRun = ctx.workflowEngine.start({
         script: STRATEGIC_SCRIPT,
-        meta: STRATEGIC_META,
-        args: { objective: args.objective.trim(), specialists: args.specialists, features, maoMethods: MAO_METHOD_CATALOG },
+        meta: config.analysisMode === 'deep' ? STRATEGIC_META : QUICK_STRATEGIC_META,
+        args: {
+          analysisMode: config.analysisMode,
+          objective: args.objective.trim(),
+          specialists: args.specialists,
+          features,
+          maoMethods: MAO_METHOD_CATALOG,
+        },
         subagentProvider: config.subagentProvider,
-        maxTotalAgents: args.specialists.length + 2,
+        maxTotalAgents: config.analysisMode === 'deep' ? args.specialists.length + 2 : 2,
         parent: exec.agent,
         signal: exec.signal,
       })
@@ -336,13 +360,14 @@ export function registerStrategicStateTool(ctx: Context, config: ResolvedConfig)
         const settled = await run.result
         const error = workflowError(settled)
         if (error !== undefined) throw new Error(error)
-        const value = readWorkflowValue(settled.value, args.specialists, features)
+        const value = readWorkflowValue(settled.value, args.specialists, features, config.analysisMode)
         const { marketRegime: _market, emotionCycle: _emotion, selectedSpecialists: _selected, ...draft } = value.decision
         const state = buildStrategicStateRecord(features, draft, args.decisionTime, args.maximumAgeHours)
         const approved = (value.risk as Record<string, unknown>)['approved'] === true
         return {
           runId: run.id,
           agentsStarted: settled.agentsStarted,
+          analysisMode: config.analysisMode,
           status: approved ? 'approved' as const : 'vetoed' as const,
           actionable: approved && state.actionable,
           features: features as unknown as JsonValue,

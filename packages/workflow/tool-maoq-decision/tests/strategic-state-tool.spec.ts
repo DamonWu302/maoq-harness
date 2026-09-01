@@ -88,7 +88,7 @@ function datedDraft(date: string, offset: number): MarketSnapshotDraft {
   }
 }
 
-async function setup() {
+async function setup(analysisMode: 'quick' | 'deep' = 'deep') {
   const root = await mkdtemp(join(tmpdir(), 'maoq-strategic-tool-'))
   roots.push(root)
   const snapshots = [
@@ -106,7 +106,7 @@ async function setup() {
   ctx.subagents.registerProvider(new StubProvider())
   await ctx.plugin(StubEngine)
   await ctx.plugin(MarketSnapshotService, { root })
-  await ctx.plugin(toolMaoqDecision, { subagentProvider: 'fresh' })
+  await ctx.plugin(toolMaoqDecision, { subagentProvider: 'fresh', analysisMode })
   return { ctx, engine: ctx.workflowEngine as StubEngine, snapshots, parent: { id: SessionId('commander'), options: {} } as unknown as Agent }
 }
 
@@ -148,6 +148,36 @@ function workflowValue(features: StrategicFeatureRecord, badRef = false) {
 }
 
 describe('maoq_analyze_strategy', () => {
+  it('uses only synthesis plus independent risk review in quick mode', async () => {
+    const { ctx, engine, snapshots, parent } = await setup('quick')
+    const pending = ctx.tools.execute({
+      signal: new AbortController().signal,
+      callId: ToolCallId('strategy-quick'),
+      name: 'maoq_analyze_strategy',
+      arguments: {
+        objective: '快速判断市场状态。',
+        snapshotHash: snapshots[2]!.identity.contentHash,
+        historySnapshotHashes: snapshots.slice(0, 2).map(item => item.identity.contentHash),
+        decisionTime: '2026-08-28T16:00:00+08:00',
+        maximumAgeHours: 24,
+        specialists: ['market_regime'],
+      },
+      agent: parent,
+    })
+    await vi.waitFor(() => { expect(engine.requests).toHaveLength(1) }, { timeout: 4_000 })
+    const request = engine.requests[0]!
+    const features = (request.args as Record<string, unknown>)['features'] as StrategicFeatureRecord
+    expect(request.maxTotalAgents).toBe(2)
+    expect(request.meta.name).toBe('maoq-strategic-state-quick')
+    expect(request.script).toContain("args.analysisMode === 'deep' ? await Promise.all")
+    const value = workflowValue(features)
+    engine.settle({ value: { ...value, reports: [] }, stopReason: 'completed', agentsStarted: 2 })
+    const result = await pending
+    expect(result.isError).toBe(false)
+    if (result.isError) throw new Error('expected quick strategic result')
+    expect(result.value).toMatchObject({ analysisMode: 'quick', agentsStarted: 2 })
+  })
+
   it('loads immutable snapshots, preserves deterministic labels, and exposes sourced Mao method attribution', async () => {
     const { ctx, engine, snapshots, parent } = await setup()
     const pending = ctx.tools.execute({
@@ -174,6 +204,7 @@ describe('maoq_analyze_strategy', () => {
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected strategic result')
     expect(result.value).toMatchObject({
+      analysisMode: 'deep',
       status: 'approved',
       actionable: true,
       interpretation: {

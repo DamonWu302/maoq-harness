@@ -12,6 +12,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ToolCallView, ToolResultView } from '@deepseek-ai/dsh-tools'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { WorkflowResult, WorkflowRun } from '@deepseek-ai/dsh-workflow'
+import type {} from '@deepseek-ai/dsh-settings'
 import { registerStrategicStateTool } from './strategic.ts'
 
 export const name = 'tool-maoq-decision'
@@ -28,6 +29,13 @@ const SPECIALIST_ROLES = [
 
 type SpecialistRole = typeof SPECIALIST_ROLES[number]
 
+/** Supported strategic-analysis execution depths. */
+export const MAOQ_ANALYSIS_MODES = ['quick', 'deep'] as const
+/** Strategic-analysis execution depth. */
+export type MaoqAnalysisMode = typeof MAOQ_ANALYSIS_MODES[number]
+/** User-settings namespace for MAOQ decision policy. */
+export const MAOQ_DECISION_SETTINGS_NAMESPACE = 'maoq-decision'
+
 /** Deployment policy for the MAOQ council. */
 export interface Config {
   /** Fresh structured-output provider used for every specialist and reviewer (default `spawn`). */
@@ -36,6 +44,8 @@ export interface Config {
   maxSpecialists?: number
   /** Maximum characters in the rendered parent-facing result (default 32768). */
   maxResultChars?: number
+  /** Strategic-analysis depth used by new calls (default `quick`). */
+  analysisMode?: MaoqAnalysisMode
 }
 
 /** Schemastery configuration for the MAOQ decision tool. */
@@ -43,6 +53,7 @@ export const Config: z<Config> = z.object({
   subagentProvider: z.string().default('spawn'),
   maxSpecialists: z.number().step(1).min(1).max(SPECIALIST_ROLES.length).default(4),
   maxResultChars: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(32_768),
+  analysisMode: z.union([...MAOQ_ANALYSIS_MODES]).default('quick'),
 })
 
 /** Validated deployment values shared by both MAOQ tool registrations. */
@@ -50,6 +61,7 @@ export interface ResolvedConfig {
   readonly subagentProvider: string
   readonly maxSpecialists: number
   readonly maxResultChars: number
+  readonly analysisMode: MaoqAnalysisMode
 }
 
 interface MaoqCallArgs {
@@ -221,6 +233,7 @@ function resolveConfig(config: Config): ResolvedConfig {
   const subagentProvider = config.subagentProvider ?? 'spawn'
   const maxSpecialists = config.maxSpecialists ?? 4
   const maxResultChars = config.maxResultChars ?? 32_768
+  const analysisMode = config.analysisMode ?? 'quick'
   if (subagentProvider.length === 0 || subagentProvider !== subagentProvider.trim()) {
     throw new TypeError('subagentProvider must be a non-empty normalized string')
   }
@@ -230,7 +243,7 @@ function resolveConfig(config: Config): ResolvedConfig {
   if (!Number.isSafeInteger(maxResultChars) || maxResultChars < 1) {
     throw new TypeError('maxResultChars must be a positive safe integer')
   }
-  return { subagentProvider, maxSpecialists, maxResultChars }
+  return { subagentProvider, maxSpecialists, maxResultChars, analysisMode }
 }
 
 /**
@@ -338,13 +351,21 @@ function presentResult(_args: MaoqCallArgs, _result: { content: ContentBlock[]; 
 
 /** Register the MAOQ decision council and its bounded-autonomy guidance. */
 export function apply(ctx: Context, config: Config): void {
-  const resolved = resolveConfig(config)
+  const base = resolveConfig(config)
+  let source = (): Config => base
+  const current = (): ResolvedConfig => resolveConfig(source())
+  ctx.inject(['settings'], (settingsCtx) => {
+    settingsCtx.settings.installSection(ctx, MAOQ_DECISION_SETTINGS_NAMESPACE, Config, base, {
+      setSource: (next) => { source = next },
+      onChange: () => {},
+    })
+  })
   ctx.systemPrompt.section({
     name: 'tool:maoq-decision',
     order: ctx.systemPrompt.getSectionOrder('TOOL_WORKFLOW'),
     text: 'For a strategic market decision grounded in an immutable snapshot, call maoq_analyze_strategy with the smallest sufficient specialist set. Its deterministic market regime, emotion cycle, sector battlefield features, evidence references, Mao method attributions, and independent risk veto are binding. Use maoq_decide only for council-runtime diagnostics. Neither tool can place a live order or rank stocks in the P2 strategic-state phase.',
   })
-  registerStrategicStateTool(ctx, resolved)
+  registerStrategicStateTool(ctx, current)
   ctx.tools.register(defineTool({
     name: 'maoq_decide',
     description: DESCRIPTION,
@@ -385,10 +406,11 @@ export function apply(ctx: Context, config: Config): void {
           decision: value.decision,
           risk: value.risk,
           tokenUsage: value.tokenUsage,
-        }, resolved.maxResultChars),
+        }, current().maxResultChars),
       }],
     },
     async execute(args, exec) {
+      const resolved = current()
       if (exec.agent === undefined) throw new Error('MAOQ decision tool requires a calling agent')
       const objective = args.objective.trim()
       if (objective.length === 0) throw new Error('MAOQ objective must be a non-empty string')

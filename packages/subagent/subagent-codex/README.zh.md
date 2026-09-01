@@ -57,7 +57,7 @@ dsh --profile <name>
 | `approve-for-me` | `approvalPolicy: on-request`、`approvalsReviewer: auto_review`、`sandbox: workspace-write` | 由 Codex 自动评审权限请求，不等待人工 |
 | `dangerously-bypass-approvals-and-sandbox` | `approvalPolicy: never`、`sandbox: danger-full-access` | 跳过审批与 sandbox；必须显式选择该值 |
 
-生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-subagent-codex)是每个受支持字段及其 JSDoc 的穷尽式真源。已配置的 `model` 会原样传给每个临时 `thread/start`，`reasoningEffort` 会原样传给每个 `turn/start`；省略时保留对应的原生选择。提供方不会发现模型、改写别名、选择 `serviceTier` 或设置 fallback。`responsesTransport: http` 会选择一个禁用 WebSocket 的私有自定义 Responses 提供方，同时继续使用现有 Codex/OpenAI 身份验证；它既不会替换内置提供方，也不要求第二个 API Key。具有凭证特征的环境变量会在显式 `env` 覆盖生效前被移除，因此若子进程另需 API Key，仍须在该配置中显式提供。
+生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-subagent-codex)是每个受支持字段及其 JSDoc 的穷尽式真源。挂载设置提供方后，每个实例会公开 `subagent-codex-<providerName>`，并在子 Agent 启动时读取当前值；`providerName` 本身保持固定。已配置的 `model` 会原样传给每个临时 `thread/start`，`reasoningEffort` 会原样传给每个 `turn/start`；省略时保留对应的原生选择。提供方不会发现模型、改写别名、选择 `serviceTier` 或设置 fallback。`responsesTransport: http` 会选择一个禁用 WebSocket 的私有自定义 Responses 提供方，同时继续使用现有 Codex/OpenAI 身份验证；它既不会替换内置提供方，也不要求第二个 API Key。具有凭证特征的环境变量会在显式 `env` 覆盖生效前被移除，因此若子进程另需 API Key，仍须在该配置中显式提供。
 
 ### 暴露工具
 
@@ -172,7 +172,7 @@ Codex 子级会在一个全新的临时线程中，以单个轮次接收这些�
 这些限制说明本提供方何时不合适，或何时需要特别的运维注意。它们是当前包约束，不是通用 Codex 对比或任务积压。
 
 - **每次运行均新建一个进程、一个线程和一个轮次**——不支持续接、恢复、池化、进度流或产品会话持久化。
-- **静态选择实例**——Profile 配置项固定提供方名称、可选模型与工具绑定；调用无法动态选择或修改提供方与模型，而且每个公开工具都需要唯一的 `toolName`。
+- **静态选择实例**——Profile 配置项固定提供方名称与工具绑定；设置可以改变后续运行使用的模型，但调用无法选择提供方或模型，而且每个公开工具都需要唯一的 `toolName`。
 - **身份验证与账户状态仍由原生机制管理**——Bundle 会提供 CLI，但不会创建账户、登录、信任项目或改写 Codex 设置；配置与身份验证失败会公开其生命周期阶段与安全的 `unknown` 回退，而不会增加单独的公开分类体系。
 - **委派时必须存在原生平台载荷**——省略 optional dependencies 的安装、不受支持的平台以及缺失或损坏的载荷都会在第一次运行时失败；不会回退到宿主 CLI。
 - **兼容性由开发证据锁定**——若要从已验证的 0.149.1 协议基线升级，必须重新生成上游 schema 证据，并重新运行握手、答案选择、审批、取消、无密钥真实产品以及带密钥的 DeepSeek 随机数测试。

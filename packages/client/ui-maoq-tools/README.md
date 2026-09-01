@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This browser-only plugin replaces the generic fallback rows for the six MAOQ snapshot and decision tools with explicit business-language titles, compact argument summaries, and expandable structured results. It does not change tool execution or model requests.
+This browser-only plugin replaces the generic fallback rows for the six MAOQ snapshot and decision tools with explicit business-language titles, compact argument summaries, and expandable structured results. It also contributes the MAOQ settings page for analysis depth, council model, and reasoning effort.
 
 ## Table of Contents
 
@@ -23,7 +23,7 @@ This browser-only plugin replaces the generic fallback rows for the six MAOQ sna
 <a id="use-this-package"></a>
 ## Use this package
 
-Mount it after `dsh-client-ui-tool`. The MAOQ profile does this automatically. Its keyed rows cover snapshot sources, generation, catalog listing, exact-hash inspection, strategic analysis, and the independent-risk decision council.
+Mount it after `dsh-client-ui-tool` and `dsh-client-ui-settings`. The MAOQ profile does this automatically. Its keyed rows cover snapshot sources, generation, catalog listing, exact-hash inspection, strategic analysis, and the independent-risk decision council. The MAOQ settings page binds `maoq-decision` and `subagent-codex-codex`: mode changes apply immediately to the next strategic call, while a saved council model and reasoning effort apply to the next child run.
 
 ## Model Experience
 

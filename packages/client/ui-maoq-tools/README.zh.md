@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-这个纯浏览器插件把六个 MAOQ 快照与决策工具的通用回退行替换为明确的业务名称、精简参数摘要和可展开的结构化结果。它不改变工具执行或模型请求。
+这个纯浏览器插件把六个 MAOQ 快照与决策工具的通用回退行替换为明确的业务名称、精简参数摘要和可展开的结构化结果，并提供用于分析深度、议事组模型和推理强度的 MAOQ 设置页。
 
 ## 目录
 
@@ -23,7 +23,7 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-在 `dsh-client-ui-tool` 之后挂载；MAOQ Profile 已自动完成。带 key 的专属行覆盖快照数据源、快照生成、目录查看、精确哈希核验、战略研判和独立风控决策会。
+在 `dsh-client-ui-tool` 与 `dsh-client-ui-settings` 之后挂载；MAOQ Profile 已自动完成。带 key 的专属行覆盖快照数据源、快照生成、目录查看、精确哈希核验、战略研判和独立风控决策会。MAOQ 设置页绑定 `maoq-decision` 与 `subagent-codex-codex`：模式切换会作用于下一次战略调用，保存后的议事组模型与推理强度会作用于下一次子 Agent 运行。
 
 <a id="model-experience"></a>
 ## 模型体验

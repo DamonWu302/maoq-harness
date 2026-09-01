@@ -70,6 +70,7 @@
       name: '@deepseek-ai/dsh-tool-maoq-decision'
       config:
         subagentProvider: codex
+        analysisMode: quick
         maxSpecialists: 4
         maxResultChars: 32768
 

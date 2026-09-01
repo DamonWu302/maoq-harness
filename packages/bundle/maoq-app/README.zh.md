@@ -25,7 +25,7 @@ MAOQ 应用层组合在 `dsh-base` 和 `dsh-web-app` 之上，提供统帅人格
 <a id="use-this-package"></a>
 ## 使用本包
 
-通过 `dsh --profile maoq` 启动。随附模板依次组合 `dsh-base`、`dsh-web-app` 和本策略层，并允许 Profile 补丁热重载。市场快照服务把不可变产物保存在 `.maoq/snapshots`，从 `.maoq/imports` 读取审计过的供应商无关导入，并把截止点前联网证据冻结到 `.maoq/news`；它们都相对于启动目录。在受支持的 macOS 与 Node 组合上，如果没有显式代理环境变量，Profile 启动会自动继承已启用的系统 HTTP 和 HTTPS 代理。决策议事组通过 Codex app-server 复用本机 Codex/ChatGPT 登录，固定使用低推理强度的 `gpt-5.6-luna`，并通过 HTTPS Responses 路径避免 WebSocket 重试延迟。议事组最多允许四位所选专家，渲染结果上限为 32768 个字符。每位专家、统帅综合和独立风控的 token 用量都会单列，并在结果中汇总输入、缓存、输出、推理与总 token；若 Codex 未返回用量，该调用会计入 `unavailableCalls`，不会伪造估算值。
+通过 `dsh --profile maoq` 启动。随附模板依次组合 `dsh-base`、`dsh-web-app` 和本策略层，并允许 Profile 补丁热重载。市场快照服务把不可变产物保存在 `.maoq/snapshots`，从 `.maoq/imports` 读取审计过的供应商无关导入，并把截止点前联网证据冻结到 `.maoq/news`；它们都相对于启动目录。在受支持的 macOS 与 Node 组合上，如果没有显式代理环境变量，Profile 启动会自动继承已启用的系统 HTTP 和 HTTPS 代理。决策议事组通过 Codex app-server 复用本机 Codex/ChatGPT 登录，默认使用低推理强度的 `gpt-5.6-luna`，并通过 HTTPS Responses 路径避免 WebSocket 重试延迟。MAOQ 设置页可以修改下一次子 Agent 运行使用的议事组模型与推理强度。战略研判默认使用只含统帅综合与独立风控的快速模式；深度模式会额外运行最多四位所选专家。渲染结果上限为 32768 个字符。每次调用的 token 用量都会单列，并在结果中汇总输入、缓存、输出、推理与总 token；若 Codex 未返回用量，该调用会计入 `unavailableCalls`，不会伪造估算值。
 
 Profile 还会挂载延迟连接的 `long-short-stock-mysql` 适配器。如果默认值与既有日线数据库不一致，可配置 `MAOQ_MYSQL_HOST`、`MAOQ_MYSQL_PORT`、`MAOQ_MYSQL_SOCKET`、`MAOQ_MYSQL_USER` 和 `MAOQ_MYSQL_DATABASE`。`MAOQ_MYSQL_PASSWORD_CREDENTIAL` 应指向保存密码的凭据存储键；密码本身不会进入补丁或工具参数。统帅每次前台调用最多生成十个交易日。
 
@@ -41,7 +41,7 @@ MAOQ Profile 还会挂载专属浏览器工具行，用“查看快照目录”�
 <a id="choose-commander-model"></a>
 ## 选择统帅模型
 
-打开**设置 → 模型 → 统帅模型**，可以在**本机 Codex 登录**和**外部模型 API**之间切换，再选择或输入具体模型。本机路径复用当前 Codex/ChatGPT 登录，不需要第二份 API Key；该能力仅在 Profile 明确开启时生效，并且只读取 `openai-codex` 所需凭证。外部路径完整保留现有 DeepSeek 及其他 API Key 提供方。保存后的选择从新建任务开始生效，已经运行的任务继续使用原模型。这个开关只改变外层统帅：有界决策议事组仍使用固定的 Codex app-server 模型，并继续独立统计 token 用量。
+打开**设置 → 模型 → 统帅模型**，可以在**本机 Codex 登录**和**外部模型 API**之间切换，再选择或输入具体模型。本机路径复用当前 Codex/ChatGPT 登录，不需要第二份 API Key；该能力仅在 Profile 明确开启时生效，并且只读取 `openai-codex` 所需凭证。外部路径完整保留现有 DeepSeek 及其他 API Key 提供方。保存后的选择从新建任务开始生效，已经运行的任务继续使用原模型。这个开关只改变外层统帅。打开**设置 → MAOQ**可配置有界议事组的模型、推理强度以及快速或深度研判模式；议事组调用继续独立统计 token 用量。
 
 <a id="model-experience"></a>
 ## 模型体验
