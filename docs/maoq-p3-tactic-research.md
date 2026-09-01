@@ -126,5 +126,39 @@ The multiple-testing controls follow Bailey et al., [The Probability of Backtest
 4. **Complete for next-open research:** implement one shared execution simulator with lot, cash, T+1, opening price-limit, suspension, commission, stamp-duty, transfer-fee, and slippage rules.
 5. **Complete at the provider layer:** add a read-only MySQL history adapter that streams content-addressed paired feature/execution chunks without materializing full news/strategic snapshots for every historical date.
 6. **Pure evaluator and suite audit complete:** implement fixed versioned signals for all three candidates, declared portfolio construction, chronological folds, preliminary Sharpe/drawdown/turnover/fill evidence, and doubled-cost replay. The one-read suite evaluation computes DSR, combinatorially symmetric cross-validation PBO, state-profit concentration, and capacity against signal-date 20-session mean amount; insufficient evidence fails closed, and results remain `research` until the final sealed holdout is complete.
-7. **Runtime consumer complete:** mount the production adapter registry and bounded single-tactic model tool; real-history execution evidence remains pending.
-8. Promote only the candidates that pass; leave the others visible as rejected research evidence.
+7. **Runtime consumer complete:** mount the production adapter registry and bounded single-tactic model tool.
+8. **First production-history baseline complete:** the three-tactic suite was audited over 969 strictly quality-approved sessions from 2022-01-04 through 2025-12-31; no active tactic was promoted.
+9. Promote only candidates that actually pass; retain the others as visible rejected research evidence.
+
+## 2022–2025 production-history baseline
+
+Run identity:
+
+```text
+adapter: long-short-stock-history-mysql
+range: 2022-01-04..2025-12-31
+sessions: 969
+minimum stocks: 4000
+execution: next-session open, A-share T+1 and exact price limits
+costs: commission 2.5bps, sell stamp duty 5bps, transfer 0.1bps, slippage 5bps
+attempted trials: 3
+```
+
+Each session received a quality certificate only after the date and symbol sets matched exactly across `daily_price_bar`, `daily_adjustment_factor`, `daily_basic_factor`, and `daily_price_limit`. Existing negative quality decisions were not overwritten.
+
+| Tactic | Annualized return | Sharpe | Maximum drawdown | Doubled-cost Sharpe | Positive folds | DSR probability | Result |
+|---|---:|---:|---:|---:|---:|---:|---|
+| Regime-signed breakout pullback | 16.62% | 0.735 | 36.71% | 0.705 | 62.5% | 28.43% | Strongest first-round result, but fails Sharpe, drawdown, fold stability, DSR, and PBO gates. |
+| Openable emotion leader | -22.83% | -1.513 | 66.27% | -1.752 | 0% | 0.000005% | Explicit negative control; the close-limit-up to next-open implementation must not continue. |
+| Industry-relative exhaustion repair | 0.38% | 0.144 | 40.25% | -0.116 | 37.5% | 4.81% | Cost-sensitive and excessively high-turnover; the five-session implementation is unsupported. |
+
+Suite PBO was 40%, above the 20% gate. All three tactics passed the 1% of signal-date 20-session mean amount capacity limit, but that only shows capacity was not the primary failure. Every tactic also lacks a sealed holdout and therefore remains `research`.
+
+## Second-round preregistration
+
+The second round must not sweep parameters around the first-round results. Every added implementation or parameter family increases `attemptedTrials` and must freeze before the final holdout opens.
+
+1. `sector_state_rotation_v1`: first priority. Reproduce the testable core of the public industry-state rotation—switch between momentum, repair, and cash according to industry trend stability—while redeclaring weekly decisions, slippage, sector capacity, and stock mapping. The public Sharpe 1.04 remains only an architecture benchmark.
+2. `risk_budgeted_sector_trend_v1`: evolve the only positive first-round candidate with sector concentration limits, portfolio volatility budgeting, and state exits to address its 36.71% drawdown. Merely shrinking the position cannot be reported as an improved strategy.
+3. `first_board_openability_v1`: do not implement yet. The public Sharpe 1.187 implementation enters at 09:30 and exits at 11:28 or 14:50, outside the current daily-plus-sector contract. It remains a hypothesis unless replayable minute data is admitted later.
+4. Do not perform small parameter searches over `industry_relative_exhaustion_repair_v1` or `openable_emotion_leader_v1`. A different holding logic, entry clock, or first-board definition is a new registered trial, not an overwrite of v1.

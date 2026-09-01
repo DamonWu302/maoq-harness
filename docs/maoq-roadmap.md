@@ -129,7 +129,7 @@ The deterministic layer owns feature definitions, missing-data behavior, classif
 
 ## P3 — Tactical pool
 
-**Status:** in progress. The initial registry, fail-closed P2 context gates, point-in-time daily-history features, shared next-open A-share execution, content-addressed read-only MySQL history adapter, single-tactic evaluator, and one-read three-tactic suite audit are implemented. The suite computes DSR, PBO, state-profit concentration, and capacity, but all three active candidates remain `research`; only `defensive_no_trade` is eligible until the production-history trial and final sealed holdout pass. The evidence review and promotion policy are in [MAOQ P3 tactic research](maoq-p3-tactic-research.md).
+**Status:** in progress. The initial registry, fail-closed P2 context gates, point-in-time daily-history features, shared next-open A-share execution, content-addressed read-only MySQL history adapter, single-tactic evaluator, and one-read three-tactic suite audit are implemented. The first production-history baseline over 969 strictly quality-approved 2022–2025 sessions is complete: the best trend candidate reached Sharpe 0.735 and suite PBO was 40%, so no active candidate passed promotion and only `defensive_no_trade` remains eligible. The second round preregisters industry-state rotation and risk-budgeted sector trend first; see [MAOQ P3 tactic research](maoq-p3-tactic-research.md).
 
 | Tactic family | Eligible environment | Primary evidence | Typical invalidation |
 |---|---|---|---|

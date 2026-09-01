@@ -144,9 +144,12 @@ pnpm run maoq:p3-canary -- --mode evaluate \
 
 ```bash
 pnpm run maoq:p3-canary -- --mode evaluate-suite \
-  --start 2022-01-04 --end 2026-08-31 --chunk-sessions 10 --attempted-trials 3
+  --start 2022-01-04 --end 2025-12-31 --minimum-stocks 4000 \
+  --chunk-sessions 20 --attempted-trials 3
 ```
 
 Suite 模式只扫描数据库一次，同时报告三个战法的 DSR、组合对称交叉验证 PBO、市场状态利润集中度和信号日 20 日平均成交额容量。至少需要四个完整的 126 交易日折才能计算 PBO；不足时明确返回失败关闭。`--attempted-trials` 必须填写截至运行时所有尝试过的参数族数量，而不只是当前留下的候选数。它仍固定保留“封存留出集尚未提供”的阻断项，研究者必须在未参与选择的最终留出集上验收。
+
+首轮正式基线固定在 2022—2025 的 969 个四表逐股票完全一致交易日。2026 年早期历史参考表与价格表的股票集合尚不一致，不能为了扩大样本静默并入；2026-08-11 之后的连续生产数据用于日常探针和未来封存留出集。
 
 CLI 会读取已配置的 `MAOQ_MYSQL_HOST`、`MAOQ_MYSQL_PORT`、`MAOQ_MYSQL_SOCKET`、`MAOQ_MYSQL_USER` 和 `MAOQ_MYSQL_DATABASE`。可选的 `MAOQ_MYSQL_PASSWORD` 只存在于进程内，绝不进入输出。连接和语句默认分别最多等待 5 秒与 60 秒。评估成功只能证明生产历史路径可用，并记录精确来源哈希、基础／成本翻倍指标与晋级阻断项；决策仍保持 `research`。晋级仍须完成 [MAOQ P3 战法研究](maoq-p3-tactic-research.zh.md)中的最终留出集和完整执行验收。
