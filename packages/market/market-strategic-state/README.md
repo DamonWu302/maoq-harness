@@ -40,6 +40,8 @@ const state = buildStrategicStateRecord(features, interpretation, decisionTime, 
 
 Success returns deeply frozen deterministic and interpretation layers. Validation failures throw `StrategicInterpretationValidationError`; an unavailable deterministic component remains a typed result instead of becoming an invented default.
 
+For the P2 rolling release check, `evaluateP2StrategicCanary()` selects the newest snapshot per trading date, reserves two dates for sector-history warm-up, and evaluates the following ten dates without model calls. Production callers can require both the source adapter and immutable mapping-version token. Run the repository check against the local store with `pnpm run maoq:p2-canary`.
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -55,6 +57,7 @@ The model-facing draft cannot supply source titles or quotations. It selects a m
 | File | Role |
 |---|---|
 | [`src/features.ts`](src/features.ts) | Deterministic labels, sector dimensions, and evidence catalog |
+| [`src/canary.ts`](src/canary.ts) | Rolling production provenance, replay, and eligibility gate |
 | [`src/interpretation.ts`](src/interpretation.ts) | Evidence, staleness, posture, and confidence validation |
 | [`src/mao-methods.ts`](src/mao-methods.ts) | Allowlisted work titles and paraphrased principles |
 | [`src/types.ts`](src/types.ts) | Versioned feature and interpretation contracts |
@@ -90,6 +93,7 @@ These limits keep deterministic observations distinct from interpretation and ex
 
 - **Daily features only** — intraday transitions require a separate point-in-time input contract.
 - **Two prior snapshots for sector persistence** — shorter history makes only the sector component unavailable and prevents an actionable posture.
+- **Twelve snapshots for the ten-day canary** — two earlier trading dates are warm-up inputs; only the following ten dates count as fully evaluated evidence.
 - **Versioned thresholds are policy** — threshold changes require a new engine version and refreshed gold fixtures.
 - **Attributions are paraphrases** — the catalog names source works and method summaries; it does not claim edition-specific verbatim quotations.
 

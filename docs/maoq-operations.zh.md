@@ -4,7 +4,7 @@
 
 ## 目标
 
-本手册负责 P0 与 P1 的运行检查，包括启动 MAOQ、选择模型路由、验证一次有界决策、读取 token 用量、冻结市场快照和从常见故障中恢复。MAOQ 仍是前台运行的研究与模拟交易应用，不具备实盘下单权限。
+本手册负责 P0 至 P2 的运行检查，包括启动 MAOQ、选择模型路由、验证一次有界决策、读取 token 用量、冻结市场快照、验证滚动战略状态和从常见故障中恢复。MAOQ 仍是前台运行的研究与模拟交易应用，不具备实盘下单权限。
 
 ## 启动、验证与停止
 
@@ -99,3 +99,24 @@ Profile 会延迟挂载生产日线适配器，因为数据库端点和凭据属
 | 供应商无关的审计导入 | [`market-snapshot-json.spec.ts`](../packages/market/market-snapshot-json/tests/market-snapshot-json.spec.ts) | 无数据库凭据时仍可使用按精确身份寻址的导入 |
 
 这些测试、文档门禁、宿主构建、真实日线双构建、早截止点拒绝和不可用质量拒绝全部通过时，P1 即完成。使用某个联网提供方的证据开展研究前，该提供方仍必须通过真实的截止点前 canary；提供方不可用不会削弱或绕过不可变批次约定。
+
+## P2 canary
+
+使用当前 MySQL 映射身份冻结至少 12 个最近交易日后，运行 `pnpm run maoq:p2-canary`。前两个交易日作为历史热身，后十日接受完整评估。命令要求来源为 `long-short-stock-mysql`、身份包含 `mapping:long-short-stock-v2`、三个战略组件全部可用、存在具体证据，并且反转历史输入后的回放字节等价。它不启动 Agent，token 用量为零。非零退出码会拒绝晋级；不得把日期不足、旧映射或组件不可用重新解释为通过。
+
+2026-09-01 的本机验收冻结了从 2026-08-13 到 2026-08-28 的 12 份修正快照。十个评估日全部产出市场状态、情绪周期、31 个板块战场、证据和相同的确定性回放。canary 发现并阻止了旧映射中的重大单位缺陷：指数涨跌此前被乘以 100，而战略契约使用小数比率。映射 v2 以 `0.01` 表示 1%，并创建新的不可变身份；旧产物保留为历史，但不得用于当前战略状态。
+
+本检查通过后，在 MAOQ 中刷新一次最新的规范日级状态。确认结构化解释只引用快照证据，包含反证与转变条件，将获准毛选方法解析为释义，接受独立风险结论，并报告提供方 token 用量或明确标记用量不可用。十日检查有意避免对不变的历史事实反复运行模型解释。
+
+最终的 2026-09-01 本机 Codex canary 以快速模式分析当前映射 v2 快照，启动两个子 Agent，返回有约束力的 `vetoed`／不可行动结果，并报告输入 61,125、输出 3,286、合计 64,411 token，零用量不可用调用。有界模型投影相较早先全板块提示把子调用总用量降低约 74%，持久化结果仍保留全部 31 个板块特征。完全相同身份的再次刷新会以 `agentsStarted: 0` 复用镜像。
+
+### P2 验收证据
+
+| P2 性质 | 自动化证据 | 生产证据 |
+|---|---|---|
+| 每一种市场状态和情绪周期标签都有金标样例 | [`market-strategic-state.spec.ts`](../packages/market/market-strategic-state/tests/market-strategic-state.spec.ts) | 金标 fixture 保持供应商无关且离线 |
+| 模糊、陈旧或残缺证据不能变成可行动结果 | 同一战略状态测试及 [`strategic-state-tool.spec.ts`](../packages/workflow/tool-maoq-decision/tests/strategic-state-tool.spec.ts) | 展示最新状态前，时效结论必须允许当前使用 |
+| 十个完整评估日可无漂移回放 | `evaluateP2StrategicCanary()` 测试及 `pnpm run maoq:p2-canary` | 映射 v2 快照上的 2026-08-17 至 2026-08-28 已通过 |
+| 结构化综合、有来源的方法归因、独立否决和 token 统计持续受宿主强制执行 | [`loader-composition.spec.ts`](../packages/workflow/tool-maoq-decision/tests/loader-composition.spec.ts) 及 [`tool-maoq-decision.spec.ts`](../packages/workflow/tool-maoq-decision/tests/tool-maoq-decision.spec.ts) | 每次模型或提示词变更后刷新一次最新规范日级状态 |
+
+标签金标覆盖、滚动生产数据 canary、定向包测试、文档门禁和一次当前路由规范状态 canary 全部通过时，P2 即完成。个股排序仍不属于本里程碑。

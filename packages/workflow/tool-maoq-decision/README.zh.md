@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-`dsh-tool-maoq-decision` 向统帅提供宿主规范化的 `maoq_state_refresh_daily` 路径、证据约束的临时问题工具 `maoq_analyze_strategy`、持久化战略决策镜像和较底层的 `maoq_decide` 议事组诊断。每日路径自动选取最近三个不同交易日的快照，并在模型控制之外固定目标、专家视角、决策时间和时效策略。完全相同的重复刷新会以零新增子 Agent 返回同一镜像；`maoq_state_latest`、`maoq_state_history` 和 `maoq_state_get` 无需重算市场数据即可读取镜像。快速研判使用一个综合子 Agent 和一个独立风控子 Agent；深度研判会先并行运行所选专家。宿主会拒绝未知证据或虚构的毛选方法归因。本包在 P2 不排序股票，也不能发出实盘订单。
+`dsh-tool-maoq-decision` 向统帅提供宿主规范化的 `maoq_state_refresh_daily` 路径、证据约束的临时问题工具 `maoq_analyze_strategy`、持久化战略决策镜像和较底层的 `maoq_decide` 议事组诊断。每日路径自动选取最近三个不同交易日的快照，并在模型控制之外固定目标、专家视角、决策时间和时效策略。完全相同的重复刷新会以零新增子 Agent 返回同一镜像；`maoq_state_latest`、`maoq_state_history` 和 `maoq_state_get` 无需重算市场数据即可读取镜像。快速研判使用一个综合子 Agent 和一个独立风控子 Agent；深度研判会先并行运行所选专家。模型上下文包含全部市场／情绪事实、确定性前五板块战场和一个末位反例；不可变结果仍保留全部板块。宿主先修整展示性首尾空白，随后仍会拒绝空文本、未知证据或虚构的毛选方法归因。本包在 P2 不排序股票，也不能发出实盘订单。
 
 ## 目录
 

@@ -40,6 +40,8 @@ const state = buildStrategicStateRecord(features, interpretation, decisionTime, 
 
 成功会返回深度冻结的确定性层和解释层。校验失败会抛出 `StrategicInterpretationValidationError`；不可用的确定性组件保持为带类型结果，而不会变成虚构默认值。
 
+P2 滚动发布检查使用 `evaluateP2StrategicCanary()`：它为每个交易日选择最新快照，保留两个交易日作为板块历史热身，再以零模型调用评估后续十个交易日。生产调用方可以同时要求来源适配器和不可变映射版本标记。使用 `pnpm run maoq:p2-canary` 对本地存储运行仓库检查。
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -55,6 +57,7 @@ const state = buildStrategicStateRecord(features, interpretation, decisionTime, 
 | 文件 | 职责 |
 |---|---|
 | [`src/features.ts`](src/features.ts) | 确定性标签、板块维度和证据目录 |
+| [`src/canary.ts`](src/canary.ts) | 滚动生产来源、回放和资格门禁 |
 | [`src/interpretation.ts`](src/interpretation.ts) | 证据、时效、姿态和置信度校验 |
 | [`src/mao-methods.ts`](src/mao-methods.ts) | 允许使用的篇名与释义原则 |
 | [`src/types.ts`](src/types.ts) | 带版本特征与解释契约 |
@@ -90,6 +93,7 @@ const state = buildStrategicStateRecord(features, interpretation, decisionTime, 
 
 - **仅日级特征** — 盘中切换需要独立的时点输入契约。
 - **板块持续性需要两个历史快照** — 历史更短时只有板块组件不可用，并阻止产生可行动姿态。
+- **十日 canary 需要十二份快照** — 前两个交易日是热身输入，只有后续十日计入完整评估证据。
 - **带版本阈值属于策略** — 阈值变化需要新的引擎版本和更新后的金标夹具。
 - **归因均为释义** — 目录提供来源篇目和方法摘要，不声称给出特定版本的逐字引文。
 

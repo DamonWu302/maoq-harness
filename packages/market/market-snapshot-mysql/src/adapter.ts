@@ -97,6 +97,9 @@ interface AvailableDateRow {
   trading_date: string
 }
 
+/** Version of provider-to-MarketSnapshot field semantics, included in every immutable identity. */
+export const LONG_SHORT_STOCK_MAPPING_VERSION = 'long-short-stock-v2' as const
+
 const QUALITY_SQL = `/* maoq:quality */
 SELECT DATE_FORMAT(trade_date, '%Y-%m-%d') trade_date, status, observed_rows,
        minimum_required_rows, usable_for_model, source,
@@ -362,6 +365,7 @@ export class LongShortStockMysqlAdapter implements MarketSnapshotAdapter {
       adjustmentVersion: `hfq:${adjustment}`,
       sectorClassificationVersion: `sw-l1:${sector}`,
       sourceVersions: [
+        `mapping:${LONG_SHORT_STOCK_MAPPING_VERSION}`,
         `price:${price}`,
         `previous-price:${previousPrice}`,
         `basic:${basic}`,
@@ -531,7 +535,7 @@ export class LongShortStockMysqlAdapter implements MarketSnapshotAdapter {
       majorIndices: indices.map(index => ({
         symbol: index.symbol,
         close: numberOf(index.close_price, `${index.symbol}.close`),
-        changePct: (numberOf(index.close_price, `${index.symbol}.close`) / numberOf(index.previous_close, `${index.symbol}.previous_close`) - 1) * 100,
+        changePct: numberOf(index.close_price, `${index.symbol}.close`) / numberOf(index.previous_close, `${index.symbol}.previous_close`) - 1,
       })),
       totalAmount: rows.reduce((sum, row) => sum + numberOf(row.amount, `${row.symbol}.amount`), 0),
       advancing: changes.filter(change => change > 0).length,
@@ -542,6 +546,7 @@ export class LongShortStockMysqlAdapter implements MarketSnapshotAdapter {
       brokenLimit: broken,
       provenance: source(this.name, 'daily_price_bar+daily_price_limit+market_index_daily_bar', identity.sourceVersions.join('|'), retrievedAt, identity.tradingDate, [
         'breadth=close-vs-pre-close',
+        'index-change=close/previous-close-1',
         'broken-limit=high>=up-limit-and-close<up-limit',
         ...rows.some(row => row.pre_close_derived === 1) ? ['missing-limit-pre-close=previous-session-raw-close'] : [],
         ...rows.some(row => row.pre_close === null) ? ['missing-pre-close-without-history=excluded-from-return-facts'] : [],

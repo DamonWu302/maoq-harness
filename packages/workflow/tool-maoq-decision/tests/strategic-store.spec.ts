@@ -127,7 +127,7 @@ describe('StrategicDecisionStore', () => {
       currentSnapshotVerified: true,
       currentSnapshotHash: 'b'.repeat(64),
       featureEngineVersion: 'maoq-strategic-v2',
-      workflowVersion: 'maoq-strategic-workflow-v2',
+      workflowVersion: 'maoq-strategic-workflow-v4',
       analysisMode: 'deep',
       subagentProvider: 'external',
       providerSettingsFingerprint: 'changed',

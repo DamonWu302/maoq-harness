@@ -90,6 +90,9 @@ describe('long_short_stock MySQL adapter', () => {
       volume: 1000, amount: 10000, turnoverRate: 0.015, limitStatus: 'limit-up',
     })
     expect(first.sectors[0]).toMatchObject({ sectorId: '801780.SI', close: 110, advancingRatio: 1, leaders: ['000001'] })
+    expect(first.breadth.majorIndices[0]?.changePct).toBeCloseTo(0.01, 6)
+    expect(first.breadth.provenance.transforms).toContain('index-change=close/previous-close-1')
+    expect(first.identity.sourceVersions).toContain('mapping:long-short-stock-v2')
     expect(first.emotion).toMatchObject({ consecutiveBoardCounts: [{ boards: 2, count: 1 }], promotionRate: 1, brokenLimitRate: 0 })
     expect(statements.find(sql => sql.includes('maoq:sectors'))).toContain('ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY in_date DESC')
   })

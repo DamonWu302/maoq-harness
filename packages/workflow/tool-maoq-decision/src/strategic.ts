@@ -195,11 +195,25 @@ const decision = decisionResult === null ? null : decisionResult.value
 if (decision === null || JSON.stringify(decision.selectedSpecialists) !== JSON.stringify(args.specialists)) throw new Error('commander failed to preserve selected specialists')
 
 phase('Independent strategic risk review')
+const decisionEvidenceRefs = new Set([
+  ...decision.supportingEvidenceRefs,
+  ...decision.counterEvidenceRefs,
+  ...decision.maoMethodApplications.flatMap(item => item.evidenceRefs),
+])
+const riskFeatureContext = {
+  marketRegime: args.features.marketRegime,
+  emotionCycle: args.features.emotionCycle,
+  sectorSelection: {
+    totalSectorCount: args.features.sectorBattlefields.totalSectorCount,
+    selectionPolicy: args.features.sectorBattlefields.selectionPolicy,
+  },
+  citedEvidence: args.features.evidence.filter(item => decisionEvidenceRefs.has(item.ref)),
+}
 const riskResult = await agent([
   'You are the independent MAOQ risk reviewer. You did not author the strategic interpretation and may veto it.',
   'Veto unknown evidence, rewritten deterministic labels, uncited claims, missing counter-evidence, or an actionable posture from incomplete facts.',
   'A veto is final. This phase cannot rank stocks or authorize a live order.',
-  'Feature record: ' + JSON.stringify(args.features),
+  'Host-bound labels and the exact evidence cited by the decision: ' + JSON.stringify(riskFeatureContext),
   'Decision: ' + JSON.stringify(decision),
   'Reports: ' + JSON.stringify(reports),
 ].join('\n\n'), {
@@ -316,8 +330,104 @@ function enrichReports(reports: readonly JsonValue[]): JsonValue[] {
   })
 }
 
+function normalizeInterpretationText(draft: StrategicInterpretationDraft): StrategicInterpretationDraft {
+  return {
+    ...draft,
+    principalContradiction: draft.principalContradiction.trim(),
+    leastResistanceBattlefield: draft.leastResistanceBattlefield.trim(),
+    transitionConditions: draft.transitionConditions.map(value => value.trim()),
+    maoMethodApplications: draft.maoMethodApplications.map(application => ({
+      ...application,
+      application: application.application.trim(),
+      limitation: application.limitation.trim(),
+    })),
+  }
+}
+
+function featuresForModel(features: StrategicFeatureRecord): JsonValue {
+  const selectedSectors = features.sectorBattlefields.status === 'ready'
+    ? [...features.sectorBattlefields.value.slice(0, 5), ...features.sectorBattlefields.value.slice(-1)]
+      .filter((sector, index, all) => all.findIndex(item => item.sectorId === sector.sectorId) === index)
+    : []
+  const evidenceRefs = new Set([
+    ...features.marketRegime.evidenceRefs,
+    ...features.emotionCycle.evidenceRefs,
+    ...selectedSectors.flatMap(sector => sector.evidenceRefs),
+  ])
+  return {
+    engineVersion: features.engineVersion,
+    tradingDate: features.tradingDate,
+    cutoffTime: features.cutoffTime,
+    marketRegime: features.marketRegime,
+    emotionCycle: features.emotionCycle,
+    sectorBattlefields: features.sectorBattlefields.status === 'ready'
+      ? {
+        status: 'ready',
+        value: selectedSectors,
+        evidenceRefs: selectedSectors.flatMap(sector => sector.evidenceRefs),
+        totalSectorCount: features.sectorBattlefields.value.length,
+        selectionPolicy: 'deterministic-top-5-and-bottom-1',
+      }
+      : features.sectorBattlefields,
+    evidence: features.evidence
+      .filter(item => evidenceRefs.has(item.ref))
+      .map(item => ({ ref: item.ref, value: item.value })),
+    eligibleForInterpretation: features.eligibleForInterpretation,
+  } as unknown as JsonValue
+}
+
 function render(value: Record<string, unknown>, maxChars: number): string {
-  const text = `MAOQ strategic state is ${value['status'] === 'approved' ? 'approved' : 'vetoed'} by independent risk review.\n${JSON.stringify(value, null, 2)}`
+  const features = isRecord(value['features']) ? value['features'] : {}
+  const market = isRecord(features['marketRegime']) && isRecord(features['marketRegime']['value'])
+    ? features['marketRegime']['value'] : null
+  const emotion = isRecord(features['emotionCycle']) && isRecord(features['emotionCycle']['value'])
+    ? features['emotionCycle']['value'] : null
+  const interpretation = isRecord(value['interpretation']) ? value['interpretation'] : {}
+  const risk = isRecord(value['risk']) ? value['risk'] : {}
+  const methods = Array.isArray(interpretation['maoMethodApplications'])
+    ? interpretation['maoMethodApplications'].map((application) => {
+      const item = isRecord(application) ? application : {}
+      return {
+        methodId: item['methodId'],
+        sourceTitle: item['sourceTitle'],
+        attributionKind: item['attributionKind'],
+        application: item['application'],
+        limitation: item['limitation'],
+      }
+    })
+    : []
+  const summary = {
+    decisionId: value['decisionId'],
+    createdAt: value['createdAt'],
+    cacheHit: value['cacheHit'],
+    agentsStarted: value['agentsStarted'],
+    analysisMode: value['analysisMode'],
+    status: value['status'],
+    actionable: value['actionable'],
+    tokenUsage: value['tokenUsage'],
+    strategicState: {
+      currentSnapshotHash: features['currentSnapshotHash'],
+      tradingDate: features['tradingDate'],
+      marketRegime: market,
+      emotionCycle: emotion,
+    },
+    interpretation: {
+      principalContradiction: interpretation['principalContradiction'],
+      leastResistanceBattlefield: interpretation['leastResistanceBattlefield'],
+      counterEvidenceRefs: interpretation['counterEvidenceRefs'],
+      transitionConditions: interpretation['transitionConditions'],
+      confidence: interpretation['confidence'],
+      eligiblePosture: interpretation['eligiblePosture'],
+      maoMethodApplications: methods,
+    },
+    risk: {
+      approved: risk['approved'],
+      verdict: risk['verdict'],
+      reasons: risk['reasons'],
+      hardLimits: risk['hardLimits'],
+    },
+  }
+  const text = `MAOQ strategic state is ${value['status'] === 'approved' ? 'approved' : 'vetoed'} by independent risk review.\n${JSON.stringify(summary, null, 2)}`
   if (text.length <= maxChars) return text
   const suffix = '\n… [truncated]'
   return maxChars <= suffix.length ? suffix.slice(0, maxChars) : `${text.slice(0, maxChars - suffix.length)}${suffix}`
@@ -379,6 +489,7 @@ async function executeStrategicAnalysis(
   const missing = args.historySnapshotHashes.find((_hash, index) => history[index] === undefined)
   if (missing !== undefined) throw new Error(`MAOQ history market snapshot ${missing} was not found`)
   const features = computeStrategicFeatures(current, history as MarketSnapshot[])
+  const modelFeatures = featuresForModel(features)
   const run: WorkflowRun = ctx.workflowEngine.start({
     script: STRATEGIC_SCRIPT,
     meta: config.analysisMode === 'deep' ? STRATEGIC_META : QUICK_STRATEGIC_META,
@@ -386,7 +497,7 @@ async function executeStrategicAnalysis(
       analysisMode: config.analysisMode,
       objective,
       specialists: args.specialists,
-      features,
+      features: modelFeatures,
       maoMethods: MAO_METHOD_CATALOG,
     },
     subagentProvider: config.subagentProvider,
@@ -403,7 +514,12 @@ async function executeStrategicAnalysis(
     if (error !== undefined) throw new Error(error)
     const value = readWorkflowValue(settled.value, args.specialists, features, config.analysisMode)
     const { marketRegime: _market, emotionCycle: _emotion, selectedSpecialists: _selected, ...draft } = value.decision
-    const state = buildStrategicStateRecord(features, draft, args.decisionTime, args.maximumAgeHours)
+    const state = buildStrategicStateRecord(
+      features,
+      normalizeInterpretationText(draft),
+      args.decisionTime,
+      args.maximumAgeHours,
+    )
     const approved = (value.risk as Record<string, unknown>)['approved'] === true
     const result: StrategicDecisionResult = {
       runId: run.id,

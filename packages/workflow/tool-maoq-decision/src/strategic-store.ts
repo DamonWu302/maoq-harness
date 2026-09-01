@@ -8,7 +8,7 @@ const HASH_PATTERN = /^[a-f0-9]{64}$/
 /** Current durable strategic-decision record version. */
 export const STRATEGIC_DECISION_SCHEMA_VERSION = 1 as const
 /** Workflow implementation identity included in every decision ID. */
-export const STRATEGIC_WORKFLOW_VERSION = 'maoq-strategic-workflow-v1' as const
+export const STRATEGIC_WORKFLOW_VERSION = 'maoq-strategic-workflow-v3' as const
 
 /** Exact inputs that make one strategic decision reusable. */
 export interface StrategicDecisionInput {

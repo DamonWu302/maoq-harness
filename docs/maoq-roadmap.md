@@ -6,7 +6,7 @@ English | [中文](maoq-roadmap.zh.md)
 
 This document turns the MAOQ direction into an executable sequence. The outcome is not a chatbot that discusses stocks, but a research and paper-trading agent that can identify the principal contradiction, select the least-resistance battlefield, choose tactics for the current market state, rank stocks, state invalidation conditions, and accept an independent risk veto.
 
-The current focus is **P2 validation closure, followed by P3 tactic eligibility**. P0 and P1 are complete; the P2 deterministic engine, canonical state store, and post-close automatic maintenance path are implemented, while full label fixtures and consecutive production-data canaries remain promotion evidence.
+The current focus is **P3 tactic eligibility**. P0 through P2 are complete: full label fixtures, the corrected 12-snapshot/10-evaluation-day production canary, and the current Local Codex route canary are recorded in the [MAOQ operations runbook](maoq-operations.md#p2-canary).
 
 ## Current baseline
 
@@ -101,7 +101,7 @@ P1 applies “seek truth from facts” by keeping acquired observations separate
 
 ## P2 — Strategic state and principal-contradiction engine
 
-**Status:** core implementation complete; promotion validation remains. Deterministic features, evidence-bound interpretation, sourced Mao method attribution, independent risk veto, immutable mirrors, freshness invalidation, and idempotent post-close maintenance are shipped. P2 still needs gold coverage across every regime/cycle label and consecutive production-data canaries before it is treated as fully exited.
+**Status:** complete. Deterministic features, evidence-bound interpretation, sourced Mao method attribution, independent risk veto, immutable mirrors, freshness invalidation, idempotent post-close maintenance, full label gold coverage, rolling production replay, and a current Local Codex route canary have passed. The model sees a bounded top-five battlefield set plus one deterministic counterexample, while the host retains all sector features and exact evidence.
 
 ### Scope and deliverables
 

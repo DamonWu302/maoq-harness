@@ -4,7 +4,7 @@ English | [中文](maoq-operations.zh.md)
 
 ## Purpose
 
-This runbook owns the P0 and P1 operating checks for launching MAOQ, choosing a model route, proving one bounded decision, reading token usage, freezing a market snapshot, and recovering from common failures. MAOQ remains a foreground research and paper-trading application; it has no live-order authority.
+This runbook owns the P0 through P2 operating checks for launching MAOQ, choosing a model route, proving one bounded decision, reading token usage, freezing market snapshots, validating the rolling strategic state, and recovering from common failures. MAOQ remains a foreground research and paper-trading application; it has no live-order authority.
 
 ## Start, verify, and stop
 
@@ -99,3 +99,24 @@ The 2026-08-31 local acceptance used trading date 2026-08-28 and cutoff `2026-08
 | Provider-neutral audited import | [`market-snapshot-json.spec.ts`](../packages/market/market-snapshot-json/tests/market-snapshot-json.spec.ts) | Exact identity-addressed imports remain available without database credentials |
 
 P1 is complete when these tests, documentation gates, host build, real daily double-build, early-cutoff rejection, and unusable-quality rejection pass. A particular web provider must still pass a live pre-cutoff canary before its evidence is used in research; provider availability does not weaken or bypass the immutable batch contract.
+
+## P2 canary
+
+Run `pnpm run maoq:p2-canary` after freezing at least 12 recent trading dates with the current MySQL mapping identity. Two dates are history warm-up and the following ten are fully evaluated. The command requires `long-short-stock-mysql`, the `mapping:long-short-stock-v2` identity token, all three strategic components, concrete evidence, and byte-equivalent replay with reversed history input. It starts no agents and reports zero token use. A nonzero exit refuses promotion; do not reinterpret missing dates, an obsolete mapping, or an unavailable component as a pass.
+
+The 2026-09-01 local acceptance froze 12 corrected snapshots from 2026-08-13 through 2026-08-28. All ten evaluated dates produced market regime, emotion cycle, 31 sector battlefields, evidence, and deterministic replay equality. The canary exposed and prevented a material unit defect in an earlier mapping: index changes had been multiplied by 100 even though the strategic contract uses decimal ratios. Mapping v2 stores `0.01` as 1% and creates new immutable identities; old artifacts remain historical and must not be used for current strategic state.
+
+After this check passes, refresh one latest canonical daily state in MAOQ. Confirm that structured interpretation cites only snapshot evidence, includes counter-evidence and transition conditions, resolves an allowlisted Mao method as a paraphrase, receives an independent risk verdict, and reports provider token usage or explicitly unavailable usage. The ten-day check deliberately avoids repeated model interpretation of unchanged historical facts.
+
+The final 2026-09-01 Local Codex canary used quick mode over the current mapping-v2 snapshot, started two children, returned a binding `vetoed` / non-actionable result, and reported 61,125 input, 3,286 output, and 64,411 total tokens with zero unavailable calls. The bounded model projection reduced total child usage by about 74% from the earlier full-sector prompt while the persisted result retained all 31 sector features. Exact refreshes of the same identity reuse the mirror with `agentsStarted: 0`.
+
+### P2 acceptance evidence
+
+| P2 property | Automated evidence | Production evidence |
+|---|---|---|
+| Every market-regime and emotion-cycle label has a gold case | [`market-strategic-state.spec.ts`](../packages/market/market-strategic-state/tests/market-strategic-state.spec.ts) | Gold fixtures remain provider-neutral and offline |
+| Ambiguous, stale, or incomplete evidence cannot become actionable | The same strategic-state tests and [`strategic-state-tool.spec.ts`](../packages/workflow/tool-maoq-decision/tests/strategic-state-tool.spec.ts) | Latest-state freshness must allow current use before presentation |
+| Ten fully evaluated dates replay without drift | `evaluateP2StrategicCanary()` tests plus `pnpm run maoq:p2-canary` | 2026-08-17 through 2026-08-28 passed over mapping v2 snapshots |
+| Structured synthesis, sourced method attribution, independent veto, and token accounting remain enforced | [`loader-composition.spec.ts`](../packages/workflow/tool-maoq-decision/tests/loader-composition.spec.ts) and [`tool-maoq-decision.spec.ts`](../packages/workflow/tool-maoq-decision/tests/tool-maoq-decision.spec.ts) | Refresh one latest canonical daily state after each model or prompt change |
+
+P2 is complete when label gold coverage, the rolling production-data canary, focused package tests, documentation gates, and one current-route canonical-state canary all pass. Stock ranking remains outside this milestone.

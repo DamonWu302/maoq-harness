@@ -177,9 +177,14 @@ describe('maoq_analyze_strategy', () => {
       analysisMode: 'quick',
     })
     expect(features.tradingDate).toBe('2026-08-28')
+    expect(features.sectorBattlefields.status).toBe('ready')
+    if (features.sectorBattlefields.status === 'ready') expect(features.sectorBattlefields.value.length).toBeLessThanOrEqual(6)
+    expect(features.evidence[0]).not.toHaveProperty('path')
     expect(request.maxTotalAgents).toBe(2)
+    const value = { ...workflowValue(features, false, MAOQ_DAILY_STATE_SPECIALISTS), reports: [] }
+    value.decision.maoMethodApplications[0]!.limitation = '  仅适用于已冻结的日线快照。\n'
     engine.settle({
-      value: { ...workflowValue(features, false, MAOQ_DAILY_STATE_SPECIALISTS), reports: [] },
+      value,
       stopReason: 'completed',
       agentsStarted: 2,
     })
@@ -187,6 +192,8 @@ describe('maoq_analyze_strategy', () => {
     expect(first.isError).toBe(false)
     if (first.isError) throw new Error('expected canonical daily state')
     expect(first.value).toMatchObject({ cacheHit: false, agentsStarted: 2 })
+    expect((first.value as Record<string, Record<string, unknown>>)['interpretation']?.['maoMethodApplications'])
+      .toMatchObject([{ limitation: '仅适用于已冻结的日线快照。' }])
 
     const repeated = await ctx.tools.execute({
       signal: new AbortController().signal,

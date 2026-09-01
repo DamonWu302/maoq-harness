@@ -67,6 +67,7 @@ export interface MarketBreadth {
   readonly majorIndices: readonly {
     readonly symbol: string
     readonly close: number
+    /** Close-to-previous-close return as a decimal ratio (`0.01` means 1%). */
     readonly changePct: number
   }[]
   readonly totalAmount: number

@@ -3,6 +3,7 @@ import { buildMarketSnapshot, canonicalJson, type MarketSnapshot, type MarketSna
 import {
   buildStrategicStateRecord,
   computeStrategicFeatures,
+  evaluateP2StrategicCanary,
   MAO_METHOD_CATALOG,
   StrategicInterpretationValidationError,
   type EmotionCycle,
@@ -154,6 +155,36 @@ describe('deterministic strategic features', () => {
       expect(component.value[0]).not.toHaveProperty('stocks')
       expect(component.value[0]!.evidenceRefs.length).toBeGreaterThan(0)
     }
+  })
+})
+
+describe('rolling P2 strategic canary', () => {
+  const dates = [
+    '2026-08-13', '2026-08-14', '2026-08-17', '2026-08-18',
+    '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-24',
+    '2026-08-25', '2026-08-26', '2026-08-27', '2026-08-28',
+  ]
+  const snapshots = dates.map((date, index) => buildMarketSnapshot(datedDraft(date, index)))
+
+  it('evaluates ten dates after two warm-up dates without model calls or token spend', () => {
+    const report = evaluateP2StrategicCanary([...snapshots].reverse())
+    expect(report).toMatchObject({
+      status: 'passed',
+      evaluationDays: 10,
+      requiredUniqueTradingDates: 12,
+      availableUniqueTradingDates: 12,
+      modelCallsStarted: 0,
+      tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+    })
+    expect(report.days).toHaveLength(10)
+    expect(report.days.every(day => day.eligibleForInterpretation && day.deterministicReplayMatched)).toBe(true)
+  })
+
+  it('fails closed for missing warm-up dates or an obsolete production mapping', () => {
+    expect(evaluateP2StrategicCanary(snapshots.slice(2)).failureCodes)
+      .toContain('INSUFFICIENT_UNIQUE_TRADING_DATES')
+    expect(evaluateP2StrategicCanary(snapshots, { requiredMappingVersion: 'long-short-stock-v2' }).failureCodes)
+      .toContain('MAPPING_VERSION_MISSING')
   })
 })
 
