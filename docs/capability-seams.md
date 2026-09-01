@@ -7,10 +7,13 @@ A service can be a core spine service, a swappable capability seam, or a bundle/
 
 ```mermaid
 flowchart LR
+  pkg_market_tactic_lab["market-tactic-lab"]
+  svc_marketTacticHistory["ctx.marketTacticHistory<br/>Bounded MAOQ tactic history"]
+  pkg_market_snapshot_mysql["market-snapshot-mysql"]
+  pkg_tool_maoq_tactic_research["tool-maoq-tactic-research"]
   pkg_market_snapshot["market-snapshot"]
   svc_marketSnapshots["ctx.marketSnapshots<br/>Immutable MAOQ market snapshots"]
   pkg_market_snapshot_json["market-snapshot-json"]
-  pkg_market_snapshot_mysql["market-snapshot-mysql"]
   pkg_tool_maoq_decision["tool-maoq-decision"]
   pkg_tool_maoq_snapshot["tool-maoq-snapshot"]
   pkg_market_news_web["market-news-web"]
@@ -281,6 +284,8 @@ flowchart LR
   pkg_market_snapshot --> svc_marketSnapshots
   pkg_market_snapshot_json --> svc_marketSnapshots
   pkg_market_snapshot_mysql --> svc_marketSnapshots
+  pkg_market_snapshot_mysql --> svc_marketTacticHistory
+  pkg_market_tactic_lab --> svc_marketTacticHistory
   pkg_message_feedback --> svc_messageFeedback
   pkg_permission_presets --> svc_permissionPresets
   pkg_plan_mode --> svc_planMode
@@ -389,6 +394,7 @@ flowchart LR
   svc_marketNews --> pkg_market_snapshot_mysql
   svc_marketSnapshots --> pkg_tool_maoq_decision
   svc_marketSnapshots --> pkg_tool_maoq_snapshot
+  svc_marketTacticHistory --> pkg_tool_maoq_tactic_research
   svc_sandbox --> pkg_bash_sandbox
   svc_sandbox --> pkg_terminal_bash
   svc_sandboxPolicy --> pkg_bash_sandbox
@@ -478,6 +484,7 @@ flowchart LR
 
 | ctx key | Role | Owner | Implementations | Direct consumers | Companion plugins | Note |
 | --- | --- | --- | --- | --- | --- | --- |
+| `ctx.marketTacticHistory` | `seam` | [`market-tactic-lab`](../packages/market/market-tactic-lab) | [`market-snapshot-mysql`](../packages/market/market-snapshot-mysql) | [`tool-maoq-tactic-research`](../packages/market/tool-maoq-tactic-research) | - | Production adapters stream point-in-time daily history in bounded chunks; research tools evaluate one fixed tactic without owning database access. |
 | `ctx.marketSnapshots` | `seam` | [`market-snapshot`](../packages/market/market-snapshot) | [`market-snapshot-json`](../packages/market/market-snapshot-json), [`market-snapshot-mysql`](../packages/market/market-snapshot-mysql) | [`tool-maoq-decision`](../packages/workflow/tool-maoq-decision), [`tool-maoq-snapshot`](../packages/market/tool-maoq-snapshot) | - | Adapters build exact cutoff identities; strategic consumers load frozen facts by content hash. |
 | `ctx.marketNews` | `core` | [`market-news-web`](../packages/market/market-news-web) | - | [`market-snapshot-mysql`](../packages/market/market-snapshot-mysql) | - | Freezes pre-cutoff search results into content-addressed batches that snapshot acquisition may merge by exact version token. |
 | `ctx.attachments` | `seam` | [`attachment`](../packages/attachment/attachment) | [`attachment-local`](../packages/attachment/attachment-local) | [`api-session-controller`](../packages/api/session-controller), [`tool-fs`](../packages/fs/tool-fs), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`llm-deepseek`](../packages/llm/llm-deepseek) | - | The host commits accepted images before session events; provider adapters resolve authorized durable references into provider-native content. |

@@ -1,6 +1,6 @@
 ---
 description: "面向 MAOQ P3 的时点正确日线研究特征与统一真实 A 股模拟执行策略。"
-kind: "package-library"
+kind: "package-reference"
 ---
 
 # @deepseek-ai/dsh-market-tactic-lab
@@ -9,7 +9,7 @@ kind: "package-library"
 
 ## 概述
 
-`dsh-market-tactic-lab` 为 MAOQ 战法研究提供统一的测量、信号、执行和评估基础。它为有界的复权特征交易时段与原始执行交易时段对生成内容地址，计算日线研究特征，生成三种带版本 P3 候选信号，并且只允许收盘后生成的订单在次一市场交易时段开盘成交，同时显式执行 A 股交易规则和成本。
+`dsh-market-tactic-lab` 为 MAOQ 战法研究提供统一的测量、信号、执行和评估基础。它在 `ctx.marketTacticHistory` 上注册生产历史提供方，为有界的复权特征交易时段与原始执行交易时段对生成内容地址，计算日线研究特征，生成三种带版本 P3 候选信号，并且只允许收盘后生成的订单在次一市场交易时段开盘成交，同时显式执行 A 股交易规则和成本。
 
 ## 目录
 
@@ -24,6 +24,8 @@ kind: "package-library"
 
 <a id="use-this-package"></a>
 ## 使用本包
+
+请在历史提供方和研究消费方之前挂载本服务。提供方通过 `ctx.marketTacticHistory` 注册准确的小写连字符名称；消费方无需导入具体实现，即可列出、解析或流式读取某个已注册适配器。本服务没有配置项。
 
 请把有序或无序的不可变日线交易时段传给 `computeDailyHistoryFeatures()`。最新交易时段定义决策日期；个股交易时段缺失时，受影响窗口会返回 `null`，不会跳过缺口。板块相对收益要求该股票在完整窗口内始终属于同一个时点正确板块。
 
@@ -74,7 +76,7 @@ const result = simulateNextOpenExecution(snapshots, orders)
 <a id="model-experience"></a>
 ## 模型体验
 
-无。本宿主侧库不会增加模型可见上下文或工具。
+无。本宿主侧历史注册表、特征引擎与模拟评估器不会增加模型可见上下文或工具。
 
 #### KV Cache 影响
 
@@ -84,7 +86,7 @@ const result = simulateNextOpenExecution(snapshots, orders)
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- **尚无运行时历史消费方**——`dsh-market-snapshot-mysql` 已提供生产只读适配器，纯评估器也已实现，但模型可见研究工具尚未挂载两者。
+- **内存提供方注册表**——注册项遵循 Cordis 插件生命周期；本包不持久化提供方状态或已完成报告。
 - **只有一种次日开盘订单**——盘中止损、集合竞价、排队优先级和成交量参与需要独立的带版本执行策略。
 - **固定研究组合构建**——首轮试验使用声明的最大持仓数、收盘已知定仓和固定持有期；绝不允许优化器在留出集上调参。
 - **晋级统计仍不完整**——已有按时间折、夏普、回撤、换手、成交率和翻倍成本证据；Deflated Sharpe、PBO、市场状态利润集中度与容量报告仍是晋级前的必选项。

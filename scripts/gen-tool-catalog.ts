@@ -67,8 +67,10 @@ import { registerListSubagentModels } from '../packages/subagent/tool-subagent/s
 import * as ToolWeb from '@deepseek-ai/dsh-tool-web'
 import VmWorkflowEngine from '@deepseek-ai/dsh-workflow-worker-thread'
 import MarketSnapshotService from '@deepseek-ai/dsh-market-snapshot'
+import TacticLabHistoryService from '@deepseek-ai/dsh-market-tactic-lab'
 import * as ToolMaoqDecision from '@deepseek-ai/dsh-tool-maoq-decision'
 import * as ToolMaoqSnapshot from '@deepseek-ai/dsh-tool-maoq-snapshot'
+import * as ToolMaoqTacticResearch from '@deepseek-ai/dsh-tool-maoq-tactic-research'
 import * as ToolRalph from '@deepseek-ai/dsh-tool-ralph'
 import * as ToolWorkflow from '@deepseek-ai/dsh-tool-workflow'
 import { githubSlug } from './verify-md-links.ts'
@@ -440,6 +442,19 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'The four bounded tools discover source capabilities, generate an exact immutable window, list verified local hashes, and inspect one snapshot without exposing full stock rows. Generation requires a deployment-allowed adapter and never deletes or overwrites source data.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-maoq-tactic-research',
+    dir: 'tool-maoq-tactic-research',
+    source: 'packages/market/tool-maoq-tactic-research/src/index.ts',
+    requires: ['ctx.tools', 'ctx.marketTacticHistory', 'ctx.systemPrompt'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(TacticLabHistoryService)
+      await ctx.plugin(ToolMaoqTacticResearch, {})
+    },
+    note:
+      'The two bounded tools list fixed versioned tactics and registered history sources, then evaluate one allowed tactic over one quality-gated daily range with shared next-open execution and doubled costs. Results remain research evidence and contain compact statistics rather than full market rows.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-ralph',

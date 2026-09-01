@@ -32,6 +32,7 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-lsp` | `lsp` | `ctx.tools`, `ctx.lsp`, `ctx.systemPrompt` | `tool/call`, `tool/result` | - | The lsp tool keeps provider selection and language-server subprocesses behind ctx.lsp, so its model-visible schema stays stable across providers. Requires a registered provider (e.g. `@deepseek-ai/dsh-lsp-stdio`) at runtime; without one, a query returns the structured `LSP_UNAVAILABLE` error rather than changing the schema. |
 | `@deepseek-ai/dsh-tool-maoq-decision` | `maoq_analyze_strategy`, `maoq_decide`, `maoq_state_get`, `maoq_state_history`, `maoq_state_latest`, `maoq_state_refresh_daily` | `ctx.agents`, `ctx.tools`, `ctx.workflowEngine`, `ctx.subagents`, `ctx.systemPrompt`, `a calling Agent` | `tool/call`, `tool/result`, `workflow and child session events during execution` | - | The strategic path computes immutable-snapshot features before selected specialists run, binds interpretation to evidence and allowlisted Mao methods, and keeps an independent risk veto outside model control; the diagnostic path exercises the council runtime. |
 | `@deepseek-ai/dsh-tool-maoq-snapshot` | `maoq_snapshot_generate`, `maoq_snapshot_inspect`, `maoq_snapshot_list`, `maoq_snapshot_sources` | `ctx.tools`, `ctx.marketSnapshots`, `ctx.systemPrompt` | `tool/call`, `immutable market snapshot files during generation`, `tool/result` | - | The four bounded tools discover source capabilities, generate an exact immutable window, list verified local hashes, and inspect one snapshot without exposing full stock rows. Generation requires a deployment-allowed adapter and never deletes or overwrites source data. |
+| `@deepseek-ai/dsh-tool-maoq-tactic-research` | `maoq_tactic_backtest`, `maoq_tactic_research_sources` | `ctx.tools`, `ctx.marketTacticHistory`, `ctx.systemPrompt` | `tool/call`, `tool/result` | - | The two bounded tools list fixed versioned tactics and registered history sources, then evaluate one allowed tactic over one quality-gated daily range with shared next-open execution and doubled costs. Results remain research evidence and contain compact statistics rather than full market rows. |
 | `@deepseek-ai/dsh-tool-ralph` | `ralph` | `ctx.tools`, `ctx.workflowEngine`, `ctx.subagents`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents every fresh round)` | `tool/call`, `tool/result`, `workflow and child session events during execution` | - | A fixed foreground workflow starts one fresh structured child per round; the model selects only the immutable objective and an optional round cap. |
 | `@deepseek-ai/dsh-tool-skill` | `skill` | `ctx.tools`, `ctx.agents`, `ctx.skills` | `tool/call`, `tool/result`, `user/message replacement catalogs via agent.inject()` | - | - |
 | `@deepseek-ai/dsh-tool-session-query` | `session_event_read`, `session_event_search`, `session_event_trace`, `session_search`, `session_trace` | `ctx.tools`, `ctx.systemPrompt`, `ctx.sessionQuery`, `a calling Agent for workspace authority` | `tool/call`, `tool/result` | - | The five read-only tools hide provider cursors and authorize every result from the immutable calling agent session. The package is opt-in; compositions that need enforced deadlines or bounded inline output also mount the generic timeout or spill policies. |
@@ -1523,6 +1524,66 @@ List registered immutable market snapshot sources and whether each supports rece
 Source: [`packages/market/tool-maoq-snapshot/src/index.ts`](../packages/market/tool-maoq-snapshot/src/index.ts)
 
 The four bounded tools discover source capabilities, generate an exact immutable window, list verified local hashes, and inspect one snapshot without exposing full stock rows. Generation requires a deployment-allowed adapter and never deletes or overwrites source data.
+
+<a id="deepseek-aidsh-tool-maoq-tactic-research"></a>
+
+## `@deepseek-ai/dsh-tool-maoq-tactic-research`
+
+### `maoq_tactic_backtest`
+
+Run one fixed MAOQ tactic through quality-gated daily history, next-open A-share execution, chronological folds, and doubled-cost stress. Returns research evidence and never live-trading approval.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "adapterName": {
+      "type": "string",
+      "description": "Registered and deployment-allowed daily-history source."
+    },
+    "tacticId": {
+      "type": "string",
+      "description": "One fixed versioned research tactic.",
+      "enum": [
+        "regime_signed_breakout_pullback",
+        "openable_emotion_leader",
+        "industry_relative_exhaustion_repair"
+      ]
+    },
+    "startDate": {
+      "type": "string",
+      "description": "Inclusive history start in YYYY-MM-DD form."
+    },
+    "endDate": {
+      "type": "string",
+      "description": "Inclusive history end in YYYY-MM-DD form."
+    }
+  },
+  "required": [
+    "adapterName",
+    "tacticId",
+    "startDate",
+    "endDate"
+  ]
+}
+```
+
+Source: [`packages/market/tool-maoq-tactic-research/src/index.ts`](../packages/market/tool-maoq-tactic-research/src/index.ts)
+
+### `maoq_tactic_research_sources`
+
+List fixed MAOQ research tactics and registered quality-gated daily-history sources. This tool performs no database scan.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/market/tool-maoq-tactic-research/src/index.ts`](../packages/market/tool-maoq-tactic-research/src/index.ts)
+
+The two bounded tools list fixed versioned tactics and registered history sources, then evaluate one allowed tactic over one quality-gated daily range with shared next-open execution and doubled costs. Results remain research evidence and contain compact statistics rather than full market rows.
 
 <a id="deepseek-aidsh-tool-ralph"></a>
 

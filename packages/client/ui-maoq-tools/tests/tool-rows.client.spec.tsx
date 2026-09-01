@@ -35,6 +35,8 @@ describe('MAOQ business tool rows', () => {
     ['maoq_state_history', '查看历史战略状态'],
     ['maoq_state_get', '读取指定战略状态'],
     ['maoq_state_refresh_daily', '生成每日标准战略状态'],
+    ['maoq_tactic_research_sources', '查看战法与回测数据源'],
+    ['maoq_tactic_backtest', '运行战法历史回测'],
   ] as const)('renders %s with a business-language title', (toolName, title) => {
     render(<MaoqToolRow {...props(toolName, { objective: '判断主攻方向', limit: 10 })} />)
     expect(screen.getByText(title)).toBeTruthy()
@@ -45,6 +47,13 @@ describe('MAOQ business tool rows', () => {
     expect(screen.getByText('10 日 · 2026-08-28')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /生成交易日快照/ }))
     expect(screen.getByLabelText('结构化结果').textContent).toContain('"ok":true')
+  })
+
+  it('shows the fixed tactic and requested backtest range', () => {
+    render(<MaoqToolRow {...props('maoq_tactic_backtest', {
+      tacticId: 'openable_emotion_leader', startDate: '2025-01-01', endDate: '2026-08-31',
+    })} />)
+    expect(screen.getByText('openable_emotion_leader · 2025-01-01 至 2026-08-31')).toBeTruthy()
   })
 
   it.each([

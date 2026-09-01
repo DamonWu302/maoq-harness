@@ -28,9 +28,10 @@ The market group turns acquired A-share daily, sector, breadth, emotion, and new
 | [`market-snapshot-json`](market-snapshot-json/README.md) | Imports audited provider-neutral drafts by exact snapshot identity | registered adapter |
 | [`market-snapshot-mysql`](market-snapshot-mysql/README.md) | Acquires quality-gated daily facts from the existing MySQL pipeline | registered adapter |
 | [`market-strategic-state`](market-strategic-state/README.md) | Computes replay-stable strategic features and validates evidence-bound interpretation | library |
-| [`market-tactic-lab`](market-tactic-lab/README.md) | Computes point-in-time daily research features and replays one shared A-share next-open execution policy | library |
+| [`market-tactic-lab`](market-tactic-lab/README.md) | Registers history providers, computes point-in-time research features, and replays one shared A-share next-open execution policy | `ctx.marketTacticHistory` |
 | [`market-tactic-eligibility`](market-tactic-eligibility/README.md) | Registers P3 tactics and rejects unpromoted or context-ineligible tactics before stock ranking | library |
 | [`tool-maoq-snapshot`](tool-maoq-snapshot/README.md) | Exposes bounded snapshot discovery, generation, listing, and inspection | tools |
+| [`tool-maoq-tactic-research`](tool-maoq-tactic-research/README.md) | Exposes bounded tactic-history discovery and one fixed deterministic backtest per call | tools |
 
 -----
 

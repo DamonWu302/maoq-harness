@@ -99,6 +99,15 @@ const GROUP_ORDER = [
 
 const SERVICE_ROLES: ServiceRole[] = [
   {
+    key: 'marketTacticHistory',
+    pkg: 'market-tactic-lab',
+    title: 'Bounded MAOQ tactic history',
+    mode: 'seam',
+    implementations: ['market-snapshot-mysql'],
+    consumers: ['tool-maoq-tactic-research'],
+    note: 'Production adapters stream point-in-time daily history in bounded chunks; research tools evaluate one fixed tactic without owning database access.',
+  },
+  {
     key: 'marketSnapshots',
     pkg: 'market-snapshot',
     title: 'Immutable MAOQ market snapshots',

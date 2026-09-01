@@ -94,6 +94,7 @@ Profile 会延迟挂载生产日线适配器，因为数据库端点和凭据属
 | 规范不可变构建、精确身份、冲突与冻结回放 | [`market-snapshot.spec.ts`](../packages/market/market-snapshot/tests/market-snapshot.spec.ts) | 重复构建和持久化读取返回上述同一哈希 |
 | 质量门控的日线、参考、板块、宽度与情绪事实 | [`market-snapshot-mysql.spec.ts`](../packages/market/market-snapshot-mysql/tests/market-snapshot-mysql.spec.ts) | 5,208 只股票、31 个板块、6 个指数；连接后行数等于质量行 |
 | 模型触发的有界取得和精确哈希找回 | [`loader-composition.spec.ts`](../packages/market/tool-maoq-snapshot/tests/loader-composition.spec.ts) | 请求有界窗口，再检查返回的当前哈希 |
+| 模型触发的单战法历史评估 | [`loader-composition.spec.ts`](../packages/market/tool-maoq-tactic-research/tests/loader-composition.spec.ts) | 检查固定战法 id、交易时段数、不可变哈希和 `research` 结论 |
 | 截止点安全的联网证据与离线回放 | [`market-news-web.spec.ts`](../packages/market/market-news-web/tests/market-news-web.spec.ts) | 随附 Profile 把不可变存储挂载在 `.maoq/news`；依赖某个提供方时间戳前需要该提供方 canary |
 | 不使用未来数据且不静默回退质量 | 上述 MySQL 与新闻测试 | 截止点后刷新的指数证据和不完整会话均被拒绝 |
 | 供应商无关的审计导入 | [`market-snapshot-json.spec.ts`](../packages/market/market-snapshot-json/tests/market-snapshot-json.spec.ts) | 无数据库凭据时仍可使用按精确身份寻址的导入 |

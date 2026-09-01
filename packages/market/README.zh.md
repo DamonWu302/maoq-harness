@@ -28,9 +28,10 @@ market 组把取得的 A 股日线、板块、宽度、情绪和新闻事实转�
 | [`market-snapshot-json`](market-snapshot-json/README.zh.md) | 按精确快照身份导入审计过的供应商无关草稿 | 注册适配器 |
 | [`market-snapshot-mysql`](market-snapshot-mysql/README.zh.md) | 从既有 MySQL 流水线取得通过质量门禁的日线事实 | 注册适配器 |
 | [`market-strategic-state`](market-strategic-state/README.zh.md) | 计算可回放战略特征并校验证据约束的解释 | 库 |
-| [`market-tactic-lab`](market-tactic-lab/README.zh.md) | 计算时点正确的日线研究特征，并按统一 A 股次日开盘执行策略回放 | 库 |
+| [`market-tactic-lab`](market-tactic-lab/README.zh.md) | 注册历史提供方、计算时点正确的研究特征，并按统一 A 股次日开盘执行策略回放 | `ctx.marketTacticHistory` |
 | [`market-tactic-eligibility`](market-tactic-eligibility/README.zh.md) | 注册 P3 战法，并在个股排序前拒绝未晋级或不适合当前状态的战法 | 库 |
 | [`tool-maoq-snapshot`](tool-maoq-snapshot/README.zh.md) | 提供有界快照发现、生成、列表和检查工具 | 工具 |
+| [`tool-maoq-tactic-research`](tool-maoq-tactic-research/README.zh.md) | 提供有界战法历史发现，并且每次只执行一项固定确定性回测 | 工具 |
 
 -----
 

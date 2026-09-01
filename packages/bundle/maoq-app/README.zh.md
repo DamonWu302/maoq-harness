@@ -9,7 +9,7 @@ kind: "package-bundle"
 
 ## 概述
 
-MAOQ 应用层组合在 `dsh-base` 和 `dsh-web-app` 之上，提供统帅人格，并挂载 [`dsh-tool-maoq-decision`](../../workflow/tool-maoq-decision/README.zh.md)、不可变事实存储 [`dsh-market-snapshot`](../../market/market-snapshot/README.zh.md)、有界取得工具 [`dsh-tool-maoq-snapshot`](../../market/tool-maoq-snapshot/README.zh.md)和截止点前证据冻结器 [`dsh-market-news-web`](../../market/market-news-web/README.zh.md)。因此，随附的 `maoq` Profile 保留普通浏览器、数据、联网搜索和子 Agent 能力，同时增加一个有界决策议事组。它不授予实盘交易权限。
+MAOQ 应用层组合在 `dsh-base` 和 `dsh-web-app` 之上，提供统帅人格，并挂载 [`dsh-tool-maoq-decision`](../../workflow/tool-maoq-decision/README.zh.md)、不可变事实存储 [`dsh-market-snapshot`](../../market/market-snapshot/README.zh.md)、有界取得工具 [`dsh-tool-maoq-snapshot`](../../market/tool-maoq-snapshot/README.zh.md)、单试验评估器 [`dsh-tool-maoq-tactic-research`](../../market/tool-maoq-tactic-research/README.zh.md)和截止点前证据冻结器 [`dsh-market-news-web`](../../market/market-news-web/README.zh.md)。因此，随附的 `maoq` Profile 保留普通浏览器、数据、联网搜索和子 Agent 能力，同时增加一个有界决策议事组。它不授予实盘交易权限。
 
 ## 目录
 

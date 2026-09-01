@@ -1497,7 +1497,7 @@ Source: [`packages/market/market-snapshot-json/src/index.ts:15`](../packages/mar
 
 ## `@deepseek-ai/dsh-market-snapshot-mysql`
 
-Requires: `marketSnapshots`
+Requires: `marketSnapshots` · `marketTacticHistory`
 
 ```ts config-catalog
 /** Read-only database endpoint and quality thresholds. */
@@ -1523,7 +1523,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/market/market-snapshot-mysql/src/index.ts:20`](../packages/market/market-snapshot-mysql/src/index.ts)
+Source: [`packages/market/market-snapshot-mysql/src/index.ts:22`](../packages/market/market-snapshot-mysql/src/index.ts)
 
 <a id="deepseek-aidsh-mcp-client"></a>
 
@@ -2990,6 +2990,32 @@ export interface Config {
 ```
 
 Source: [`packages/market/tool-maoq-snapshot/src/index.ts:19`](../packages/market/tool-maoq-snapshot/src/index.ts)
+
+<a id="deepseek-aidsh-tool-maoq-tactic-research"></a>
+
+## `@deepseek-ai/dsh-tool-maoq-tactic-research`
+
+Requires: `tools` · `marketTacticHistory` · `systemPrompt`
+
+```ts config-catalog
+/** Deployment-owned quality, range, and timeout limits. */
+export interface Config {
+  /** History providers the model may invoke. */
+  allowedAdapters?: string[]
+  /** Required stock-count floor for every requested trading session. */
+  minimumStocks?: number
+  /** Number of sessions read in each bounded provider chunk. */
+  chunkSessions?: number
+  /** Largest inclusive calendar range accepted from the model. */
+  maxRangeDays?: number
+  /** Tool pipeline timeout for one historical evaluation. */
+  evaluationTimeoutMs?: number
+  /** Number of latest non-empty signal dates returned to the model. */
+  recentSignalLimit?: number
+}
+```
+
+Source: [`packages/market/tool-maoq-tactic-research/src/index.ts:33`](../packages/market/tool-maoq-tactic-research/src/index.ts)
 
 <a id="deepseek-aidsh-tool-pwsh"></a>
 

@@ -18,6 +18,8 @@ export const MAOQ_TOOL_TITLES = {
   maoq_state_history: 'stateHistory.title',
   maoq_state_get: 'stateGet.title',
   maoq_state_refresh_daily: 'stateRefreshDaily.title',
+  maoq_tactic_research_sources: 'tacticSources.title',
+  maoq_tactic_backtest: 'tacticBacktest.title',
 } as const satisfies Record<string, MaoqToolKey>
 
 type MaoqToolName = keyof typeof MAOQ_TOOL_TITLES
@@ -61,6 +63,9 @@ function summary(toolName: MaoqToolName, block: ToolCallViewProps['block'], t: R
   if (toolName === 'maoq_snapshot_inspect') return typeof args['hash'] === 'string' ? `${args['hash'].slice(0, 12)}…` : ''
   if (toolName === 'maoq_state_history') return `最近 ${scalar(args['limit'])} 条`
   if (toolName === 'maoq_state_refresh_daily') return t('state.dailyWindow')
+  if (toolName === 'maoq_tactic_backtest') {
+    return `${scalar(args['tacticId'])} · ${scalar(args['startDate'])} 至 ${scalar(args['endDate'])}`
+  }
   if (toolName === 'maoq_state_get' || toolName === 'maoq_state_latest') {
     const freshness = freshnessOf(block)
     if (freshness !== undefined) return t(freshness === 'fresh' ? 'state.fresh' : 'state.stale')
@@ -68,7 +73,7 @@ function summary(toolName: MaoqToolName, block: ToolCallViewProps['block'], t: R
     return t('state.mirror')
   }
   if (toolName === 'maoq_analyze_strategy' || toolName === 'maoq_decide') return typeof args['objective'] === 'string' ? firstLine(args['objective']) : ''
-  return '不可变市场事实'
+  return toolName === 'maoq_tactic_research_sources' ? '固定战法 · 质量门控历史' : '不可变市场事实'
 }
 
 function resultOf(block: ToolCallViewProps['block']): string | null {
@@ -86,7 +91,9 @@ function stateOf(block: ToolCallViewProps['block']): State {
 function leading(toolName: MaoqToolName, state: State): ReactNode {
   if (state === 'error') return <StateDot state="error" />
   if (state === 'stopped') return <StateDot state="warning" />
-  return toolName.startsWith('maoq_snapshot_') ? <IconDatabaseOutline16 size={14} /> : <IconSparkle16 size={14} />
+  return toolName.startsWith('maoq_snapshot_') || toolName.startsWith('maoq_tactic_')
+    ? <IconDatabaseOutline16 size={14} />
+    : <IconSparkle16 size={14} />
 }
 
 export function MaoqToolRow({ toolName, block, inspect, t }: RowProps) {

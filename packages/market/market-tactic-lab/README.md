@@ -1,6 +1,6 @@
 ---
 description: "Point-in-time daily research features and one shared realistic A-share paper-execution policy for MAOQ P3."
-kind: "package-library"
+kind: "package-reference"
 ---
 
 # @deepseek-ai/dsh-market-tactic-lab
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-market-tactic-lab` supplies the common measurement, signal, execution, and evaluation foundation for MAOQ tactic research. It content-addresses bounded pairs of adjusted feature sessions and raw execution sessions, computes daily research features, generates three versioned P3 candidate signals, and replays close-authored orders only at the next market session's open under explicit A-share trading rules and costs.
+`dsh-market-tactic-lab` supplies the common measurement, signal, execution, and evaluation foundation for MAOQ tactic research. It registers production history providers on `ctx.marketTacticHistory`, content-addresses bounded pairs of adjusted feature sessions and raw execution sessions, computes daily research features, generates three versioned P3 candidate signals, and replays close-authored orders only at the next market session's open under explicit A-share trading rules and costs.
 
 ## Table of Contents
 
@@ -24,6 +24,8 @@ English | [中文](README.zh.md)
 
 <a id="use-this-package"></a>
 ## Use this package
+
+Mount the service before history providers and research consumers. Providers register exact lowercase-hyphenated names through `ctx.marketTacticHistory`; consumers list, resolve, or stream one registered adapter without importing its implementation. The service has no configuration.
 
 Pass ordered or unordered immutable daily sessions to `computeDailyHistoryFeatures()`. The newest session defines the decision date; missing stock sessions make affected windows `null` instead of skipping the gap. Sector-relative returns require the stock to remain in the same point-in-time sector throughout the complete window.
 
@@ -74,7 +76,7 @@ The initial signal thresholds are versioned research trials, not user-tunable pr
 <a id="model-experience"></a>
 ## Model Experience
 
-None, as this host-side library adds no model-visible context or tools.
+None, as this host-side history registry, feature engine, and paper evaluator add no model-visible context or tools.
 
 #### KV Cache effect
 
@@ -84,7 +86,7 @@ None. A later consumer owns any selected feature or result rendered to a model.
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- **No runtime history consumer yet** — `dsh-market-snapshot-mysql` supplies the read-only production adapter and the pure evaluator is implemented, but the model-facing research tool does not mount them yet.
+- **In-memory provider registry** — registrations follow the Cordis plugin lifecycle; this package does not persist provider state or completed reports.
 - **One next-open order style** — intraday stops, auctions, queue priority, and volume participation need separate versioned execution policies.
 - **Fixed research portfolio construction** — the first trials use declared maximum positions, close-known sizing, and fixed holding periods; no optimizer is allowed to tune them on the holdout set.
 - **Promotion statistics remain incomplete** — chronological folds, Sharpe, drawdown, turnover, fill rate, and doubled-cost evidence are available; Deflated Sharpe, PBO, market-regime profit concentration, and capacity reports remain mandatory before promotion.

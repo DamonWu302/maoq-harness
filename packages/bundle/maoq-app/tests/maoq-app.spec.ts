@@ -43,6 +43,10 @@ describe('@deepseek-ai/dsh-maoq-app', () => {
       name: '@deepseek-ai/dsh-market-snapshot-json',
       config: { root: '.maoq/imports' },
     }))
+    expect(insertion.insert).toContainEqual({
+      id: 'market-tactic-lab',
+      name: '@deepseek-ai/dsh-market-tactic-lab',
+    })
     expect(insertion.insert).toContainEqual(expect.objectContaining({
       id: 'market-news-web',
       name: '@deepseek-ai/dsh-market-news-web',
@@ -82,5 +86,17 @@ describe('@deepseek-ai/dsh-maoq-app', () => {
       id: 'tool-maoq-snapshot',
       name: '@deepseek-ai/dsh-tool-maoq-snapshot',
     }))
+    expect(insertion.insert).toContainEqual({
+      id: 'tool-maoq-tactic-research',
+      name: '@deepseek-ai/dsh-tool-maoq-tactic-research',
+      config: {
+        allowedAdapters: ['long-short-stock-history-mysql'],
+        minimumStocks: 3000,
+        chunkSessions: 30,
+        maxRangeDays: 1827,
+        evaluationTimeoutMs: 900000,
+        recentSignalLimit: 10,
+      },
+    })
   })
 })

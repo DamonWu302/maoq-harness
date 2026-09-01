@@ -20,6 +20,8 @@ Multi-year evaluation feeds those chunks through `DailyHistoryFeatureStream`, wh
 
 Three fixed versioned research trials convert the shared features into deterministic ranked candidates only after their market and sector gates pass. `evaluateResearchTactic()` gives each trial declared position limits and holding periods, sizes from the signal-date raw close, executes through the same next-open policy, and reports daily equity, chronological folds, Sharpe, drawdown, turnover, fill rate, positive-fold ratio, and doubled-cost results. It always remains `research` while Deflated Sharpe, PBO, and market-regime profit concentration are absent.
 
+`TacticLabHistoryService` publishes history providers through `ctx.marketTacticHistory`. `@deepseek-ai/dsh-tool-maoq-tactic-research` lists exact providers and fixed tactic versions, then evaluates one allowed tactic and one bounded date range per call. Deployment configuration owns the quality floor, chunk size, range, timeout, and report limit so a model cannot weaken evidence or trigger three concurrent full-history scans through one request.
+
 ## Alternatives considered
 
 - Generate a complete market snapshot for every historical date. This preserves one shape but needlessly repeats policy, news, and strategic acquisition for execution-only tests.
@@ -33,8 +35,8 @@ Three fixed versioned research trials convert the shared features into determini
 - Apparent high Sharpe cannot bypass missing multiple-testing or regime-concentration evidence.
 - Corporate actions do not create false feature returns, while fills and equity marks remain raw and executable.
 - Daily-only research still cannot claim intraday stops, queue priority, or auction fills.
-- Real Sharpe and promotion evidence remain incomplete until a runtime consumer mounts the history adapter and the walk-forward evaluator is implemented and run.
+- Real Sharpe and promotion evidence remain incomplete until the mounted runtime consumer completes production-history trials and the remaining DSR, PBO, regime-concentration, and capacity analysis.
 
 ## Verification
 
-Gold tests cover content-addressed chunk stability and corruption rejection, adjusted-feature/raw-execution separation, required-join row preservation, deterministic overlapping point-in-time sectors, batch/stream parity through 252 sessions, adjustment-factor continuity, missing sessions, sector changes, all three signal gate families, deterministic ranking, close-known sizing, fixed holding periods, chronological folds, doubled costs, promotion blockers, next-session timing, both-side costs, opening limit-up rejection, suspension, invalid lots, duplicate orders, cash, positions, and immutable results.
+Gold tests cover content-addressed chunk stability and corruption rejection, adjusted-feature/raw-execution separation, required-join row preservation, deterministic overlapping point-in-time sectors, batch/stream parity through 252 sessions, adjustment-factor continuity, missing sessions, sector changes, all three signal gate families, deterministic ranking, close-known sizing, fixed holding periods, chronological folds, doubled costs, promotion blockers, next-session timing, both-side costs, opening limit-up rejection, suspension, invalid lots, duplicate orders, cash, positions, immutable results, provider disposal, model source discovery, deployment bounds, cancellation, compact results, and a complete Loader-to-agent tool call.

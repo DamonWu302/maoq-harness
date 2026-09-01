@@ -4,6 +4,8 @@
 
 市场战法实验室子系统提供比较 P3 战法所需的时点正确测量和统一模拟执行真源。它位于不可变日线取得之后、walk-forward 绩效评估之前。实现位于 [`@deepseek-ai/dsh-market-tactic-lab`](../../packages/market/market-tactic-lab/README.zh.md)。
 
+`TacticLabHistoryService` 拥有 `ctx.marketTacticHistory`，这是一个使用准确历史适配器名称的内存注册表。提供方注册项会随其 Cordis 贡献方一起释放。研究消费方无需依赖生产数据库代码，即可列出、解析或流式读取某个提供方。
+
 ## 历史分块
 
 `TacticLabHistoryAdapter.load()` 为一个闭区间日期流式返回由调用方限定大小、日期严格递增的 `TacticLabHistoryChunk`。每个分块为每个日期保存一份复权特征交易时段和一份原始执行交易时段。构造过程拒绝空输入、日期不匹配、交易时段非递增以及无效交易时段哈希；它对来源版本排序，并为规范化分块正文生成哈希。因此，持久化分块无需加载完整研究区间即可校验和引用。
@@ -30,6 +32,59 @@
 
 `evaluateResearchTactic()` 只用信号日未复权收盘价，把排名信号转成声明的最大持仓数，应用固定持有期和共享次日开盘引擎。它记录每日标记权益曲线、按时间折、净收益与年化收益、夏普、最大回撤、换手、成交率、正收益折比例，以及完整的交易成本翻倍回放。这些都是研究测量：结果仍保持 `research`，并把缺失的 Deflated Sharpe、PBO 和市场状态集中度证据列为阻断项。
 
+## 模型可见研究消费方
+
+[`@deepseek-ai/dsh-tool-maoq-tactic-research`](../../packages/market/tool-maoq-tactic-research/README.zh.md) 无需扫描历史，即可列出已注册提供方和三项固定战法版本。每次 `maoq_tactic_backtest` 调用只在一个有界日期区间评估一项战法。来源允许名单、股票数量下限、分块大小、最大日历跨度、超时和紧凑近期信号上限均由部署配置拥有；模型无法削弱这些值。
+
+报告包含来源哈希、固定试验身份、执行数量、基础与成本翻倍指标、按时间折、最近非空候选以及全部晋级阻断项。完整市场行和完整权益曲线不会进入模型上下文。
+
 ## 研究边界
 
-本包现已生成带版本的确定性研究信号和可比较的初步夏普证据。它不声称晋级，不调参，也不选择战法。运行时历史消费方仍需要把生产适配器接入该评估器，而剩余评估层负责真实容量、Deflated Sharpe、PBO、状态利润集中度和最终晋级产物。
+本子系统生成带版本的确定性研究信号和可比较的初步夏普证据。它不声称晋级，不调参，也不选择战法。运行时消费方把生产适配器接入评估器，而剩余评估层负责真实容量、Deflated Sharpe、PBO、状态利润集中度和最终晋级产物。
+
+<!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
+
+<a id="cordis-surface"></a>
+
+## Cordis API
+
+Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.zh.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
+
+<a id="ctxmarkettactichistory--tacticlabhistoryservice"></a>
+
+### `ctx.marketTacticHistory` — `TacticLabHistoryService`
+
+Registry boundary between production history providers and research consumers.
+
+```ts cordis-catalog
+/**
+ * Register one history provider until its contributor is disposed.
+ * @param adapter - Provider with a unique lowercase-hyphenated name.
+ * @returns Disposer for this exact registration.
+ */
+register(adapter: TacticLabHistoryAdapter): () => void
+
+/**
+ * List exact registered source names in deterministic order.
+ * @returns Sorted provider names.
+ */
+listAdapters(): readonly string[]
+
+/**
+ * Stream verified provider-neutral history from one exact registered source.
+ * @param adapterName - Exact registered provider name.
+ * @param request - Inclusive date range and bounded chunk/quality requirements.
+ * @returns Provider-owned asynchronous chunk stream.
+ */
+load(adapterName: string, request: TacticLabHistoryRequest): AsyncIterable<TacticLabHistoryChunk>
+
+/**
+ * Resolve one exact provider for a host-side evaluator.
+ * @param adapterName - Exact registered provider name.
+ * @returns Registered immutable-history adapter.
+ */
+getAdapter(adapterName: string): TacticLabHistoryAdapter
+```
+
+Source: [`packages/market/market-tactic-lab/src/service.ts`](../../packages/market/market-tactic-lab/src/service.ts)
+<!-- END GENERATED cordis-surface -->

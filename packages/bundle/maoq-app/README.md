@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The MAOQ application layer composes over `dsh-base` and `dsh-web-app`. It supplies the commander persona and mounts [`dsh-tool-maoq-decision`](../../workflow/tool-maoq-decision/README.md), the immutable [`dsh-market-snapshot`](../../market/market-snapshot/README.md) fact store, the bounded [`dsh-tool-maoq-snapshot`](../../market/tool-maoq-snapshot/README.md) acquisition tools, and the pre-cutoff [`dsh-market-news-web`](../../market/market-news-web/README.md) evidence freezer. The shipped `maoq` profile therefore retains the ordinary browser, data, web-search, and subagent capabilities while adding one bounded decision council. It grants no live-trading authority.
+The MAOQ application layer composes over `dsh-base` and `dsh-web-app`. It supplies the commander persona and mounts [`dsh-tool-maoq-decision`](../../workflow/tool-maoq-decision/README.md), the immutable [`dsh-market-snapshot`](../../market/market-snapshot/README.md) fact store, the bounded [`dsh-tool-maoq-snapshot`](../../market/tool-maoq-snapshot/README.md) acquisition tools, the single-trial [`dsh-tool-maoq-tactic-research`](../../market/tool-maoq-tactic-research/README.md) evaluator, and the pre-cutoff [`dsh-market-news-web`](../../market/market-news-web/README.md) evidence freezer. The shipped `maoq` profile therefore retains the ordinary browser, data, web-search, and subagent capabilities while adding one bounded decision council. It grants no live-trading authority.
 
 ## Table of Contents
 

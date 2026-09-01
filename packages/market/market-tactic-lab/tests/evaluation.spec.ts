@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import type { MarketProvenance, SectorDailySnapshot, StockDailyBar } from '@deepseek-ai/dsh-market-snapshot'
 import {
+  buildTacticLabHistoryChunk,
   DEFAULT_A_SHARE_EXECUTION_POLICY,
   evaluateResearchTactic,
   TACTIC_EVALUATION_ENGINE_VERSION,
@@ -8,7 +10,11 @@ import {
   type DailyHistoryFeatureRecord,
   type DailyStockResearchFeatures,
   type ResearchTacticBacktestConfig,
+  type DailyHistorySnapshot,
+  type TacticLabHistoryAdapter,
+  type TacticLabHistoryChunk,
 } from '../src/index.ts'
+import { evaluateResearchTacticHistory } from '../src/evaluation.ts'
 
 function dateAt(index: number): string {
   return new Date(Date.UTC(2026, 0, 1 + index)).toISOString().slice(0, 10)
@@ -99,6 +105,116 @@ function config(overrides: Partial<ResearchTacticBacktestConfig> = {}): Research
   }
 }
 
+function provenance(date: string, symbol: string): MarketProvenance {
+  return {
+    source: {
+      adapter: 'stream-fixture',
+      dataset: 'daily',
+      version: 'v1',
+      retrievedAt: `${date}T19:00:00+08:00`,
+      recordId: `${date}:${symbol}`,
+    },
+    transforms: [],
+  }
+}
+
+function historySnapshot(index: number): DailyHistorySnapshot {
+  const date = dateAt(index)
+  const symbols = ['TARGET', ...Array.from({ length: 9 }, (_, item) => `H${String(item).padStart(2, '0')}`)]
+  const stocks: StockDailyBar[] = symbols.map((symbol, item) => {
+    const slope = item === 0 ? 0.006 : item <= 5 ? 0.003 : -0.002
+    const close = 10 * (1 + slope * index)
+    return {
+      symbol,
+      tradingDate: date,
+      open: close,
+      high: close * 1.01,
+      low: close * 0.99,
+      close,
+      volume: 1_000_000,
+      amount: item === 0 ? 200_000_000 : 1,
+      turnoverRate: 0.02,
+      adjustmentFactor: 1,
+      tradingStatus: 'trading',
+      limitStatus: 'none',
+      listingDays: 1_000,
+      qualityFlags: [],
+      provenance: provenance(date, symbol),
+    }
+  })
+  const sector: SectorDailySnapshot = {
+    sectorId: 'sector-a',
+    name: 'sector-a',
+    tradingDate: date,
+    open: 100.1,
+    high: 100.1,
+    low: 100.1,
+    close: 100.1,
+    amount: 1_000_000_000,
+    advancingRatio: 0.6,
+    limitUpCount: 0,
+    dispersion: 0.01,
+    leaders: ['TARGET'],
+    members: symbols.map(symbol => ({ symbol, effectiveFrom: '2020-01-01', effectiveTo: null })),
+    provenance: provenance(date, 'sector-a'),
+  }
+  return {
+    identity: {
+      tradingDate: date,
+      cutoffTime: `${date}T19:15:00+08:00`,
+      calendarVersion: 'fixture-v1',
+      adjustmentVersion: 'fixture-v1',
+      sectorClassificationVersion: 'fixture-v1',
+      sourceVersions: ['fixture-v1'],
+      contentHash: (index + 500).toString(16).padStart(64, '0'),
+    },
+    stocks,
+    sectors: [sector],
+  }
+}
+
+function historyExecution(index: number): DailyExecutionSession {
+  const snapshot = historySnapshot(index)
+  return {
+    tradingDate: snapshot.identity.tradingDate,
+    contentHash: (index + 800).toString(16).padStart(64, '0'),
+    bars: snapshot.stocks.map(item => ({
+      symbol: item.symbol,
+      tradingDate: item.tradingDate,
+      open: item.open,
+      high: item.high,
+      low: item.low,
+      close: item.close,
+      upLimit: item.close * 1.1,
+      downLimit: item.close * 0.9,
+      tradingStatus: item.tradingStatus,
+    })),
+  }
+}
+
+function historyChunks(count = 64): TacticLabHistoryChunk[] {
+  const chunks: TacticLabHistoryChunk[] = []
+  for (let offset = 0; offset < count; offset += 32) {
+    const length = Math.min(32, count - offset)
+    chunks.push(buildTacticLabHistoryChunk({
+      adapterVersion: 'stream-fixture-v1',
+      sourceVersions: ['fixture-v1'],
+      featureSessions: Array.from({ length }, (_, item) => historySnapshot(offset + item)),
+      executionSessions: Array.from({ length }, (_, item) => historyExecution(offset + item)),
+    }))
+  }
+  return chunks
+}
+
+function historyAdapter(chunks: readonly TacticLabHistoryChunk[]): TacticLabHistoryAdapter {
+  return {
+    name: 'fixture-history',
+    async *load() {
+      yield* chunks
+    },
+  }
+}
+
 describe('P3 tactic walk-forward evaluation', () => {
   it('builds next-open round trips, chronological folds, and doubled-cost evidence', () => {
     const features = Array.from({ length: 6 }, (_, index) => feature(index)).reverse()
@@ -146,6 +262,9 @@ describe('P3 tactic walk-forward evaluation', () => {
     const missing = evaluateResearchTactic([feature(0)], [session(0, []), session(1, [])], config())
     expect(missing.orders).toEqual([])
     expect(missing.metrics.observations).toBe(2)
+
+    const missingDate = evaluateResearchTactic([feature(2)], [session(0), session(1)], config())
+    expect(missingDate.orders).toEqual([])
 
     const expensive = [session(0, ['TARGET'], { close: 9_000_000, open: 9_000_000, high: 9_000_000, low: 9_000_000, upLimit: 10_000_000 }),
       session(1, ['TARGET'], { close: 9_000_000, open: 9_000_000, high: 9_000_000, low: 9_000_000, upLimit: 10_000_000 })]
@@ -195,5 +314,37 @@ describe('P3 tactic walk-forward evaluation', () => {
     }
     expect(() => evaluateResearchTactic([], [session(0), session(1)], config())).toThrow(/feature record/)
     expect(() => evaluateResearchTactic([feature(0), feature(0)], [session(0), session(1)], config())).toThrow(/duplicate feature/)
+  })
+
+  it('streams verified full-universe chunks into compact executable history', async () => {
+    const chunks = historyChunks()
+    const result = await evaluateResearchTacticHistory(
+      historyAdapter(chunks),
+      { startDate: dateAt(0), endDate: dateAt(63), chunkSessions: 32, minimumStocks: 1 },
+      config({ holdingSessions: 20 }),
+    )
+    expect(result.historyAdapter).toBe('fixture-history')
+    expect(result.historyChunkHashes).toEqual(chunks.map(chunk => chunk.contentHash))
+    expect(result.sourceExecutionHashes).toHaveLength(64)
+    expect(result.signals.at(-1)?.candidates[0]?.symbol).toBe('TARGET')
+    expect(result.orders[0]).toMatchObject({ symbol: 'TARGET', side: 'buy' })
+    expect(result.execution.fills[0]).toMatchObject({ symbol: 'TARGET', side: 'buy' })
+    expect(result.execution.sessionDates).toHaveLength(64)
+    expect(result.equityCurve.at(-1)?.equity).toBeGreaterThan(DEFAULT_A_SHARE_EXECUTION_POLICY.initialCash)
+  })
+
+  it('rejects corrupted or insufficient streamed history', async () => {
+    const chunks = historyChunks(2)
+    await expect(evaluateResearchTacticHistory(
+      historyAdapter([{ ...chunks[0]!, contentHash: 'f'.repeat(64) }]),
+      { startDate: dateAt(0), endDate: dateAt(1), chunkSessions: 2, minimumStocks: 1 },
+      config(),
+    )).rejects.toThrow(/content hash/)
+
+    await expect(evaluateResearchTacticHistory(
+      historyAdapter(historyChunks(1)),
+      { startDate: dateAt(0), endDate: dateAt(0), chunkSessions: 1, minimumStocks: 1 },
+      config(),
+    )).rejects.toThrow(/at least two/)
   })
 })

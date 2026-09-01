@@ -6,6 +6,7 @@
   },
   "include": ["src"],
   "references": [
+    { "path": "../../../vendor/cordis" },
     { "path": "../../market/market-snapshot" },
     { "path": "../../util/values" },
     { "path": "../../runtime-diagnostics/invariants" }

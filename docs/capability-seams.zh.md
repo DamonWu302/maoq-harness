@@ -9,10 +9,13 @@
 
 ```mermaid
 flowchart LR
+  pkg_market_tactic_lab["market-tactic-lab"]
+  svc_marketTacticHistory["ctx.marketTacticHistory<br/>Bounded MAOQ tactic history"]
+  pkg_market_snapshot_mysql["market-snapshot-mysql"]
+  pkg_tool_maoq_tactic_research["tool-maoq-tactic-research"]
   pkg_market_snapshot["market-snapshot"]
   svc_marketSnapshots["ctx.marketSnapshots<br/>Immutable MAOQ market snapshots"]
   pkg_market_snapshot_json["market-snapshot-json"]
-  pkg_market_snapshot_mysql["market-snapshot-mysql"]
   pkg_tool_maoq_decision["tool-maoq-decision"]
   pkg_tool_maoq_snapshot["tool-maoq-snapshot"]
   pkg_market_news_web["market-news-web"]
@@ -283,6 +286,8 @@ flowchart LR
   pkg_market_snapshot --> svc_marketSnapshots
   pkg_market_snapshot_json --> svc_marketSnapshots
   pkg_market_snapshot_mysql --> svc_marketSnapshots
+  pkg_market_snapshot_mysql --> svc_marketTacticHistory
+  pkg_market_tactic_lab --> svc_marketTacticHistory
   pkg_message_feedback --> svc_messageFeedback
   pkg_permission_presets --> svc_permissionPresets
   pkg_plan_mode --> svc_planMode
@@ -391,6 +396,7 @@ flowchart LR
   svc_marketNews --> pkg_market_snapshot_mysql
   svc_marketSnapshots --> pkg_tool_maoq_decision
   svc_marketSnapshots --> pkg_tool_maoq_snapshot
+  svc_marketTacticHistory --> pkg_tool_maoq_tactic_research
   svc_sandbox --> pkg_bash_sandbox
   svc_sandbox --> pkg_terminal_bash
   svc_sandboxPolicy --> pkg_bash_sandbox
@@ -480,6 +486,7 @@ flowchart LR
 
 | ctx 键 | 角色 | 所属包 | 实现 | 直接消费方 | 配套插件 | 说明 |
 | --- | --- | --- | --- | --- | --- | --- |
+| `ctx.marketTacticHistory` | `seam` | [`market-tactic-lab`](../packages/market/market-tactic-lab) | [`market-snapshot-mysql`](../packages/market/market-snapshot-mysql) | [`tool-maoq-tactic-research`](../packages/market/tool-maoq-tactic-research) | - | 生产适配器以有界分块流式读取时点正确的日线历史；研究工具无需拥有数据库访问权即可评估一项固定战法。 |
 | `ctx.marketSnapshots` | `seam` | [`market-snapshot`](../packages/market/market-snapshot) | [`market-snapshot-json`](../packages/market/market-snapshot-json), [`market-snapshot-mysql`](../packages/market/market-snapshot-mysql) | [`tool-maoq-decision`](../packages/workflow/tool-maoq-decision), [`tool-maoq-snapshot`](../packages/market/tool-maoq-snapshot) | - | 适配器构建精确截止点身份；战略消费者按内容哈希加载冻结事实。 |
 | `ctx.marketNews` | `core` | [`market-news-web`](../packages/market/market-news-web) | - | [`market-snapshot-mysql`](../packages/market/market-snapshot-mysql) | - | 把截止点前搜索结果冻结成内容寻址批次，快照采集可按精确版本标记合并。 |
 | `ctx.attachments` | `seam` | [`attachment`](../packages/attachment/attachment) | [`attachment-local`](../packages/attachment/attachment-local) | [`api-session-controller`](../packages/api/session-controller), [`tool-fs`](../packages/fs/tool-fs), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`llm-deepseek`](../packages/llm/llm-deepseek) | - | 宿主会在会话事件之前提交已接受的图片；提供方适配器将已授权的持久引用解析为提供方原生内容。 |

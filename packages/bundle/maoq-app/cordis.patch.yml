@@ -43,6 +43,9 @@
       config:
         root: .maoq/imports
 
+    - id: market-tactic-lab
+      name: '@deepseek-ai/dsh-market-tactic-lab'
+
     - id: market-snapshot-mysql
       name: '@deepseek-ai/dsh-market-snapshot-mysql'
       config:
@@ -91,3 +94,14 @@
         maxListCount: 20
         maxScanFiles: 500
         generateTimeoutMs: 600000
+
+    - id: tool-maoq-tactic-research
+      name: '@deepseek-ai/dsh-tool-maoq-tactic-research'
+      config:
+        allowedAdapters:
+          - long-short-stock-history-mysql
+        minimumStocks: 3000
+        chunkSessions: 30
+        maxRangeDays: 1827
+        evaluationTimeoutMs: 900000
+        recentSignalLimit: 10

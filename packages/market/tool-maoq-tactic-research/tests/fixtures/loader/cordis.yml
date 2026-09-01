@@ -1,0 +1,37 @@
+# Keyless full Loader composition for one model-triggered tactic evaluation.
+- id: market-tactic-lab
+  name: '@deepseek-ai/dsh-market-tactic-lab'
+
+- id: mock-maoq-tactic-runtime
+  name: './mock-maoq-tactic-runtime.ts'
+
+- id: tool-maoq-tactic-research
+  name: '../../../src/index.ts'
+  config:
+    allowedAdapters:
+      - fixture-history
+    minimumStocks: 10
+    chunkSessions: 32
+    maxRangeDays: 365
+    evaluationTimeoutMs: 10000
+    recentSignalLimit: 2
+
+- id: agent-spine
+  name: '@deepseek-ai/dsh-agent-spine-demo'
+  config:
+    agents:
+      - id: commander
+        provider: mock-tactic
+        model: maoq-commander
+        cwd: !!js process.cwd()
+    persona: 'Evaluate fixed market tactics from immutable evidence.'
+    workspaceContext: false
+
+- id: persistence
+  name: '@deepseek-ai/dsh-session-persistence-jsonl'
+  config:
+    root: './.sessions'
+    compression: 'none'
+
+- id: checkpoint-policy
+  name: '@deepseek-ai/dsh-session-checkpoint-policy'

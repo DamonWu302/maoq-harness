@@ -5,8 +5,10 @@ import z from '@deepseek-ai/schemastery'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import type {} from '@deepseek-ai/dsh-market-news-web'
 import type {} from '@deepseek-ai/dsh-market-snapshot'
+import type {} from '@deepseek-ai/dsh-market-tactic-lab'
 import mysql from 'mysql2/promise'
 import { LongShortStockMysqlAdapter, type MarketSnapshotQuery } from './adapter.ts'
+import { LongShortStockTacticHistoryAdapter } from './history-adapter.ts'
 
 export { LongShortStockMysqlAdapter, MarketSnapshotMysqlError } from './adapter.ts'
 export type { MarketSnapshotQuery } from './adapter.ts'
@@ -39,7 +41,7 @@ export interface Config {
 }
 
 export const name = 'market-snapshot-mysql'
-export const inject = ['marketSnapshots']
+export const inject = ['marketSnapshots', 'marketTacticHistory']
 
 /** Configuration schema. Passwords remain credential references, never literals. */
 export const Config: z<Config> = z.object({
@@ -91,4 +93,5 @@ export function apply(ctx: Context, config: Config): void {
     },
   })
   ctx.effect(() => ctx.marketSnapshots.register(adapter))
+  ctx.effect(() => ctx.marketTacticHistory.register(new LongShortStockTacticHistoryAdapter(query)))
 }

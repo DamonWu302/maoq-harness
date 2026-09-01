@@ -36,6 +36,7 @@
 | `@deepseek-ai/dsh-tool-lsp` | `lsp` | `ctx.tools`、`ctx.lsp`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，因此其模型可见 schema 在更换提供方时保持稳定。运行时要求已注册提供方，例如 `@deepseek-ai/dsh-lsp-stdio`；如果没有提供方，查询会返回结构化 `LSP_UNAVAILABLE` 错误，而不会改变 schema。 |
 | `@deepseek-ai/dsh-tool-maoq-decision` | `maoq_analyze_strategy`、`maoq_decide`、`maoq_state_get`、`maoq_state_history`、`maoq_state_latest`、`maoq_state_refresh_daily` | `ctx.agents`、`ctx.tools`、`ctx.workflowEngine`、`ctx.subagents`、`ctx.systemPrompt`、`a calling Agent` | `tool/call`、`tool/result`、`workflow and child session events during execution` | - | 战略路径先计算不可变快照特征，再运行所选专家，把解释约束到证据和获准毛选方法，并在模型控制之外保留独立风险否决；诊断路径用于检验议事组运行时。 |
 | `@deepseek-ai/dsh-tool-maoq-snapshot` | `maoq_snapshot_generate`、`maoq_snapshot_inspect`、`maoq_snapshot_list`、`maoq_snapshot_sources` | `ctx.tools`、`ctx.marketSnapshots`、`ctx.systemPrompt` | `tool/call`、`generation writes immutable market snapshot files`、`tool/result` | - | 四个有界工具用于发现来源能力、生成精确不可变窗口、列出经过校验的本地哈希，以及检查一个快照而不暴露全部股票行。生成必须使用部署允许的适配器，且绝不删除或覆盖源数据。 |
+| `@deepseek-ai/dsh-tool-maoq-tactic-research` | `maoq_tactic_backtest`、`maoq_tactic_research_sources` | `ctx.tools`、`ctx.marketTacticHistory`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | 两个有界工具会列出固定的带版本战法与已注册历史来源，然后使用统一次日开盘执行和成本翻倍压力，在一个经过质量门控的日线区间内评估一项获准战法。结果保持为研究证据，并包含紧凑统计而不是全部市场行。 |
 | `@deepseek-ai/dsh-tool-ralph` | `ralph` | `ctx.tools`、`ctx.workflowEngine`、`ctx.subagents`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents every fresh round)` | `tool/call`、`tool/result`、`workflow and child session events during execution` | - | 固定的前台工作流会在每个 Round 启动一个全新的结构化子级；模型只能选择不可变目标和可选的 Round 上限。 |
 | `@deepseek-ai/dsh-tool-skill` | `skill` | `ctx.tools`、`ctx.agents`、`ctx.skills` | `tool/call`、`tool/result`、`user/message replacement catalogs via agent.inject()` | - | - |
 | `@deepseek-ai/dsh-tool-session-query` | `session_event_read`、`session_event_search`、`session_event_trace`、`session_search`、`session_trace` | `ctx.tools`、`ctx.systemPrompt`、`ctx.sessionQuery`、`a calling Agent for workspace authority` | `tool/call`、`tool/result` | - | 这 5 个只读工具会隐藏提供方游标，并根据不可变的调用 agent 会话为每个结果授权。该包需要选择启用；需要强制截止时间或限制行内输出的组合还会挂载通用超时或 spill 策略。 |
@@ -1529,6 +1530,66 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
 来源：[`packages/market/tool-maoq-snapshot/src/index.ts`](../packages/market/tool-maoq-snapshot/src/index.ts)
 
 四个有界工具用于发现来源能力、生成精确不可变窗口、列出经过校验的本地哈希，以及检查一个快照而不暴露全部股票行。生成必须使用部署允许的适配器，且绝不删除或覆盖源数据。
+
+<a id="deepseek-aidsh-tool-maoq-tactic-research"></a>
+
+## `@deepseek-ai/dsh-tool-maoq-tactic-research`
+
+### `maoq_tactic_backtest`
+
+使用经过质量门控的日线历史、A 股次日开盘执行、按时间折和成本翻倍压力，对一项固定 MAOQ 战法运行评估。结果属于研究证据，绝不表示实盘交易获准。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "adapterName": {
+      "type": "string",
+      "description": "Registered and deployment-allowed daily-history source."
+    },
+    "tacticId": {
+      "type": "string",
+      "description": "One fixed versioned research tactic.",
+      "enum": [
+        "regime_signed_breakout_pullback",
+        "openable_emotion_leader",
+        "industry_relative_exhaustion_repair"
+      ]
+    },
+    "startDate": {
+      "type": "string",
+      "description": "Inclusive history start in YYYY-MM-DD form."
+    },
+    "endDate": {
+      "type": "string",
+      "description": "Inclusive history end in YYYY-MM-DD form."
+    }
+  },
+  "required": [
+    "adapterName",
+    "tacticId",
+    "startDate",
+    "endDate"
+  ]
+}
+```
+
+来源：[`packages/market/tool-maoq-tactic-research/src/index.ts`](../packages/market/tool-maoq-tactic-research/src/index.ts)
+
+### `maoq_tactic_research_sources`
+
+列出固定 MAOQ 研究战法和已注册的质量门控日线历史来源。本工具不扫描数据库。
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+来源：[`packages/market/tool-maoq-tactic-research/src/index.ts`](../packages/market/tool-maoq-tactic-research/src/index.ts)
+
+两个有界工具会列出固定的带版本战法与已注册历史来源，然后使用统一次日开盘执行和成本翻倍压力，在一个经过质量门控的日线区间内评估一项获准战法。结果保持为研究证据，并包含紧凑统计而不是全部市场行。
 
 <a id="deepseek-aidsh-tool-ralph"></a>
 

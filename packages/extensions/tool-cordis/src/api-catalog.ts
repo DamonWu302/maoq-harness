@@ -1280,6 +1280,37 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'marketTacticHistory',
+    summary: 'Registry boundary between production history providers and research consumers.',
+    description: 'Registry boundary between production history providers and research consumers.',
+    methods: [
+      {
+        signature: 'register(adapter: TacticLabHistoryAdapter): () => void',
+        description: 'Register one history provider until its contributor is disposed.',
+        parameters: [{ name: 'adapter', description: 'Provider with a unique lowercase-hyphenated name.' }],
+        returns: 'Disposer for this exact registration.',
+      },
+      {
+        signature: 'listAdapters(): readonly string[]',
+        description: 'List exact registered source names in deterministic order.',
+        parameters: [],
+        returns: 'Sorted provider names.',
+      },
+      {
+        signature: 'load(adapterName: string, request: TacticLabHistoryRequest): AsyncIterable<TacticLabHistoryChunk>',
+        description: 'Stream verified provider-neutral history from one exact registered source.',
+        parameters: [{ name: 'adapterName', description: 'Exact registered provider name.' }, { name: 'request', description: 'Inclusive date range and bounded chunk/quality requirements.' }],
+        returns: 'Provider-owned asynchronous chunk stream.',
+      },
+      {
+        signature: 'getAdapter(adapterName: string): TacticLabHistoryAdapter',
+        description: 'Resolve one exact provider for a host-side evaluator.',
+        parameters: [{ name: 'adapterName', description: 'Exact registered provider name.' }],
+        returns: 'Registered immutable-history adapter.',
+      },
+    ],
+  },
+  {
     key: 'messageFeedback',
     summary: 'Storage-domain sidecar service.',
     description: 'Storage-domain sidecar service. It inspects persisted Session history and never creates or resumes an Agent or Session.',
@@ -3950,6 +3981,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type CredentialRef = Branded<\'CredentialRef\'>;',
   },
   {
+    name: 'DailyExecutionBar',
+    declaration: 'export interface DailyExecutionBar {\n    readonly symbol: string;\n    readonly tradingDate: string;\n    readonly open: number;\n    readonly high: number;\n    readonly low: number;\n    readonly close: number;\n    readonly upLimit: number;\n    readonly downLimit: number;\n    readonly tradingStatus: StockDailyBar[\'tradingStatus\'];\n}',
+  },
+  {
+    name: 'DailyExecutionSession',
+    declaration: 'export interface DailyExecutionSession {\n    readonly tradingDate: string;\n    readonly contentHash: string;\n    readonly bars: readonly DailyExecutionBar[];\n}',
+  },
+  {
+    name: 'DailyHistorySnapshot',
+    declaration: 'export type DailyHistorySnapshot = Pick<MarketSnapshot, \'identity\' | \'stocks\' | \'sectors\'>;',
+  },
+  {
     name: 'DeepSeekLlmApiExtensionMap',
     declaration: 'export interface DeepSeekLlmApiExtensionMap {\n}',
   },
@@ -5732,6 +5775,22 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'TableValueOf',
     declaration: 'export type TableValueOf<S extends DomainSpec, N extends keyof S[\'tables\']> = S[\'tables\'][N] extends DomainTableSpec<string, infer V> ? V : never;',
+  },
+  {
+    name: 'TacticLabHistoryAdapter',
+    declaration: 'export interface TacticLabHistoryAdapter {\n    readonly name: string;\n    load(request: TacticLabHistoryRequest): AsyncIterable<TacticLabHistoryChunk>;\n}',
+  },
+  {
+    name: 'TacticLabHistoryChunk',
+    declaration: 'export interface TacticLabHistoryChunk extends TacticLabHistoryChunkDraft {\n    readonly schemaVersion: typeof TACTIC_LAB_HISTORY_CHUNK_SCHEMA_VERSION;\n    readonly startDate: string;\n    readonly endDate: string;\n    readonly contentHash: string;\n}',
+  },
+  {
+    name: 'TacticLabHistoryChunkDraft',
+    declaration: 'export interface TacticLabHistoryChunkDraft {\n    readonly adapterVersion: string;\n    readonly sourceVersions: readonly string[];\n    readonly featureSessions: readonly DailyHistorySnapshot[];\n    readonly executionSessions: readonly DailyExecutionSession[];\n}',
+  },
+  {
+    name: 'TacticLabHistoryRequest',
+    declaration: 'export interface TacticLabHistoryRequest {\n    readonly startDate: string;\n    readonly endDate: string;\n    readonly chunkSessions: number;\n    readonly minimumStocks: number;\n}',
   },
   {
     name: 'TeamId',
