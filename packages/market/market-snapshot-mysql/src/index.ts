@@ -6,12 +6,14 @@ import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import type {} from '@deepseek-ai/dsh-market-news-web'
 import type {} from '@deepseek-ai/dsh-market-snapshot'
 import type {} from '@deepseek-ai/dsh-market-tactic-lab'
-import mysql from 'mysql2/promise'
 import { LongShortStockMysqlAdapter, type MarketSnapshotQuery } from './adapter.ts'
 import { LongShortStockTacticHistoryAdapter } from './history-adapter.ts'
+import { createReadOnlyMysqlQuery } from './query.ts'
 
 export { LongShortStockMysqlAdapter, MarketSnapshotMysqlError } from './adapter.ts'
 export type { MarketSnapshotQuery } from './adapter.ts'
+export { createReadOnlyMysqlQuery } from './query.ts'
+export type { ReadOnlyMysqlQueryConfig } from './query.ts'
 export {
   LONG_SHORT_STOCK_HISTORY_MAPPING_VERSION,
   LongShortStockTacticHistoryAdapter,
@@ -38,6 +40,10 @@ export interface Config {
   readonly minimumStocks?: number
   /** Number of usable sessions read to derive consecutive-board facts. */
   readonly historySessions?: number
+  /** Maximum time to establish one database connection. */
+  readonly connectTimeoutMs?: number
+  /** Maximum time for one read-only statement. */
+  readonly queryTimeoutMs?: number
 }
 
 export const name = 'market-snapshot-mysql'
@@ -54,34 +60,19 @@ export const Config: z<Config> = z.object({
   passwordEnv: z.string().role('credential-ref'),
   minimumStocks: z.number().step(1).min(1).default(3000),
   historySessions: z.number().step(1).min(2).max(60).default(20),
+  connectTimeoutMs: z.number().step(1).min(100).max(60_000).default(5_000),
+  queryTimeoutMs: z.number().step(1).min(1_000).max(300_000).default(60_000),
 })
 
 /** Register a read-only adapter; a fresh connection resolves rotated credentials per build. */
 export function apply(ctx: Context, config: Config): void {
-  const query: MarketSnapshotQuery = {
-    async rows<T extends object>(sql: string, parameters: readonly unknown[]): Promise<T[]> {
-      const password = config.passwordEnv === undefined
-        ? undefined
-        : (await ctx.get('credentials')?.resolve(credentialRef(config.passwordEnv)))?.value
-      if (config.passwordEnv !== undefined && password === undefined) throw new Error(`mysql credential ${config.passwordEnv} is not configured`)
-      const connection = await mysql.createConnection({
-        host: config.host ?? '127.0.0.1',
-        port: config.port ?? 3306,
-        ...config.socketPath === undefined ? {} : { socketPath: config.socketPath },
-        user: config.user,
-        database: config.database ?? 'long_short_stock',
-        ...password === undefined ? {} : { password },
-        dateStrings: true,
-      })
-      try {
-        await connection.query('SET SESSION TRANSACTION READ ONLY')
-        const [result] = await connection.query(sql, [...parameters])
-        return result as T[]
-      } finally {
-        await connection.end()
-      }
-    },
-  }
+  const query: MarketSnapshotQuery = createReadOnlyMysqlQuery(config, async () => {
+    const password = config.passwordEnv === undefined
+      ? undefined
+      : (await ctx.get('credentials')?.resolve(credentialRef(config.passwordEnv)))?.value
+    if (config.passwordEnv !== undefined && password === undefined) throw new Error(`mysql credential ${config.passwordEnv} is not configured`)
+    return password
+  })
   const adapter = new LongShortStockMysqlAdapter(query, {
     ...config.adapterName === undefined ? {} : { adapterName: config.adapterName },
     ...config.minimumStocks === undefined ? {} : { minimumStocks: config.minimumStocks },

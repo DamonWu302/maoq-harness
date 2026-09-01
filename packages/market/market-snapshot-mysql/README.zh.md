@@ -45,6 +45,8 @@ kind: "package-reference"
 | `passwordEnv` | 未设置 | 每次操作解析的凭据引用；绝不接受明文密码。 |
 | `minimumStocks` | `3000` | 在会话质量阈值之外的本地底线。 |
 | `historySessions` | `20` | 推导连续板事实使用的可用交易日数。 |
+| `connectTimeoutMs` | `5000` | 单次数据库连接的最长等待毫秒数；数据库失去响应时快速失败。 |
+| `queryTimeoutMs` | `60000` | 单条只读 SQL 的最长等待毫秒数；战法历史仍按交易日分块。 |
 
 生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-market-snapshot-mysql)是穷尽式配置来源。
 

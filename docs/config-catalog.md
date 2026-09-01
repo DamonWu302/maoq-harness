@@ -1520,10 +1520,14 @@ export interface Config {
   readonly minimumStocks?: number
   /** Number of usable sessions read to derive consecutive-board facts. */
   readonly historySessions?: number
+  /** Maximum time to establish one database connection. */
+  readonly connectTimeoutMs?: number
+  /** Maximum time for one read-only statement. */
+  readonly queryTimeoutMs?: number
 }
 ```
 
-Source: [`packages/market/market-snapshot-mysql/src/index.ts:22`](../packages/market/market-snapshot-mysql/src/index.ts)
+Source: [`packages/market/market-snapshot-mysql/src/index.ts:24`](../packages/market/market-snapshot-mysql/src/index.ts)
 
 <a id="deepseek-aidsh-mcp-client"></a>
 

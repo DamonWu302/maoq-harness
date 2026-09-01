@@ -45,6 +45,8 @@ Mount it only where the audited database is reachable. The MAOQ profile mounts i
 | `passwordEnv` | unset | Credential reference resolved per operation; never a literal password. |
 | `minimumStocks` | `3000` | Local floor in addition to the session quality threshold. |
 | `historySessions` | `20` | Usable sessions used for consecutive-board facts. |
+| `connectTimeoutMs` | `5000` | Maximum wait in milliseconds for one database connection; fails fast when the server stops responding. |
+| `queryTimeoutMs` | `60000` | Maximum wait in milliseconds for one read-only statement; tactic history remains session-chunked. |
 
 The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-market-snapshot-mysql) is exhaustive.
 
