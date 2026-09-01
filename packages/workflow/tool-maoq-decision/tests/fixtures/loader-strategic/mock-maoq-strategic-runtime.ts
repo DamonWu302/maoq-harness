@@ -73,17 +73,26 @@ class MaoqStrategicCommanderAdapter extends LlmAdapter {
   }
 }
 
-function featureRecord(prompt: string): Record<string, unknown> {
-  const marker = prompt.includes('Deterministic feature record: ') ? 'Deterministic feature record: ' : 'Feature record: '
+function jsonAfterMarker(prompt: string, marker: string): Record<string, unknown> {
   const start = prompt.indexOf(marker)
-  if (start < 0) throw new Error('strategic fixture prompt has no feature record')
+  if (start < 0) throw new Error(`strategic fixture prompt has no ${marker}`)
   const tail = prompt.slice(start + marker.length)
   const end = tail.indexOf('\n\n')
   return JSON.parse(end < 0 ? tail : tail.slice(0, end)) as Record<string, unknown>
 }
 
+function featureRecord(prompt: string): Record<string, unknown> {
+  const marker = prompt.includes('Deterministic feature record: ') ? 'Deterministic feature record: ' : 'Feature record: '
+  return jsonAfterMarker(prompt, marker)
+}
+
 function structured(request: ResolvedSubagentStartRequest): unknown {
   const prompt = request.prompt.filter(block => block.type === 'text').map(block => block.text).join('\n')
+  if (prompt.includes('independent MAOQ risk reviewer')) {
+    const context = jsonAfterMarker(prompt, 'Host-bound labels and the exact evidence cited by the decision: ')
+    const cited = context['citedEvidence'] as Array<{ ref: string }>
+    return { approved: true, verdict: 'approve', reasons: ['证据引用闭合且仅为观察姿态。'], evidenceRefs: [cited[0]!.ref], hardLimits: ['禁止实盘。'] }
+  }
   const features = featureRecord(prompt)
   const evidence = features['evidence'] as Array<{ ref: string }>
   const refs = evidence.map(item => item.ref)
@@ -107,7 +116,7 @@ function structured(request: ResolvedSubagentStartRequest): unknown {
     transitionConditions: ['晋级率低于 0.2 则转为退潮。'], confidence: 0.68, eligiblePosture: 'watch',
     maoMethodApplications: [method], selectedSpecialists: ['market_regime', 'sector_battlefield'],
   }
-  return { approved: true, verdict: 'approve', reasons: ['证据引用闭合且仅为观察姿态。'], evidenceRefs: [refs[0]], hardLimits: ['禁止实盘。'] }
+  throw new Error('strategic fixture received an unknown prompt')
 }
 
 class FreshStructuredProvider implements SubagentProvider {

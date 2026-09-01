@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-market-tactic-eligibility` converts one replay-stable P2 strategic feature record into a versioned P3 tactic-eligibility record. The host owns every tactic definition, promotion status, gate, and execution requirement. Research candidates can fit the current context without becoming eligible; `defensive_no_trade` remains the only production-safe fallback until an active tactic passes the declared evaluation protocol.
+`dsh-market-tactic-eligibility` owns the shared tactic catalog and converts one replay-stable P2 strategic feature record into a versioned P3 tactic-eligibility record. The host owns every tactic identity, version, promotion status, gate, and execution requirement. Research candidates can fit the current context without becoming eligible; `defensive_no_trade` remains the only production-safe fallback until an active tactic passes the declared evaluation protocol.
 
 ## Table of Contents
 
@@ -31,7 +31,7 @@ Call `evaluateTacticEligibility(features)` after `dsh-market-strategic-state` ha
 const eligibility = evaluateTacticEligibility(features)
 ```
 
-The initial registry contains regime-signed breakout/pullback, openable emotion leader, industry-relative exhaustion repair, and defensive no-trade. The first three are intentionally `research`; matching context produces `research_only`, never `eligible`.
+The catalog contains six active research tactics—regime-signed breakout/pullback, openable emotion leader, industry-relative exhaustion repair, correlation-cluster sector rotation, sector-residual strength, and low-volatility sector leadership—plus defensive no-trade. Every active tactic is intentionally `research`; matching context produces `research_only`, never `eligible`.
 
 -----
 

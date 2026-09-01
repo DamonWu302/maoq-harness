@@ -9,7 +9,7 @@ kind: "package-library"
 
 ## 概述
 
-`dsh-market-tactic-eligibility` 把一份可稳定回放的 P2 战略特征记录转化为带版本的 P3 战法资格记录。每条战法定义、晋级状态、门禁和执行要求均由宿主拥有。研究候选可以适合当前状态，但不能因此获得资格；在主动战法通过已声明评估协议前，`defensive_no_trade` 始终是唯一生产安全回退。
+`dsh-market-tactic-eligibility` 拥有共享战法目录，并把一份可稳定回放的 P2 战略特征记录转化为带版本的 P3 战法资格记录。每个战法身份、版本、晋级状态、门禁和执行要求均由宿主拥有。研究候选可以适合当前状态，但不能因此获得资格；在主动战法通过已声明评估协议前，`defensive_no_trade` 始终是唯一生产安全回退。
 
 ## 目录
 
@@ -31,7 +31,7 @@ kind: "package-library"
 const eligibility = evaluateTacticEligibility(features)
 ```
 
-初始注册表包含状态签名突破回踩、可成交情绪龙头、行业相对超跌修复和防守／空仓。前三者有意保持 `research`；即使状态匹配，也只能产生 `research_only`，绝不会产生 `eligible`。
+目录包含六项主动研究战法：状态签名突破回踩、可成交情绪龙头、行业相对超跌修复、相关性聚类板块轮动、板块残差强势和低波板块领涨，并包含防守／空仓。全部主动战法均有意保持 `research`；即使状态匹配，也只能产生 `research_only`，绝不会产生 `eligible`。
 
 -----
 

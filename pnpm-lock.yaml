@@ -7103,6 +7103,9 @@ importers:
       '@deepseek-ai/dsh-market-snapshot':
         specifier: workspace:^
         version: link:../market-snapshot
+      '@deepseek-ai/dsh-market-tactic-eligibility':
+        specifier: workspace:^
+        version: link:../market-tactic-eligibility
 
   packages/market/tool-maoq-snapshot:
     dependencies:
@@ -10604,6 +10607,9 @@ importers:
       '@deepseek-ai/dsh-market-strategic-state':
         specifier: workspace:^
         version: link:../../market/market-strategic-state
+      '@deepseek-ai/dsh-market-tactic-eligibility':
+        specifier: workspace:^
+        version: link:../../market/market-tactic-eligibility
       '@deepseek-ai/dsh-session':
         specifier: workspace:^
         version: link:../../core/session

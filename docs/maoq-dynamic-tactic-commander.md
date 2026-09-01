@@ -15,7 +15,7 @@ The dynamic tactic commander turns the deterministic strategic state, a diverse 
 - [Commander contract](#commander-contract)
 - [Learning and replay](#learning-and-replay)
 - [Acceptance criteria](#acceptance-criteria)
-- [Implementation sequence](#implementation-sequence)
+- [Dynamic-layer P0-P2 plan](#implementation-sequence)
 - [Dev Note](#dev-note)
 
 -----
@@ -25,7 +25,7 @@ The dynamic tactic commander turns the deterministic strategic state, a diverse 
 
 A full-period result for one tactic measures a weapon in isolation; it does not measure whether MAOQ identified the principal contradiction and chose the right weapon with information available at that time. The dynamic layer must therefore preserve fixed, auditable tactic implementations while evaluating and routing them conditionally by market regime, emotion cycle, sector structure, execution quality, and evidence uncertainty.
 
-The current packages do not yet provide this end-to-end contract. The research lab lists six fixed trials, the eligibility registry lists three active tactics plus defense, and the general council schema accepts a free-form tactic string. No durable scorecard records how a tactic performed in comparable states, so the model can explain a choice but cannot consume a host-owned conditional performance record.
+The shared catalog now aligns the six fixed research trials, eligibility evaluation, and the general council tactic enum. The remaining gap is dynamic selection: no durable scorecard records how a tactic performed in comparable states, and no router turns that record into a bounded slate. The model can explain a catalog tactic, but it cannot yet consume a host-owned conditional performance record or select from a scored top-three slate.
 
 -----
 
@@ -135,18 +135,31 @@ The replay compares `defensive_no_trade`, equal allocation, each fixed tactic, t
 -----
 
 <a id="implementation-sequence"></a>
-## Implementation sequence
+## Dynamic-layer P0-P2 plan
 
-1. **D1 — Unified catalog:** reconcile the six research IDs, the smaller eligibility registry, and the free-form commander field; add catalog consistency tests.
-2. **D2 — Coverage pool:** preregister first-divergence repair, platform second advance, AH52 resistance path, and T+1 panic repair without retuning failed versions.
-3. **D3 — Conditional scorecard:** persist context-keyed matured results, uncertainty, decay, costs, and exact cutoff identities.
-4. **D4 — Deterministic router:** produce a top-three slate, component scores, risk ceilings, cash floor, and rejection reasons.
-5. **D5 — DSH commander binding:** constrain synthesis to catalog IDs, selected slates, research scope, and host-owned validation while preserving the independent veto.
-6. **D6 — Prequential replay:** replay daily choices, compare deterministic and model-assisted selectors, attribute incremental value, and freeze the next untouched holdout.
+These phases belong to P3.5 and do not replace the project-wide P0-P5 milestones in the [roadmap](maoq-roadmap.md).
+
+### P0 — One tactic truth and fail-closed use
+
+**Status: implemented.** `dsh-market-tactic-eligibility` owns the six active tactic IDs, `defensive_no_trade`, their versions, families, promotion status, context requirements, execution requirements, and risk policy. The tactic lab derives its research ID and version maps from that catalog. The general council exposes the same IDs as an enum, and host validation rejects unknown tactics, mismatched `no_trade`, unknown actions, and a research tactic presented as `paper_trade`.
+
+P0 exits when catalog identity and versions cannot drift across the eligibility evaluator, research lab, and council; invalid model output fails at the host parser; and a real Loader composition preserves a registered tactic through synthesis and veto. P0 does not claim conditional performance, top-three routing, or dynamic tactic selection.
+
+### P1 — Conditional record and deterministic routing
+
+P1 persists matured outcomes by tactic version and bounded context, including uncertainty, costs, decay, execution quality, and exact observation cutoffs. A versioned deterministic router reads only matured records, applies hard eligibility, and emits the top three tactics with component scores, rejection reasons, risk ceilings, and a cash floor. It must read bounded aggregates instead of rescanning full history on every daily decision.
+
+P1 exits when every slate is reproducible from immutable inputs, incomplete outcomes cannot leak forward, `defensive_no_trade` wins when evidence is inadequate, and the router can be evaluated against fixed-tactic and equal-allocation baselines without using a model.
+
+### P2 — DSH commander, veto, and prequential attribution
+
+P2 gives the DSH commander only the deterministic top-three slate and the smallest sufficient specialist evidence. The commander may choose one primary and one secondary tactic, while host validation owns scope and risk limits and an independent reviewer keeps final veto authority. Daily prequential replay then attributes the incremental value and cost of deterministic routing, DSH synthesis, stock ranking, execution, and veto.
+
+P2 exits when every model-assisted decision is cutoff-correct and replayable, unknown or unpromoted actions fail closed, standard mode avoids full-history scans and unnecessary specialists, and the complete selector beats preregistered fixed and abstention-aware baselines net of switching costs before paper promotion.
 
 -----
 
 <a id="dev-note"></a>
 ## Dev Note
 
-This page specifies proposed P3.5 behavior. Existing fixed-tactic results remain research evidence and do not prove that the dynamic selector adds value. Exact router weights, context bucket boundaries, minimum sample rules, and the next sealed date range remain preregistration decisions owned by the implementation change and its Agent Note.
+P0 supplies the shared identity and validation foundation; P1 and P2 remain proposed. Existing fixed-tactic results remain research evidence and do not prove that the dynamic selector adds value. Exact router weights, context bucket boundaries, minimum sample rules, and the next sealed date range remain preregistration decisions owned by their implementation changes and Agent Notes.

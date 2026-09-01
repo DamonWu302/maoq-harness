@@ -61,7 +61,7 @@ function structured(request: ResolvedSubagentStartRequest): unknown {
       marketRegime: 'narrow emotion recovery',
       principalContradiction: 'improving risk appetite versus weak broad participation',
       battlefield: 'low-price leaders',
-      tactic: 'wait for first divergence recovery',
+      tactic: 'regime_signed_breakout_pullback',
       action: 'watch',
       candidates: [{ symbol: 'PAPER-001', role: 'sentiment leader', thesis: 'strongest cohort cohesion' }],
       confidence: 0.62,

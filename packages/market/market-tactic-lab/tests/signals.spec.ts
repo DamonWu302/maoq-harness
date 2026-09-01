@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { ACTIVE_TACTIC_IDS, tacticDefinitions } from '@deepseek-ai/dsh-market-tactic-eligibility'
 import {
   generateResearchTacticSignal,
   RESEARCH_TACTIC_VERSIONS,
@@ -115,6 +116,14 @@ function signal(tacticId: ResearchTacticId, input: DailyHistoryFeatureRecord) {
 }
 
 describe('deterministic P3 tactic signals', () => {
+  it('uses the shared tactic catalog as its only identity and version source', () => {
+    const catalogVersions = Object.fromEntries(tacticDefinitions()
+      .filter(definition => definition.tacticId !== 'defensive_no_trade')
+      .map(definition => [definition.tacticId, definition.tacticVersion]))
+    expect(Object.keys(RESEARCH_TACTIC_VERSIONS)).toEqual(ACTIVE_TACTIC_IDS)
+    expect(RESEARCH_TACTIC_VERSIONS).toEqual(catalogVersions)
+  })
+
   it('ranks a regime-confirmed breakout candidate and freezes its evidence', () => {
     const result = signal('regime_signed_breakout_pullback', breakoutUniverse())
     expect(result).toMatchObject({

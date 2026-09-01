@@ -6,7 +6,7 @@ The market tactic eligibility subsystem is the deterministic boundary between P2
 
 ## Registry contract
 
-Every `TacticDefinition` has a stable tactic ID, family, promotion status, evidence grade, history requirement, maximum holding period, maximum paper position, entry and exit policies, invalidation policy, and execution requirements. The initial active candidates are regime-signed breakout/pullback, openable emotion leader, and industry-relative exhaustion repair. All three begin in `research`; defensive no-trade begins in `eligible`.
+Every `TacticDefinition` has a stable tactic ID, tactic version, family, promotion status, evidence grade, history requirement, maximum holding period, maximum paper position, entry and exit policies, invalidation policy, and execution requirements. The catalog contains six active candidates: regime-signed breakout/pullback, openable emotion leader, industry-relative exhaustion repair, correlation-cluster sector rotation, sector-residual strength, and low-volatility sector leadership. All six remain in `research`; defensive no-trade is `eligible`. The research lab and model-facing council consume these IDs and versions instead of declaring separate tactic maps.
 
 Promotion and context fit are independent. `research` plus matching context becomes `research_only`; `paper` becomes `watch_only`; only an `eligible` definition with passing gates can enter `eligibleTacticIds`. Model analysis cannot modify either field.
 

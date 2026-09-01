@@ -7,6 +7,11 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
+import {
+  isTacticId,
+  TACTIC_IDS,
+  tacticDefinitions,
+} from '@deepseek-ai/dsh-market-tactic-eligibility'
 import type { SubagentProvider } from '@deepseek-ai/dsh-subagent'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ToolCallView, ToolResultView } from '@deepseek-ai/dsh-tools'
@@ -123,6 +128,7 @@ const COUNCIL_META = {
 }
 
 const COUNCIL_SCRIPT = String.raw`
+const tacticIds = ${JSON.stringify(TACTIC_IDS)}
 const reportSchema = {
   type: 'object',
   properties: {
@@ -143,7 +149,7 @@ const decisionSchema = {
     marketRegime: { type: 'string' },
     principalContradiction: { type: 'string' },
     battlefield: { type: 'string' },
-    tactic: { type: 'string' },
+    tactic: { type: 'string', enum: tacticIds },
     action: { type: 'string', enum: ['no_trade', 'watch', 'paper_trade'] },
     candidates: {
       type: 'array',
@@ -202,6 +208,7 @@ phase('Decision synthesis')
 const decisionResult = await agent([
   'You are the MAOQ commander. Synthesize the reports into one bounded paper decision.',
   'Identify the principal contradiction, choose the least-resistance battlefield and tactic, and prefer no_trade when evidence is insufficient.',
+  'The tactic must be one of: ' + JSON.stringify(tacticIds),
   'selectedSpecialists must exactly equal: ' + JSON.stringify(args.specialists),
   'Decision objective: ' + args.objective,
   'Structured specialist reports: ' + JSON.stringify(reports),
@@ -349,6 +356,8 @@ function sameStrings(value: unknown, expected: readonly string[]): value is stri
     && value.every((item, index) => item === expected[index])
 }
 
+const TACTIC_DEFINITION_BY_ID = new Map(tacticDefinitions().map(definition => [definition.tacticId, definition]))
+
 /** Decode the fixed workflow result and enforce the risk veto outside model control. */
 function readCouncilResult(value: unknown, expected: readonly SpecialistRole[]): CouncilResult {
   if (!isRecord(value) || (value['status'] !== 'approved' && value['status'] !== 'vetoed')) {
@@ -369,6 +378,20 @@ function readCouncilResult(value: unknown, expected: readonly SpecialistRole[]):
   }
   const reportRoles = value['reports'].map(report => isRecord(report) ? report['role'] : undefined)
   if (!sameStrings(reportRoles, expected)) throw new Error('MAOQ workflow returned reports for the wrong specialists')
+  const tacticId = value['decision']['tactic']
+  if (!isTacticId(tacticId)) throw new Error('MAOQ workflow returned an unregistered tactic')
+  const action = value['decision']['action']
+  if (action !== 'no_trade' && action !== 'watch' && action !== 'paper_trade') {
+    throw new Error('MAOQ workflow returned an unregistered action')
+  }
+  const definition = TACTIC_DEFINITION_BY_ID.get(tacticId)
+  if (definition === undefined) throw new Error('MAOQ tactic catalog is internally inconsistent')
+  if ((tacticId === 'defensive_no_trade') !== (action === 'no_trade')) {
+    throw new Error('MAOQ defensive tactic and no_trade action must be selected together')
+  }
+  if (action === 'paper_trade' && definition.promotionStatus !== 'eligible') {
+    throw new Error('MAOQ research or paper tactic cannot produce a paper_trade action')
+  }
   const approved = value['risk']['approved']
   if (approved !== (value['risk']['verdict'] === 'approve')) {
     throw new Error('MAOQ workflow returned an inconsistent risk verdict')

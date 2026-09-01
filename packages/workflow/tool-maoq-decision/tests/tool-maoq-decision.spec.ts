@@ -89,8 +89,8 @@ const decision = {
   marketRegime: 'emotion recovery',
   principalContradiction: 'risk appetite is improving while index breadth remains weak',
   battlefield: 'low-priced infrastructure leaders',
-  tactic: 'first divergence recovery',
-  action: 'paper_trade',
+  tactic: 'regime_signed_breakout_pullback',
+  action: 'watch',
   candidates: [{ symbol: '000001.SZ', role: 'leader', thesis: 'strongest verified relative strength' }],
   confidence: 0.68,
   invalidationConditions: ['sector breadth falls below the snapshot threshold'],
@@ -170,6 +170,7 @@ describe('maoq_decide', () => {
     })
     expect(engine.requests[0]!.script).toContain('Promise.all')
     expect(engine.requests[0]!.script).toContain('Independent risk review')
+    expect(engine.requests[0]!.script).toContain('"defensive_no_trade"')
 
     const result = await settle(engine, pending, approved)
     expect(result.isError).toBe(false)
@@ -202,6 +203,26 @@ describe('maoq_decide', () => {
     )
     expect(inconsistent.isError).toBe(true)
     expect((inconsistent.content[0] as { text: string }).text).toContain('risk veto cannot produce approved status')
+  })
+
+  it('rejects unregistered tactics and paper actions from unpromoted tactics', async () => {
+    const unknown = await setup()
+    const unknownResult = await settle(
+      unknown.engine,
+      execute(unknown.ctx, unknown.parent, { objective: 'Decide.', specialists: approved.specialists }),
+      { ...approved, decision: { ...decision, tactic: 'invented_tactic' } },
+    )
+    expect(unknownResult.isError).toBe(true)
+    expect((unknownResult.content[0] as { text: string }).text).toContain('unregistered tactic')
+
+    const unpromoted = await setup()
+    const unpromotedResult = await settle(
+      unpromoted.engine,
+      execute(unpromoted.ctx, unpromoted.parent, { objective: 'Decide.', specialists: approved.specialists }),
+      { ...approved, decision: { ...decision, action: 'paper_trade' } },
+    )
+    expect(unpromotedResult.isError).toBe(true)
+    expect((unpromotedResult.content[0] as { text: string }).text).toContain('cannot produce a paper_trade action')
   })
 
   it('rejects empty, duplicate, and over-budget specialist selections before starting a workflow', async () => {

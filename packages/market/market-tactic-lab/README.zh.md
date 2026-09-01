@@ -43,7 +43,7 @@ const features = computeDailyHistoryFeatures(snapshots)
 const result = simulateNextOpenExecution(snapshots, orders)
 ```
 
-`generateResearchTacticSignal()` 实现六项固定试验：首批突破／回踩、情绪龙头和行业相对修复信号，以及相关性聚类板块轮动、板块残差强势和低波板块领涨。`evaluateResearchTactic()` 把排名候选转成有界仓位，应用固定入场间隔与持有期，产生按时间排列的 126 个交易时段折，并用翻倍成本重复回放。`evaluateResearchTacticSuiteHistory()` 只读取一次生产历史并并行评估全部预登记战法；`auditResearchTacticSuite()` 计算 Deflated Sharpe、组合对称交叉验证 PBO、市场状态利润集中度和容量。最终封存留出集完成前，所有结果都保持 `research`。
+`generateResearchTacticSignal()` 实现六项固定试验：首批突破／回踩、情绪龙头和行业相对修复信号，以及相关性聚类板块轮动、板块残差强势和低波板块领涨。它从共享的 `dsh-market-tactic-eligibility` 目录派生这些战法的 ID 与版本，因此研究信号不能创建第二份战法身份映射。`evaluateResearchTactic()` 把排名候选转成有界仓位，应用固定入场间隔与持有期，产生按时间排列的 126 个交易时段折，并用翻倍成本重复回放。`evaluateResearchTacticSuiteHistory()` 只读取一次生产历史并并行评估全部预登记战法；`auditResearchTacticSuite()` 计算 Deflated Sharpe、组合对称交叉验证 PBO、市场状态利润集中度和容量。最终封存留出集完成前，所有结果都保持 `research`。
 
 -----
 

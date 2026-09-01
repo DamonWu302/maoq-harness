@@ -1,7 +1,10 @@
 import type { StrategicFeatureRecord } from '@deepseek-ai/dsh-market-strategic-state'
 import { describe, expect, it } from 'vitest'
 import {
+  ACTIVE_TACTIC_IDS,
   evaluateTacticEligibility,
+  isTacticId,
+  TACTIC_IDS,
   tacticDefinitions,
 } from '../src/index.ts'
 
@@ -74,10 +77,14 @@ describe('P3 tactic eligibility', () => {
     expect(result.researchCandidateIds).toEqual([
       'regime_signed_breakout_pullback',
       'openable_emotion_leader',
+      'correlation_cluster_sector_rotation',
+      'sector_residual_strength',
     ])
     expect(result.eligibleTacticIds).toEqual(['defensive_no_trade'])
     expect(result.tactics.find(tactic => tactic.tacticId === 'openable_emotion_leader')?.eligibleSectorIds)
       .toEqual(['sw-1'])
+    expect(result.tactics.map(tactic => tactic.tacticVersion)).toEqual(tacticDefinitions()
+      .map(definition => definition.tacticVersion))
   })
 
   it('matches industry-relative repair only to repair-like context', () => {
@@ -103,9 +110,17 @@ describe('P3 tactic eligibility', () => {
       ['regime_signed_breakout_pullback', 'research'],
       ['openable_emotion_leader', 'research'],
       ['industry_relative_exhaustion_repair', 'research'],
+      ['correlation_cluster_sector_rotation', 'research'],
+      ['sector_residual_strength', 'research'],
+      ['low_volatility_sector_leader', 'research'],
       ['defensive_no_trade', 'eligible'],
     ])
+    expect(TACTIC_IDS).toEqual(definitions.map(definition => definition.tacticId))
+    expect(ACTIVE_TACTIC_IDS).toEqual(TACTIC_IDS.filter(tacticId => tacticId !== 'defensive_no_trade'))
+    expect(isTacticId('sector_residual_strength')).toBe(true)
+    expect(isTacticId('invented_tactic')).toBe(false)
     expect(Object.isFrozen(definitions)).toBe(true)
+    expect(new Set(definitions.map(definition => definition.tacticVersion)).size).toBe(definitions.length)
     expect(definitions.find(definition => definition.tacticId === 'openable_emotion_leader')?.executionRequirements)
       .toContain('sealed one-price limit is observation only')
   })

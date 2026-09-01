@@ -55,7 +55,7 @@ The orchestration script, schemas, provider route, and child cap are deployment-
 
 The latest and by-ID query tools evaluate current use without mutating the mirror. They resolve the newest cutoff-safe snapshot from the host catalog rather than trusting a model-supplied hash. Maximum age, an unverifiable or changed snapshot, feature/workflow version drift, analysis-mode drift, provider-route drift, or provider-settings drift produces `freshness.status: stale` and `currentUseAllowed: false`, with explicit reasons. The record remains available for replay, but cannot silently become a current recommendation.
 
-The Loader composition fixture proves both tools load with the profile services. Focused workflow fixtures prove that selected roles remain bounded, evidence references close over the deterministic catalog, resolved answers name the Mao source work, and an independent veto remains final.
+The Loader composition fixture proves both tools load with the profile services. Focused workflow fixtures prove that selected roles remain bounded, evidence references close over the deterministic catalog, resolved answers name the Mao source work, and an independent veto remains final. The lower-level `maoq_decide` diagnostic uses the shared tactic catalog as its structured enum; host parsing rejects unknown tactic or action values, requires `defensive_no_trade` and `no_trade` together, and prevents a research tactic from producing `paper_trade`.
 
 -----
 

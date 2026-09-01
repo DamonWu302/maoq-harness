@@ -23,6 +23,7 @@ describe('MAOQ decision through a real Loader composition', () => {
     expect(normalized).toContain('MAOQ independent risk review vetoed this paper decision.')
     expect(normalized).toContain('"specialists": [\n    "emotion_cycle",\n    "sector_battlefield"')
     expect(normalized).toContain('"principalContradiction": "improving risk appetite versus weak broad participation"')
+    expect(normalized).toContain('"tactic": "regime_signed_breakout_pullback"')
     expect(normalized).toContain('"verdict": "veto"')
     expect(normalized).not.toContain('market_regime')
   }, LOADER_SMOKE_TEST_TIMEOUT_MS)

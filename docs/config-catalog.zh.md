@@ -2971,7 +2971,7 @@ export interface Config {
 export type MaoqAnalysisMode = typeof MAOQ_ANALYSIS_MODES[number]
 ```
 
-来源：[`packages/workflow/tool-maoq-decision/src/index.ts:42`](../packages/workflow/tool-maoq-decision/src/index.ts)
+来源：[`packages/workflow/tool-maoq-decision/src/index.ts:47`](../packages/workflow/tool-maoq-decision/src/index.ts)
 
 <a id="deepseek-aidsh-tool-maoq-snapshot"></a>
 

@@ -1,24 +1,26 @@
 import { deepFreeze } from '@deepseek-ai/dsh-util-values'
+import {
+  ACTIVE_TACTIC_IDS,
+  tacticDefinitions,
+  type ActiveTacticId,
+} from '@deepseek-ai/dsh-market-tactic-eligibility'
 import type { DailyHistoryFeatureRecord, DailyStockResearchFeatures } from './types.ts'
 
-/** Initial deterministic MAOQ tactic implementations compared by P3. */
-export type ResearchTacticId =
-  | 'regime_signed_breakout_pullback'
-  | 'openable_emotion_leader'
-  | 'industry_relative_exhaustion_repair'
-  | 'correlation_cluster_sector_rotation'
-  | 'sector_residual_strength'
-  | 'low_volatility_sector_leader'
+/** Implemented deterministic MAOQ stock-selection tactics compared by P3. */
+export type ResearchTacticId = ActiveTacticId
+
+const catalogVersions = new Map(tacticDefinitions().map(definition => [definition.tacticId, definition.tacticVersion]))
+
+function tacticVersion(tacticId: ResearchTacticId): string {
+  const version = catalogVersions.get(tacticId)
+  if (version === undefined) throw new Error(`missing catalog version for research tactic ${tacticId}`)
+  return version
+}
 
 /** Stable implementation identities. Parameter changes require a new version. */
-export const RESEARCH_TACTIC_VERSIONS: Readonly<Record<ResearchTacticId, string>> = deepFreeze({
-  regime_signed_breakout_pullback: 'regime-signed-breakout-pullback-v1',
-  openable_emotion_leader: 'openable-emotion-leader-v1',
-  industry_relative_exhaustion_repair: 'industry-relative-exhaustion-repair-v1',
-  correlation_cluster_sector_rotation: 'correlation-cluster-sector-rotation-v1',
-  sector_residual_strength: 'sector-residual-strength-v1',
-  low_volatility_sector_leader: 'low-volatility-sector-leader-v1',
-})
+export const RESEARCH_TACTIC_VERSIONS: Readonly<Record<ResearchTacticId, string>> = deepFreeze(Object.fromEntries(
+  ACTIVE_TACTIC_IDS.map(tacticId => [tacticId, tacticVersion(tacticId)]),
+) as Record<ResearchTacticId, string>)
 
 /** One ranked stock whose complete deterministic gates passed at the close. */
 export interface ResearchTacticCandidate {

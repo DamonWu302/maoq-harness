@@ -3,6 +3,7 @@ import { deepFreeze } from '@deepseek-ai/dsh-util-values'
 import {
   TACTIC_ELIGIBILITY_ENGINE_VERSION,
   TACTIC_ELIGIBILITY_SCHEMA_VERSION,
+  type ActiveTacticId,
   type TacticDefinition,
   type TacticEligibilityRecord,
   type TacticEligibilityResult,
@@ -13,6 +14,7 @@ import {
 const DEFINITIONS: readonly TacticDefinition[] = deepFreeze([
   {
     tacticId: 'regime_signed_breakout_pullback',
+    tacticVersion: 'regime-signed-breakout-pullback-v1',
     family: 'trend',
     promotionStatus: 'research',
     evidenceGrade: 'A',
@@ -26,6 +28,7 @@ const DEFINITIONS: readonly TacticDefinition[] = deepFreeze([
   },
   {
     tacticId: 'openable_emotion_leader',
+    tacticVersion: 'openable-emotion-leader-v1',
     family: 'emotion',
     promotionStatus: 'research',
     evidenceGrade: 'B',
@@ -39,6 +42,7 @@ const DEFINITIONS: readonly TacticDefinition[] = deepFreeze([
   },
   {
     tacticId: 'industry_relative_exhaustion_repair',
+    tacticVersion: 'industry-relative-exhaustion-repair-v1',
     family: 'reversal',
     promotionStatus: 'research',
     evidenceGrade: 'A',
@@ -51,7 +55,50 @@ const DEFINITIONS: readonly TacticDefinition[] = deepFreeze([
     executionRequirements: ['T+1', 'long-only validation', 'point-in-time sector peers', 'cost and liquidity stress'],
   },
   {
+    tacticId: 'correlation_cluster_sector_rotation',
+    tacticVersion: 'correlation-cluster-sector-rotation-v1',
+    family: 'rotation',
+    promotionStatus: 'research',
+    evidenceGrade: 'B',
+    requiredHistorySessions: 20,
+    maximumHoldingSessions: 10,
+    maximumPaperPositionPct: 8,
+    entryPolicy: ['weekly correlated-sector cluster ranking', 'positive cluster return and breadth are mandatory'],
+    exitPolicy: ['time exit after ten sessions', 'exit when cluster leadership or market breadth fails'],
+    invalidationPolicy: ['cluster correlation breaks', 'cluster return turns negative', 'market breadth contracts'],
+    executionRequirements: ['T+1', 'long-only validation', 'point-in-time sector returns', 'cost and capacity model'],
+  },
+  {
+    tacticId: 'sector_residual_strength',
+    tacticVersion: 'sector-residual-strength-v1',
+    family: 'relative_strength',
+    promotionStatus: 'research',
+    evidenceGrade: 'B',
+    requiredHistorySessions: 60,
+    maximumHoldingSessions: 15,
+    maximumPaperPositionPct: 8,
+    entryPolicy: ['positive sector trend', 'positive liquid stock residual versus its point-in-time sector'],
+    exitPolicy: ['time exit after fifteen sessions', 'exit when sector or residual strength fails'],
+    invalidationPolicy: ['sector trend turns negative', 'stock residual reverses', 'liquidity deteriorates'],
+    executionRequirements: ['T+1', 'long-only validation', 'point-in-time sector membership', 'cost and capacity model'],
+  },
+  {
+    tacticId: 'low_volatility_sector_leader',
+    tacticVersion: 'low-volatility-sector-leader-v1',
+    family: 'low_volatility',
+    promotionStatus: 'research',
+    evidenceGrade: 'B',
+    requiredHistorySessions: 20,
+    maximumHoldingSessions: 20,
+    maximumPaperPositionPct: 6,
+    entryPolicy: ['rotation or contraction only', 'positive sector-relative return with bounded realized volatility'],
+    exitPolicy: ['time exit after twenty sessions', 'exit when volatility or sector weakness invalidates defense'],
+    invalidationPolicy: ['market accelerates', 'realized volatility expands', 'sector trend turns negative'],
+    executionRequirements: ['T+1', 'long-only validation', 'daily realized volatility', 'cost and capacity model'],
+  },
+  {
     tacticId: 'defensive_no_trade',
+    tacticVersion: 'defensive-no-trade-v1',
     family: 'defense',
     promotionStatus: 'eligible',
     evidenceGrade: 'control',
@@ -64,6 +111,27 @@ const DEFINITIONS: readonly TacticDefinition[] = deepFreeze([
     executionRequirements: ['no order', 'no model override'],
   },
 ])
+
+/** Canonical implemented tactic order consumed by every P3 and commander surface. */
+export const TACTIC_IDS: readonly TacticId[] = deepFreeze(DEFINITIONS.map(definition => definition.tacticId))
+
+/** Canonical implemented stock-selection tactics, excluding the defensive fallback. */
+export const ACTIVE_TACTIC_IDS: readonly ActiveTacticId[] = deepFreeze(DEFINITIONS
+  .filter((definition): definition is TacticDefinition & { readonly tacticId: ActiveTacticId } => (
+    definition.tacticId !== 'defensive_no_trade'
+  ))
+  .map(definition => definition.tacticId))
+
+const TACTIC_ID_SET: ReadonlySet<string> = new Set(TACTIC_IDS)
+
+/**
+ * Test whether an untrusted value names one implemented catalog tactic.
+ * @param value Candidate model or API value.
+ * @returns Whether the value is a canonical tactic ID.
+ */
+export function isTacticId(value: unknown): value is TacticId {
+  return typeof value === 'string' && TACTIC_ID_SET.has(value)
+}
 
 /**
  * Return the immutable, host-owned P3 tactic catalog.
@@ -133,35 +201,33 @@ function sectorGate(features: StrategicFeatureRecord): TacticGateResult {
   }
 }
 
-function activeGates(tacticId: Exclude<TacticId, 'defensive_no_trade'>, features: StrategicFeatureRecord): readonly TacticGateResult[] {
+function activeGates(tacticId: ActiveTacticId, features: StrategicFeatureRecord): readonly TacticGateResult[] {
   const common = availabilityGate(features)
   const market = labelOf(features.marketRegime)
   const emotion = labelOf(features.emotionCycle)
   const marketRefs = refsOf(features.marketRegime)
   const emotionRefs = refsOf(features.emotionCycle)
   const sector = sectorGate(features)
-  if (tacticId === 'regime_signed_breakout_pullback') {
-    return [
-      common,
-      labelGate('market_regime', market, ['risk_on_trend', 'rotation'], marketRefs),
-      labelGate('emotion_cycle', emotion, ['startup', 'acceleration', 'repair'], emotionRefs),
-      sector,
-    ]
-  }
-  if (tacticId === 'openable_emotion_leader') {
-    return [
-      common,
-      labelGate('market_regime', market, ['risk_on_trend', 'rotation'], marketRefs),
-      labelGate('emotion_cycle', emotion, ['startup', 'acceleration'], emotionRefs),
-      sector,
-    ]
-  }
-  return [
+  const gates = (markets: readonly string[], emotions: readonly string[]): readonly TacticGateResult[] => [
     common,
-    labelGate('market_regime', market, ['repair', 'rotation', 'high_volatility_divergence'], marketRefs),
-    labelGate('emotion_cycle', emotion, ['repair', 'ebb', 'divergence'], emotionRefs),
+    labelGate('market_regime', market, markets, marketRefs),
+    labelGate('emotion_cycle', emotion, emotions, emotionRefs),
     sector,
   ]
+  switch (tacticId) {
+    case 'regime_signed_breakout_pullback':
+      return gates(['risk_on_trend', 'rotation'], ['startup', 'acceleration', 'repair'])
+    case 'openable_emotion_leader':
+      return gates(['risk_on_trend', 'rotation'], ['startup', 'acceleration'])
+    case 'industry_relative_exhaustion_repair':
+      return gates(['repair', 'rotation', 'high_volatility_divergence'], ['repair', 'ebb', 'divergence'])
+    case 'correlation_cluster_sector_rotation':
+      return gates(['rotation', 'risk_on_trend'], ['startup', 'acceleration', 'repair'])
+    case 'sector_residual_strength':
+      return gates(['risk_on_trend', 'rotation'], ['startup', 'acceleration', 'repair'])
+    case 'low_volatility_sector_leader':
+      return gates(['rotation', 'risk_contraction'], ['divergence', 'ebb', 'repair'])
+  }
 }
 
 function topSectorIds(features: StrategicFeatureRecord): readonly string[] {
@@ -176,6 +242,7 @@ function evaluateDefinition(definition: TacticDefinition, features: StrategicFea
   if (definition.tacticId === 'defensive_no_trade') {
     return {
       tacticId: definition.tacticId,
+      tacticVersion: definition.tacticVersion,
       promotionStatus: definition.promotionStatus,
       status: 'eligible',
       contextFit: true,
@@ -201,6 +268,7 @@ function evaluateDefinition(definition: TacticDefinition, features: StrategicFea
   ]
   return {
     tacticId: definition.tacticId,
+    tacticVersion: definition.tacticVersion,
     promotionStatus: definition.promotionStatus,
     status,
     contextFit,

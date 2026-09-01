@@ -1,16 +1,22 @@
 import type { StrategicFeatureRecord } from '@deepseek-ai/dsh-market-strategic-state'
 
 /** Current deterministic tactic eligibility schema. */
-export const TACTIC_ELIGIBILITY_SCHEMA_VERSION = 1 as const
+export const TACTIC_ELIGIBILITY_SCHEMA_VERSION = 2 as const
 /** Current registry and gate implementation identity. */
-export const TACTIC_ELIGIBILITY_ENGINE_VERSION = 'maoq-tactic-eligibility-v1' as const
+export const TACTIC_ELIGIBILITY_ENGINE_VERSION = 'maoq-tactic-eligibility-v2' as const
 
-/** Stable IDs for the initial P3 tactic registry. */
+/** Stable IDs for every implemented tactic and the defensive fallback. */
 export type TacticId =
   | 'regime_signed_breakout_pullback'
   | 'openable_emotion_leader'
   | 'industry_relative_exhaustion_repair'
+  | 'correlation_cluster_sector_rotation'
+  | 'sector_residual_strength'
+  | 'low_volatility_sector_leader'
   | 'defensive_no_trade'
+
+/** Implemented stock-selection tactic IDs, excluding the no-order fallback. */
+export type ActiveTacticId = Exclude<TacticId, 'defensive_no_trade'>
 
 /** Source-controlled promotion stage, independent of current market fit. */
 export type TacticPromotionStatus = 'research' | 'paper' | 'eligible'
@@ -20,7 +26,8 @@ export type TacticEligibilityStatus = 'eligible' | 'watch_only' | 'research_only
 /** Host-owned static tactic definition; model prose cannot modify these constraints. */
 export interface TacticDefinition {
   readonly tacticId: TacticId
-  readonly family: 'trend' | 'emotion' | 'reversal' | 'defense'
+  readonly tacticVersion: string
+  readonly family: 'trend' | 'emotion' | 'reversal' | 'rotation' | 'relative_strength' | 'low_volatility' | 'defense'
   readonly promotionStatus: TacticPromotionStatus
   readonly evidenceGrade: 'A' | 'B' | 'control'
   readonly requiredHistorySessions: number
@@ -44,6 +51,7 @@ export interface TacticGateResult {
 /** Context fit and promotion status kept separate so research cannot become tradable by accident. */
 export interface TacticEligibilityResult {
   readonly tacticId: TacticId
+  readonly tacticVersion: string
   readonly promotionStatus: TacticPromotionStatus
   readonly status: TacticEligibilityStatus
   readonly contextFit: boolean
