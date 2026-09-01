@@ -24,6 +24,12 @@ A missing symbol session makes every affected window unavailable instead of sile
 
 The fill price applies side-aware slippage and remains inside the observed daily range. Commission and transfer fees apply on both sides; stamp duty applies on sells. Position lots preserve acquisition dates, sellable quantity enforces T+1, and remaining positions are marked to the latest observed raw close.
 
+## Versioned signals and evaluation
+
+`generateResearchTacticSignal()` implements the first fixed trials for the three P3 candidates. Regime-signed breakout/pullback requires positive 20-session market breadth and ranks liquid near-high stocks with positive sector-relative continuation. Executable emotion leadership requires a bounded market-wide limit-up ratio and ranks liquid one-to-four-board leaders; the execution engine still rejects an opening limit-up. Industry-relative repair requires improving daily breadth without a broad 20-session uptrend, positive sector breadth, an idiosyncratic negative sector residual, exhausted turnover, and a positive reversal day.
+
+`evaluateResearchTactic()` converts ranked signals into a declared maximum number of positions using only the signal-date raw close, fixed holding periods, and the shared next-open engine. It records a daily marked equity curve, chronological folds, net and annualized return, Sharpe, maximum drawdown, turnover, fill rate, positive-fold ratio, and a complete replay with doubled trading costs. These are research measurements: the result remains `research` and names missing Deflated Sharpe, PBO, and market-regime concentration evidence as blockers.
+
 ## Research boundary
 
-The package neither generates tactic signals nor reports Sharpe. This separation forces regime-signed trend, openable emotion-leader, and industry-relative repair research to share identical feature and execution semantics. The evaluator owns walk-forward folds, realistic capacity, multiple-testing controls, and promotion artifacts; the runtime history consumer is a separate pending capability.
+The package now generates versioned deterministic research signals and comparable preliminary Sharpe evidence. It does not claim promotion, tune parameters, or select tactics. A runtime history consumer must still connect the production adapter to this evaluator, while the remaining evaluation layer owns realistic capacity, Deflated Sharpe, PBO, regime-profit concentration, and final promotion artifacts.

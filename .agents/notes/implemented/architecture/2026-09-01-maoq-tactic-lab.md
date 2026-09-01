@@ -18,6 +18,8 @@ Current daily decisions continue to use full immutable market snapshots, whose s
 
 Multi-year evaluation feeds those chunks through `DailyHistoryFeatureStream`, which preserves batch feature semantics while retaining only each symbol's 252-session observation window. The production adapter obtains price facts and overlapping sector periods with separate bounded reads, then attaches the latest effective membership deterministically; this avoids a range-wide database window sort without changing point-in-time meaning.
 
+Three fixed versioned research trials convert the shared features into deterministic ranked candidates only after their market and sector gates pass. `evaluateResearchTactic()` gives each trial declared position limits and holding periods, sizes from the signal-date raw close, executes through the same next-open policy, and reports daily equity, chronological folds, Sharpe, drawdown, turnover, fill rate, positive-fold ratio, and doubled-cost results. It always remains `research` while Deflated Sharpe, PBO, and market-regime profit concentration are absent.
+
 ## Alternatives considered
 
 - Generate a complete market snapshot for every historical date. This preserves one shape but needlessly repeats policy, news, and strategic acquisition for execution-only tests.
@@ -28,10 +30,11 @@ Multi-year evaluation feeds those chunks through `DailyHistoryFeatureStream`, wh
 ## Consequences
 
 - All three initial tactic candidates can be compared on identical measurement and execution semantics.
+- Apparent high Sharpe cannot bypass missing multiple-testing or regime-concentration evidence.
 - Corporate actions do not create false feature returns, while fills and equity marks remain raw and executable.
 - Daily-only research still cannot claim intraday stops, queue priority, or auction fills.
 - Real Sharpe and promotion evidence remain incomplete until a runtime consumer mounts the history adapter and the walk-forward evaluator is implemented and run.
 
 ## Verification
 
-Gold tests cover content-addressed chunk stability and corruption rejection, adjusted-feature/raw-execution separation, required-join row preservation, deterministic overlapping point-in-time sectors, batch/stream parity through 252 sessions, adjustment-factor continuity, missing sessions, sector changes, next-session timing, both-side costs, opening limit-up rejection, suspension, invalid lots, duplicate orders, cash, positions, and immutable results.
+Gold tests cover content-addressed chunk stability and corruption rejection, adjusted-feature/raw-execution separation, required-join row preservation, deterministic overlapping point-in-time sectors, batch/stream parity through 252 sessions, adjustment-factor continuity, missing sessions, sector changes, all three signal gate families, deterministic ranking, close-known sizing, fixed holding periods, chronological folds, doubled costs, promotion blockers, next-session timing, both-side costs, opening limit-up rejection, suspension, invalid lots, duplicate orders, cash, positions, and immutable results.

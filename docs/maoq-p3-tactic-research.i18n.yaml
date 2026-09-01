@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/maoq-p3-tactic-research.md
-maoq-p3-tactic-research.md: 96c7f7372064fe6b6300dee0e0962bcc57e9f780
-maoq-p3-tactic-research.zh.md: 51bebefef0803b11fbfe634fea62dbef23d12f83
+maoq-p3-tactic-research.md: 2fad45475d047e55e30ce2478de2d96ce9d089ef
+maoq-p3-tactic-research.zh.md: 1326225bc7143363f38c98de76bd7853d9b4f393

@@ -111,5 +111,6 @@ The multiple-testing controls follow Bailey et al., [The Probability of Backtest
 3. **Complete at the pure-contract layer:** add point-in-time daily-history features for adjusted returns, 52-week proximity, sector-relative returns, turnover, amount, and limit-up structure.
 4. **Complete for next-open research:** implement one shared execution simulator with lot, cash, T+1, opening price-limit, suspension, commission, stamp-duty, transfer-fee, and slippage rules.
 5. **Complete at the provider layer:** add a read-only MySQL history adapter that streams content-addressed paired feature/execution chunks without materializing full news/strategic snapshots for every historical date.
-6. Mount the history consumer and backtest the three candidates with identical cost and walk-forward rules.
-7. Promote only the candidates that pass; leave the others visible as rejected research evidence.
+6. **Pure evaluator complete:** implement fixed versioned signals for all three candidates, declared portfolio construction, chronological folds, preliminary Sharpe/drawdown/turnover/fill evidence, and doubled-cost replay. Results remain `research` while DSR, PBO, regime concentration, and capacity are absent.
+7. Mount the production history consumer and run the same evaluator against real history.
+8. Promote only the candidates that pass; leave the others visible as rejected research evidence.

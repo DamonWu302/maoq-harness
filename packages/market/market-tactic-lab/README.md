@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-market-tactic-lab` supplies the common measurement and execution foundation for MAOQ tactic research. It content-addresses bounded pairs of adjusted feature sessions and raw execution sessions, computes daily research features, and replays close-authored orders only at the next market session's open under explicit A-share trading rules and costs.
+`dsh-market-tactic-lab` supplies the common measurement, signal, execution, and evaluation foundation for MAOQ tactic research. It content-addresses bounded pairs of adjusted feature sessions and raw execution sessions, computes daily research features, generates three versioned P3 candidate signals, and replays close-authored orders only at the next market session's open under explicit A-share trading rules and costs.
 
 ## Table of Contents
 
@@ -41,6 +41,8 @@ Pass a separate raw, unadjusted execution sequence with exact daily up/down limi
 const result = simulateNextOpenExecution(snapshots, orders)
 ```
 
+`generateResearchTacticSignal()` implements the fixed first trials for regime-signed breakout/pullback, executable emotion leadership, and industry-relative exhaustion repair. `evaluateResearchTactic()` turns their ranked candidates into bounded positions, applies fixed holding periods, produces chronological 126-session folds, and repeats the replay with doubled costs. It intentionally reports `research` until Deflated Sharpe, PBO, and regime-concentration evidence are also computed.
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -52,6 +54,8 @@ const result = simulateNextOpenExecution(snapshots, orders)
 Snapshot stock prices are already adjusted by their acquisition adapter, so research uses them directly and never applies the adjustment factor twice. Volume and amount remain raw. Feature windows follow market sessions, require complete symbol observations, cite immutable inputs, and never read an ambient clock. Multi-session sector returns compound each session's relative sector level instead of treating those daily levels as a continuous index. The incremental engine produces the same feature record as the batch engine for each cutoff and bounds retained observations per symbol.
 
 Execution uses raw unadjusted prices. Orders authored after session `t` can first fill at session `t+1`; a missing or suspended bar never advances to a later favorable session. Buys at an opening limit-up and sells at an opening limit-down are rejected. Slippage is applied against the open and clipped to the observed daily range. Positions retain acquisition dates, sell checks enforce T+1, and final equity marks remaining shares to the latest observed raw close.
+
+The initial signal thresholds are versioned research trials, not user-tunable production rules. Market and sector breadth gate every candidate before stock ranking. Position sizing uses only the signal session's raw close, while the next session determines the actual fill. The evaluator records fills, rejections, equity, Sharpe, drawdown, turnover, fill rate, positive-fold ratio, and doubled-cost results without treating any one metric as promotion proof.
 
 </details>
 
@@ -80,10 +84,10 @@ None. A later consumer owns any selected feature or result rendered to a model.
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- **No runtime history consumer yet** — `dsh-market-snapshot-mysql` supplies the read-only production adapter, but the evaluator and model-facing research tool do not mount it yet.
+- **No runtime history consumer yet** — `dsh-market-snapshot-mysql` supplies the read-only production adapter and the pure evaluator is implemented, but the model-facing research tool does not mount them yet.
 - **One next-open order style** — intraday stops, auctions, queue priority, and volume participation need separate versioned execution policies.
-- **No portfolio optimizer** — the replay enforces cash and positions but does not choose weights, tactics, or orders.
-- **No performance statistics** — walk-forward folds, Sharpe, deflated Sharpe, PBO, drawdown, and capacity reports belong to the next evaluation layer.
+- **Fixed research portfolio construction** — the first trials use declared maximum positions, close-known sizing, and fixed holding periods; no optimizer is allowed to tune them on the holdout set.
+- **Promotion statistics remain incomplete** — chronological folds, Sharpe, drawdown, turnover, fill rate, and doubled-cost evidence are available; Deflated Sharpe, PBO, market-regime profit concentration, and capacity reports remain mandatory before promotion.
 
 <a id="dev-note"></a>
 ### Dev Note
