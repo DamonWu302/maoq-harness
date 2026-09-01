@@ -43,7 +43,7 @@ const features = computeDailyHistoryFeatures(snapshots)
 const result = simulateNextOpenExecution(snapshots, orders)
 ```
 
-`generateResearchTacticSignal()` 实现状态签名突破／回踩、可成交情绪龙头和行业相对抛压衰竭修复的首轮固定试验。`evaluateResearchTactic()` 把排名候选转成有界仓位，应用固定持有期，产生按时间排列的 126 个交易时段折，并用翻倍成本重复回放。在 Deflated Sharpe、PBO 和市场状态利润集中度证据也已计算前，它会有意保持 `research`。
+`generateResearchTacticSignal()` 实现状态签名突破／回踩、可成交情绪龙头和行业相对抛压衰竭修复的首轮固定试验。`evaluateResearchTactic()` 把排名候选转成有界仓位，应用固定持有期，产生按时间排列的 126 个交易时段折，并用翻倍成本重复回放。`evaluateResearchTacticSuiteHistory()` 只读取一次生产历史并并行评估三个预登记战法；`auditResearchTacticSuite()` 计算 Deflated Sharpe、组合对称交叉验证 PBO、市场状态利润集中度和容量。最终封存留出集完成前，它仍保持 `research`。
 
 -----
 
@@ -89,7 +89,7 @@ const result = simulateNextOpenExecution(snapshots, orders)
 - **内存提供方注册表**——注册项遵循 Cordis 插件生命周期；本包不持久化提供方状态或已完成报告。
 - **只有一种次日开盘订单**——盘中止损、集合竞价、排队优先级和成交量参与需要独立的带版本执行策略。
 - **固定研究组合构建**——首轮试验使用声明的最大持仓数、收盘已知定仓和固定持有期；绝不允许优化器在留出集上调参。
-- **晋级统计仍不完整**——已有按时间折、夏普、回撤、换手、成交率和翻倍成本证据；Deflated Sharpe、PBO、市场状态利润集中度与容量报告仍是晋级前的必选项。
+- **最终留出集仍未完成**——按时间折、夏普、回撤、换手、成交率、翻倍成本、Deflated Sharpe、PBO、市场状态利润集中度与容量均已有失败关闭报告；生产晋级仍要求预先登记全部试验，并在未参与选择的封存留出集上通过完整验收。
 
 <a id="dev-note"></a>
 ### 开发备注

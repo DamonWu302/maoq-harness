@@ -16,6 +16,7 @@ describe('MAOQ P3 production canary CLI', () => {
       database: 'long_short_stock',
       connectTimeoutMs: 5000,
       queryTimeoutMs: 60000,
+      attemptedTrials: 3,
     })
   })
 
@@ -44,11 +45,28 @@ describe('MAOQ P3 production canary CLI', () => {
     })
   })
 
+  it('accepts the one-read registered-tactic suite evaluation', () => {
+    expect(parseP3CanaryOptions([
+      '--mode', 'evaluate-suite',
+      '--start', '2022-01-01',
+      '--end', '2026-08-31',
+    ], {})).toMatchObject({
+      mode: 'evaluate-suite',
+      chunkSessions: 10,
+      tacticId: 'industry_relative_exhaustion_repair',
+      attemptedTrials: 3,
+    })
+  })
+
   it.each([
     [['--start', '2026-09-02', '--end', '2026-09-01'], /must not exceed/],
-    [['--start', '2026-09-01', '--end', '2026-09-01', '--mode', 'all'], /probe or evaluate/],
+    [['--start', '2026-09-01', '--end', '2026-09-01', '--mode', 'all'], /probe, evaluate, or evaluate-suite/],
     [['--start', '2026-09-01', '--end', '2026-09-01', '--tactic', 'unknown'], /must be one of/],
     [['--start', '2026-02-30', '--end', '2026-09-01'], /ISO calendar date/],
+    [['--start', '2026-09-01', '--end', '2026-09-01', '--attempted-trials', '0'], /from 1 through/],
+    [[
+      '--start', '2026-09-01', '--end', '2026-09-01', '--mode', 'evaluate-suite', '--attempted-trials', '2',
+    ], /at least 3/],
   ] as const)('rejects unsafe or irreproducible arguments %#', (args, message) => {
     expect(() => parseP3CanaryOptions(args, {})).toThrow(message)
   })

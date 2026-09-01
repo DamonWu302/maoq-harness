@@ -18,6 +18,8 @@ export const RESEARCH_TACTIC_VERSIONS: Readonly<Record<ResearchTacticId, string>
 export interface ResearchTacticCandidate {
   readonly symbol: string
   readonly score: number
+  /** Point-in-time 20-session mean amount used only for capacity evidence. */
+  readonly amountMean20: number
   readonly evidenceRefs: readonly string[]
 }
 
@@ -71,7 +73,15 @@ function finite(value: number | null): value is number {
 }
 
 function candidate(stock: DailyStockResearchFeatures, score: number): ResearchTacticCandidate {
-  return { symbol: stock.symbol, score: Number(score.toFixed(8)), evidenceRefs: [...stock.evidenceRefs] }
+  if (stock.amountMean20 === null || !Number.isFinite(stock.amountMean20) || stock.amountMean20 <= 0) {
+    throw new Error(`${stock.symbol} candidate amountMean20 is not positive`)
+  }
+  return {
+    symbol: stock.symbol,
+    score: Number(score.toFixed(8)),
+    amountMean20: stock.amountMean20,
+    evidenceRefs: [...stock.evidenceRefs],
+  }
 }
 
 function ranked(candidates: readonly ResearchTacticCandidate[]): readonly ResearchTacticCandidate[] {

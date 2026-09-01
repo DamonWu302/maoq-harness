@@ -140,4 +140,13 @@ pnpm run maoq:p3-canary -- --mode evaluate \
   --start 2026-03-02 --end 2026-08-31 --chunk-sessions 10
 ```
 
-The CLI reads `MAOQ_MYSQL_HOST`, `MAOQ_MYSQL_PORT`, `MAOQ_MYSQL_SOCKET`, `MAOQ_MYSQL_USER`, and `MAOQ_MYSQL_DATABASE` when present. An optional `MAOQ_MYSQL_PASSWORD` is process-only and is never included in output. Connection and statement waits default to 5 and 60 seconds. A successful evaluation proves the production history path and records exact source hashes, base and doubled-cost metrics, and promotion blockers; its decision remains `research`. Promotion still requires the full multi-regime, DSR, PBO, concentration, capacity, and holdout protocol in [MAOQ P3 tactic research](maoq-p3-tactic-research.md).
+The single-tactic path is only for fault isolation and screening; it cannot measure selection bias. After the production probe and single-tactic screen pass, evaluate all three preregistered tactics together from the same streamed history:
+
+```bash
+pnpm run maoq:p3-canary -- --mode evaluate-suite \
+  --start 2022-01-04 --end 2026-08-31 --chunk-sessions 10 --attempted-trials 3
+```
+
+Suite mode scans the database once and reports DSR, combinatorially symmetric cross-validation PBO, market-state profit concentration, and capacity against the signal-date 20-session mean amount for all three tactics. PBO requires at least four complete 126-session folds and fails closed with less evidence. `--attempted-trials` must count every parameter family tried by the run date, not only the surviving candidates. The report always retains the `sealed_holdout_not_supplied` blocker and must be validated against a final holdout that was not used for selection.
+
+The CLI reads `MAOQ_MYSQL_HOST`, `MAOQ_MYSQL_PORT`, `MAOQ_MYSQL_SOCKET`, `MAOQ_MYSQL_USER`, and `MAOQ_MYSQL_DATABASE` when present. An optional `MAOQ_MYSQL_PASSWORD` is process-only and is never included in output. Connection and statement waits default to 5 and 60 seconds. A successful evaluation proves the production history path and records exact source hashes, base and doubled-cost metrics, and promotion blockers; its decision remains `research`. Promotion still requires the final holdout and complete execution acceptance in [MAOQ P3 tactic research](maoq-p3-tactic-research.md).

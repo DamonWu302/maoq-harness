@@ -43,7 +43,7 @@ Pass a separate raw, unadjusted execution sequence with exact daily up/down limi
 const result = simulateNextOpenExecution(snapshots, orders)
 ```
 
-`generateResearchTacticSignal()` implements the fixed first trials for regime-signed breakout/pullback, executable emotion leadership, and industry-relative exhaustion repair. `evaluateResearchTactic()` turns their ranked candidates into bounded positions, applies fixed holding periods, produces chronological 126-session folds, and repeats the replay with doubled costs. It intentionally reports `research` until Deflated Sharpe, PBO, and regime-concentration evidence are also computed.
+`generateResearchTacticSignal()` implements the fixed first trials for regime-signed breakout/pullback, executable emotion leadership, and industry-relative exhaustion repair. `evaluateResearchTactic()` turns their ranked candidates into bounded positions, applies fixed holding periods, produces chronological 126-session folds, and repeats the replay with doubled costs. `evaluateResearchTacticSuiteHistory()` reads production history once and evaluates all three preregistered tactics in parallel; `auditResearchTacticSuite()` computes Deflated Sharpe, combinatorially symmetric cross-validation PBO, market-state profit concentration, and capacity. It remains `research` until the final sealed holdout is complete.
 
 -----
 
@@ -89,7 +89,7 @@ None. A later consumer owns any selected feature or result rendered to a model.
 - **In-memory provider registry** — registrations follow the Cordis plugin lifecycle; this package does not persist provider state or completed reports.
 - **One next-open order style** — intraday stops, auctions, queue priority, and volume participation need separate versioned execution policies.
 - **Fixed research portfolio construction** — the first trials use declared maximum positions, close-known sizing, and fixed holding periods; no optimizer is allowed to tune them on the holdout set.
-- **Promotion statistics remain incomplete** — chronological folds, Sharpe, drawdown, turnover, fill rate, and doubled-cost evidence are available; Deflated Sharpe, PBO, market-regime profit concentration, and capacity reports remain mandatory before promotion.
+- **Final holdout remains incomplete** — fail-closed reports now cover chronological folds, Sharpe, drawdown, turnover, fill rate, doubled costs, Deflated Sharpe, PBO, market-state profit concentration, and capacity; production promotion still requires every trial to be preregistered and complete acceptance on a sealed holdout not used for selection.
 
 <a id="dev-note"></a>
 ### Dev Note

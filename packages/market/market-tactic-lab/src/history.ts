@@ -96,7 +96,7 @@ function sectorRelativeReturn(series: readonly SessionObservation[], lookback: n
   if (currentBar === undefined || anchorBar === undefined) return null
   const stockReturn = ratioReturn(adjusted(currentBar, 'close'), adjusted(anchorBar, 'close'))
   const sectorReturn = rounded(sectors.slice(1).reduce((growth, sector) => growth * ((sector as SectorDailySnapshot).close / 100), 1) - 1)
-  return stockReturn === null || sectorReturn === null ? null : rounded(stockReturn - sectorReturn)
+  return stockReturn === null ? null : rounded(stockReturn - sectorReturn)
 }
 
 function limitUpStreak(series: readonly SessionObservation[]): number {

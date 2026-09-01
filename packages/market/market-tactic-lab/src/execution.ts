@@ -112,7 +112,6 @@ function isValidOrder(order: DailyExecutionOrder, policy: DailyExecutionPolicy):
   return order.orderId.length > 0
     && order.symbol.length > 0
     && /^\d{4}-\d{2}-\d{2}$/u.test(order.signalDate)
-    && (order.side === 'buy' || order.side === 'sell')
     && Number.isSafeInteger(order.quantity)
     && order.quantity > 0
     && order.quantity % policy.lotSize === 0

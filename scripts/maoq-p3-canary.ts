@@ -5,7 +5,9 @@ import {
 import {
   DEFAULT_RESEARCH_TACTIC_BACKTEST_CONFIGS,
   evaluateResearchTacticHistory,
+  evaluateResearchTacticSuiteHistory,
   type ResearchTacticHistoryEvaluation,
+  type ResearchTacticSuiteHistoryEvaluation,
   type ResearchTacticId,
   type TacticLabHistoryChunk,
 } from '@deepseek-ai/dsh-market-tactic-lab'
@@ -14,7 +16,7 @@ import { pathToFileURL } from 'node:url'
 const TACTIC_IDS = Object.freeze(Object.keys(DEFAULT_RESEARCH_TACTIC_BACKTEST_CONFIGS) as ResearchTacticId[])
 
 export interface P3CanaryOptions {
-  readonly mode: 'probe' | 'evaluate'
+  readonly mode: 'probe' | 'evaluate' | 'evaluate-suite'
   readonly tacticId: ResearchTacticId
   readonly startDate: string
   readonly endDate: string
@@ -27,6 +29,7 @@ export interface P3CanaryOptions {
   readonly database: string
   readonly connectTimeoutMs: number
   readonly queryTimeoutMs: number
+  readonly attemptedTrials: number
 }
 
 function argument(args: readonly string[], name: string): string | undefined {
@@ -69,13 +72,19 @@ export function parseP3CanaryOptions(
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): P3CanaryOptions {
   const mode = argument(args, '--mode') ?? 'probe'
-  if (mode !== 'probe' && mode !== 'evaluate') throw new TypeError('--mode must be probe or evaluate')
+  if (mode !== 'probe' && mode !== 'evaluate' && mode !== 'evaluate-suite') {
+    throw new TypeError('--mode must be probe, evaluate, or evaluate-suite')
+  }
   const tacticId = argument(args, '--tactic') ?? 'industry_relative_exhaustion_repair'
   if (!TACTIC_IDS.includes(tacticId as ResearchTacticId)) throw new TypeError(`--tactic must be one of ${TACTIC_IDS.join(', ')}`)
   const startDate = dateArgument(args, '--start')
   const endDate = dateArgument(args, '--end')
   if (startDate > endDate) throw new TypeError('--start must not exceed --end')
   const socketPath = argument(args, '--socket-path') ?? environment.MAOQ_MYSQL_SOCKET
+  const attemptedTrials = integerArgument(args, '--attempted-trials', TACTIC_IDS.length, 10_000)
+  if (mode === 'evaluate-suite' && attemptedTrials < TACTIC_IDS.length) {
+    throw new TypeError(`--attempted-trials must be at least ${String(TACTIC_IDS.length)} for evaluate-suite`)
+  }
   return {
     mode,
     tacticId: tacticId as ResearchTacticId,
@@ -90,6 +99,7 @@ export function parseP3CanaryOptions(
     database: argument(args, '--database') ?? environment.MAOQ_MYSQL_DATABASE ?? 'long_short_stock',
     connectTimeoutMs: integerArgument(args, '--connect-timeout-ms', 5_000, 60_000),
     queryTimeoutMs: integerArgument(args, '--query-timeout-ms', 60_000, 300_000),
+    attemptedTrials,
   }
 }
 
@@ -127,6 +137,26 @@ function evaluationReport(result: ResearchTacticHistoryEvaluation): object {
   }
 }
 
+function suiteEvaluationReport(result: ResearchTacticSuiteHistoryEvaluation): object {
+  return {
+    status: 'passed',
+    mode: 'evaluate-suite',
+    adapter: result.historyAdapter,
+    sessions: result.sourceExecutionHashes.length,
+    historyChunkHashes: result.historyChunkHashes,
+    sourceExecutionHashes: result.sourceExecutionHashes,
+    tactics: Object.fromEntries(Object.entries(result.evaluations).map(([tacticId, evaluation]) => [tacticId, {
+      metrics: evaluation.metrics,
+      doubledCostMetrics: evaluation.doubledCostMetrics,
+      promotionDecision: evaluation.promotionDecision,
+      preliminaryBlockers: evaluation.promotionBlockers,
+      promotionStatistics: result.promotionAudit.tactics[tacticId as ResearchTacticId],
+    }])),
+    backtestOverfitting: result.promotionAudit.backtestOverfitting,
+    attemptedTrials: result.promotionAudit.attemptedTrials,
+  }
+}
+
 /**
  * Run a fail-fast production history probe or one fixed research evaluation.
  * @param options - Validated endpoint, range, tactic, and latency bounds.
@@ -145,6 +175,15 @@ export async function runP3Canary(options: P3CanaryOptions, password?: string): 
   if (options.mode === 'probe') {
     for await (const chunk of adapter.load(request)) return probeReport(chunk)
     throw new Error('probe returned no history chunks')
+  }
+  if (options.mode === 'evaluate-suite') {
+    const result = await evaluateResearchTacticSuiteHistory(
+      adapter,
+      request,
+      Object.values(DEFAULT_RESEARCH_TACTIC_BACKTEST_CONFIGS),
+      options.attemptedTrials,
+    )
+    return suiteEvaluationReport(result)
   }
   const result = await evaluateResearchTacticHistory(
     adapter,

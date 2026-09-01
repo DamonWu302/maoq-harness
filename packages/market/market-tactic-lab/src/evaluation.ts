@@ -11,6 +11,10 @@ import {
 } from './signals.ts'
 import { DailyHistoryFeatureStream } from './stream.ts'
 import { verifyTacticLabHistoryChunk } from './chunk.ts'
+import {
+  auditResearchTacticSuite,
+  type ResearchTacticSuiteAudit,
+} from './promotion.ts'
 import type {
   DailyExecutionFill,
   DailyExecutionOrder,
@@ -110,6 +114,16 @@ export interface ResearchTacticHistoryEvaluation extends ResearchTacticEvaluatio
   readonly historyAdapter: string
   readonly historyChunkHashes: readonly string[]
   readonly sourceExecutionHashes: readonly string[]
+}
+
+/** One-read production evaluation of every pre-registered fixed P3 trial. */
+export interface ResearchTacticSuiteHistoryEvaluation {
+  readonly engineVersion: typeof TACTIC_EVALUATION_ENGINE_VERSION
+  readonly historyAdapter: string
+  readonly historyChunkHashes: readonly string[]
+  readonly sourceExecutionHashes: readonly string[]
+  readonly evaluations: Readonly<Record<ResearchTacticId, ResearchTacticEvaluation>>
+  readonly promotionAudit: ResearchTacticSuiteAudit
 }
 
 interface PlannedPosition {
@@ -447,5 +461,82 @@ export async function evaluateResearchTacticHistory(
     historyAdapter: adapter.name,
     historyChunkHashes,
     sourceExecutionHashes,
+  })
+}
+
+/**
+ * Stream production history once and evaluate all fixed trials on identical sessions.
+ * This is the only valid path for suite-level DSR/PBO evidence because a single curve
+ * cannot reveal selection overfitting.
+ */
+export async function evaluateResearchTacticSuiteHistory(
+  adapter: TacticLabHistoryAdapter,
+  request: TacticLabHistoryRequest,
+  configs: readonly ResearchTacticBacktestConfig[] = Object.values(DEFAULT_RESEARCH_TACTIC_BACKTEST_CONFIGS),
+  attemptedTrials: number = configs.length,
+  policy: DailyExecutionPolicy = DEFAULT_A_SHARE_EXECUTION_POLICY,
+): Promise<ResearchTacticSuiteHistoryEvaluation> {
+  const registeredIds = Object.keys(DEFAULT_RESEARCH_TACTIC_BACKTEST_CONFIGS).sort()
+  const suppliedIds = configs.map(config => config.tacticId).sort()
+  if (JSON.stringify(suppliedIds) !== JSON.stringify(registeredIds)) {
+    throw new Error('tactic suite must include every registered fixed trial exactly once')
+  }
+  for (const config of configs) validateConfig(config)
+  if (new Set(configs.map(config => config.tacticId)).size !== configs.length) {
+    throw new Error('tactic suite contains duplicate tactic ids')
+  }
+  const featureStream = new DailyHistoryFeatureStream()
+  const planners = new Map(configs.map(config => [config.tacticId, new ResearchOrderPlanner(config, policy)]))
+  const signals = new Map(configs.map(config => [config.tacticId, [] as ResearchTacticSignal[]]))
+  const orders = new Map(configs.map(config => [config.tacticId, [] as DailyExecutionOrder[]]))
+  const sessions: DailyExecutionSession[] = []
+  const historyChunkHashes: string[] = []
+  const sourceExecutionHashes: string[] = []
+  const required = <Value>(map: ReadonlyMap<ResearchTacticId, Value>, tacticId: ResearchTacticId): Value => {
+    const value = map.get(tacticId)
+    if (value === undefined) throw new Error(`missing suite state for ${tacticId}`)
+    return value
+  }
+  for await (const chunk of adapter.load(request)) {
+    verifyTacticLabHistoryChunk(chunk)
+    historyChunkHashes.push(chunk.contentHash)
+    for (let index = 0; index < chunk.featureSessions.length; index += 1) {
+      const featureSession = chunk.featureSessions[index] as NonNullable<typeof chunk.featureSessions[number]>
+      const executionSession = chunk.executionSessions[index] as NonNullable<typeof chunk.executionSessions[number]>
+      const record = featureStream.push(featureSession)
+      const relevantSymbols = new Set<string>()
+      for (const config of configs) {
+        const signal = generateResearchTacticSignal(config.tacticId, record)
+        const step = required(planners, config.tacticId).push(signal, executionSession)
+        required(signals, config.tacticId).push(signal)
+        required(orders, config.tacticId).push(...step.orders)
+        for (const symbol of step.relevantSymbols) relevantSymbols.add(symbol)
+      }
+      const bars = executionSession.bars.filter(bar => relevantSymbols.has(bar.symbol))
+      sourceExecutionHashes.push(executionSession.contentHash)
+      sessions.push({
+        tradingDate: executionSession.tradingDate,
+        contentHash: contentHash({ sourceExecutionHash: executionSession.contentHash, bars }),
+        bars,
+      })
+    }
+  }
+  if (sessions.length < 2) throw new Error('history evaluation requires at least two complete sessions')
+  const results = configs.map(config => evaluationResult(
+    required(signals, config.tacticId),
+    required(orders, config.tacticId),
+    sessions,
+    config,
+    policy,
+  ))
+  const evaluations = Object.fromEntries(results.map(result => [result.config.tacticId, result])) as
+    Record<ResearchTacticId, ResearchTacticEvaluation>
+  return deepFreeze({
+    engineVersion: TACTIC_EVALUATION_ENGINE_VERSION,
+    historyAdapter: adapter.name,
+    historyChunkHashes,
+    sourceExecutionHashes,
+    evaluations,
+    promotionAudit: auditResearchTacticSuite(results, attemptedTrials),
   })
 }

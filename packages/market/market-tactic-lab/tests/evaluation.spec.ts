@@ -15,6 +15,7 @@ import {
   type TacticLabHistoryChunk,
 } from '../src/index.ts'
 import { evaluateResearchTacticHistory } from '../src/evaluation.ts'
+import { evaluateResearchTacticSuiteHistory } from '../src/evaluation.ts'
 
 function dateAt(index: number): string {
   return new Date(Date.UTC(2026, 0, 1 + index)).toISOString().slice(0, 10)
@@ -333,6 +334,33 @@ describe('P3 tactic walk-forward evaluation', () => {
     expect(result.equityCurve.at(-1)?.equity).toBeGreaterThan(DEFAULT_A_SHARE_EXECUTION_POLICY.initialCash)
   })
 
+  it('reads production history once for the complete fixed-tactic suite', async () => {
+    const chunks = historyChunks()
+    let loads = 0
+    const adapter: TacticLabHistoryAdapter = {
+      name: 'counted-suite-history',
+      async *load() {
+        loads += 1
+        yield* chunks
+      },
+    }
+    const result = await evaluateResearchTacticSuiteHistory(
+      adapter,
+      { startDate: dateAt(0), endDate: dateAt(63), chunkSessions: 32, minimumStocks: 1 },
+    )
+    expect(loads).toBe(1)
+    expect(Object.keys(result.evaluations).sort()).toEqual([
+      'industry_relative_exhaustion_repair',
+      'openable_emotion_leader',
+      'regime_signed_breakout_pullback',
+    ])
+    expect(result.sourceExecutionHashes).toHaveLength(64)
+    expect(result.promotionAudit).toMatchObject({
+      attemptedTrials: 3,
+      backtestOverfitting: { probability: null, passed: false },
+    })
+  })
+
   it('rejects corrupted or insufficient streamed history', async () => {
     const chunks = historyChunks(2)
     await expect(evaluateResearchTacticHistory(
@@ -346,5 +374,11 @@ describe('P3 tactic walk-forward evaluation', () => {
       { startDate: dateAt(0), endDate: dateAt(0), chunkSessions: 1, minimumStocks: 1 },
       config(),
     )).rejects.toThrow(/at least two/)
+
+    await expect(evaluateResearchTacticSuiteHistory(
+      historyAdapter(historyChunks(1)),
+      { startDate: dateAt(0), endDate: dateAt(0), chunkSessions: 1, minimumStocks: 1 },
+      [config()],
+    )).rejects.toThrow(/every registered fixed trial/)
   })
 })

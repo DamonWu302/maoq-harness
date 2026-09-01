@@ -402,7 +402,7 @@ export class WorkflowExecution {
       ...record.provider !== undefined ? { provider: record.provider as string } : {},
       ...record.model !== undefined ? { model: record.model as string } : {},
       ...schema !== undefined ? { schema } : {},
-      ...record.includeUsage !== undefined ? { includeUsage: record.includeUsage as boolean } : {},
+      ...record.includeUsage !== undefined ? { includeUsage: record.includeUsage } : {},
     }
   }
 
