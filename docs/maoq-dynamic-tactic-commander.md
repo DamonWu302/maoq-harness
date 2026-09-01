@@ -25,7 +25,7 @@ The dynamic tactic commander turns the deterministic strategic state, a diverse 
 
 A full-period result for one tactic measures a weapon in isolation; it does not measure whether MAOQ identified the principal contradiction and chose the right weapon with information available at that time. The dynamic layer must therefore preserve fixed, auditable tactic implementations while evaluating and routing them conditionally by market regime, emotion cycle, sector structure, execution quality, and evidence uncertainty.
 
-The shared catalog now aligns the six fixed research trials, eligibility evaluation, and the general council tactic enum. The remaining gap is dynamic selection: no durable scorecard records how a tactic performed in comparable states, and no router turns that record into a bounded slate. The model can explain a catalog tactic, but it cannot yet consume a host-owned conditional performance record or select from a scored top-three slate.
+The shared catalog aligns the six fixed research trials, eligibility evaluation, and the general council tactic enum. A host-owned conditional scorecard and deterministic router now turn matured comparable-state evidence into a bounded top-three slate. The remaining gap is model-assisted selection and attribution: the DSH commander does not yet consume that slate, and no prequential comparison isolates value added by synthesis and veto.
 
 -----
 
@@ -76,7 +76,7 @@ The deterministic eligibility layer removes tactics that conflict with current f
 <a id="dynamic-scorecard"></a>
 ## Dynamic scorecard
 
-The scorecard indexes matured tactic outcomes by tactic version and bounded context: market regime, emotion cycle, sector structure, volatility band, crowding band, and execution-quality band. Each cell stores sample count, net expectancy, lower confidence bound, win rate, payoff ratio, drawdown, fill rate, doubled-cost result, recent decay, observation cutoff, and exact source identities. Insufficient evidence remains uncertainty rather than becoming a zero return.
+The scorecard indexes matured tactic outcomes by tactic version and bounded context: market regime, emotion cycle, sector structure, volatility band, crowding band, and execution-quality band. Each cell stores sufficient statistics for sample count, net expectancy and its 95% lower bound, win rate, payoff ratio, drawdown, fill rate, doubled-cost result, a 0.2-alpha recent-effectiveness average, observation cutoff, and exact source identities. Insufficient evidence remains uncertainty rather than becoming a zero return.
 
 The first router uses one preregistered, versioned score rather than model-authored weights:
 
@@ -90,7 +90,7 @@ route score =
   - drawdown, crowding, transition, and uncertainty penalties
 ```
 
-The implementation freezes exact transforms and weights before replay. A weight, context bucket, decay rule, or risk-budget change creates a new router version and trial identity. The router returns the top three permitted tactics, score components, evidence references, uncertainty, maximum risk budget, and rejection reasons; it does not select stocks.
+The v1 implementation requires eight exact-context matured samples, positive 95% expectancy lower bound, positive doubled-cost expectancy, at least 50% fill rate, and a positive final score. It freezes exact transforms and weights before replay. A weight, context bucket, decay rule, or risk-budget change creates a new router version and trial identity. The router returns the top three permitted tactics, score components, evidence references, uncertainty, maximum risk budget, cash floor, and rejection reasons; it does not select stocks.
 
 -----
 
@@ -147,9 +147,9 @@ P0 exits when catalog identity and versions cannot drift across the eligibility 
 
 ### P1 — Conditional record and deterministic routing
 
-P1 persists matured outcomes by tactic version and bounded context, including uncertainty, costs, decay, execution quality, and exact observation cutoffs. A versioned deterministic router reads only matured records, applies hard eligibility, and emits the top three tactics with component scores, rejection reasons, risk ceilings, and a cash floor. It must read bounded aggregates instead of rescanning full history on every daily decision.
+**Status: implemented.** `dsh-market-tactic-routing` attributes completed results to the original strategic cutoff and current catalog version, persists content-addressed outcomes and immutable aggregate generations, and rejects future-visible evidence. A versioned deterministic router reads only the bounded scorecard, applies hard eligibility and fixed evidence thresholds, and emits the top three tactics with component scores, evidence references, rejection reasons, risk ceilings, and a cash floor.
 
-P1 exits when every slate is reproducible from immutable inputs, incomplete outcomes cannot leak forward, `defensive_no_trade` wins when evidence is inadequate, and the router can be evaluated against fixed-tactic and equal-allocation baselines without using a model.
+P1 exits with content identities for every outcome, scorecard, and route; open-closed cutoff updates prevent incomplete outcomes from leaking forward; bounded date partitions avoid full-history reads; and `defensive_no_trade` wins when conditional evidence is missing, insufficient, cost-fragile, or poorly executable. The deterministic record can be replayed and compared without invoking a model; P2 owns model-assisted comparison.
 
 ### P2 — DSH commander, veto, and prequential attribution
 
@@ -162,4 +162,4 @@ P2 exits when every model-assisted decision is cutoff-correct and replayable, un
 <a id="dev-note"></a>
 ## Dev Note
 
-P0 supplies the shared identity and validation foundation; P1 and P2 remain proposed. Existing fixed-tactic results remain research evidence and do not prove that the dynamic selector adds value. Exact router weights, context bucket boundaries, minimum sample rules, and the next sealed date range remain preregistration decisions owned by their implementation changes and Agent Notes.
+P0 and P1 supply the shared identity, conditional evidence, and deterministic routing foundation; P2 remains proposed. Existing fixed-tactic and route results remain research evidence and do not prove that model-assisted selection adds value. The next sealed date range, P2 prompt, model route, and attribution comparison remain preregistration decisions owned by their implementation changes and Agent Notes.

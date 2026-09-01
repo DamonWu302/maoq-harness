@@ -45,6 +45,7 @@
 | [market-strategic-state.md](market-strategic-state.zh.md) | 确定性市场状态、情绪周期、板块战场、证据约束解释与毛选方法归因 |
 | [market-tactic-lab.md](market-tactic-lab.zh.md) | 时点正确的日线研究测量、A 股次一交易日成交、显式成本与模拟持仓 |
 | [market-tactic-eligibility.md](market-tactic-eligibility.zh.md) | 带版本的 P3 战法定义、晋级状态、确定性状态门禁与防守回退 |
+| [market-tactic-routing.md](market-tactic-routing.zh.md) | 成熟结果可见性、不可变条件战绩与确定性前三战法路由 |
 | [spill.md](spill.zh.md) | spill 存储 seam：`SaveTextSpill`、`SpillOwner`/`SpillSource`、`SpillRef`、品牌类型 `SpillLocator` |
 | [workflow.md](workflow.zh.md) | 工作流 seam：`WorkflowStartRequest`、`WorkflowMeta`、`WorkflowRun`/`Result`、`workflow/*` 事件载荷、`WorkflowError` 致命性 |
 | [jobs.md](jobs.zh.md) | 后台任务运行时：品牌化 `JobId`、producer 约定、消费方视图和 `ctx.jobs` 服务行为 |

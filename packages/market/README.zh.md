@@ -30,6 +30,7 @@ market 组把取得的 A 股日线、板块、宽度、情绪和新闻事实转�
 | [`market-strategic-state`](market-strategic-state/README.zh.md) | 计算可回放战略特征并校验证据约束的解释 | 库 |
 | [`market-tactic-lab`](market-tactic-lab/README.zh.md) | 注册历史提供方、计算时点正确的研究特征，并按统一 A 股次日开盘执行策略回放 | `ctx.marketTacticHistory` |
 | [`market-tactic-eligibility`](market-tactic-eligibility/README.zh.md) | 注册 P3 战法，并在个股排序前拒绝未晋级或不适合当前状态的战法 | 库 |
+| [`market-tactic-routing`](market-tactic-routing/README.zh.md) | 持久化成熟条件证据，并生成确定性前三战法名单 | 库 |
 | [`tool-maoq-snapshot`](tool-maoq-snapshot/README.zh.md) | 提供有界快照发现、生成、列表和检查工具 | 工具 |
 | [`tool-maoq-tactic-research`](tool-maoq-tactic-research/README.zh.md) | 提供有界战法历史发现，并且每次只执行一项固定确定性回测 | 工具 |
 
@@ -42,6 +43,7 @@ market 组把取得的 A 股日线、板块、宽度、情绪和新闻事实转�
 - [市场战略状态子系统](../../docs/subsystems/market-strategic-state.zh.md)——确定性标签、证据引用与解释规则。
 - [市场战法实验室子系统](../../docs/subsystems/market-tactic-lab.zh.md)——日线历史测量与统一的真实模拟执行。
 - [市场战法资格子系统](../../docs/subsystems/market-tactic-eligibility.zh.md)——战法晋级状态、确定性门禁与防守回退。
+- [市场战法路由子系统](../../docs/subsystems/market-tactic-routing.zh.md)——符合截止点的条件战绩与确定性路由。
 - [MAOQ 路线图](../../docs/maoq-roadmap.zh.md)——P1 范围和验收标准。
 
 -----

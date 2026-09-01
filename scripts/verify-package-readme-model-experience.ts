@@ -51,6 +51,7 @@ const SENTENCE_MODEL_EXPERIENCE: Readonly<Record<string, SentenceContract>> = {
   'packages/market/market-strategic-state': { kind: 'indirect', reason: 'Model-facing consumers own presentation of the deterministic features and attribution catalog.' },
   'packages/market/market-tactic-lab': { kind: 'none', reason: 'The host-side history registry, feature engine, and paper evaluator register no model-visible context or tool.' },
   'packages/market/market-tactic-eligibility': { kind: 'indirect', reason: 'Model-facing consumers own presentation of deterministic tactic gates and promotion status.' },
+  'packages/market/market-tactic-routing': { kind: 'indirect', reason: 'Model-facing P2 consumers own presentation of the deterministic route; the library invokes no model.' },
   'packages/attachment/attachment': { kind: 'indirect', reason: 'The storage seam delegates model request rendering to provider adapters.' },
   'packages/attachment/attachment-local': { kind: 'indirect', reason: 'The local backend delegates model request rendering to provider adapters.' },
   'packages/shell/shell': { kind: 'indirect', reason: 'The service interface delegates all model rendering to dsh-tool-bash.' },

@@ -276,6 +276,7 @@
     { "path": "./packages/market/market-strategic-state" },
     { "path": "./packages/market/market-tactic-lab" },
     { "path": "./packages/market/market-tactic-eligibility" },
+    { "path": "./packages/market/market-tactic-routing" },
     { "path": "./packages/bundle/base" },
     { "path": "./packages/bundle/headless" },
     { "path": "./packages/bundle/sdk-app" },

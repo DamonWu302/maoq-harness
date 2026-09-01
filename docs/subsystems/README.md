@@ -45,6 +45,7 @@ One page per subsystem of the DeepSeek Harness: what it is, the data structures 
 | [market-strategic-state.md](market-strategic-state.md) | deterministic market regimes, emotion cycles, sector battlefields, evidence-bound interpretation, and Mao method attribution |
 | [market-tactic-lab.md](market-tactic-lab.md) | point-in-time daily research measurements, next-session A-share fills, explicit costs, and paper positions |
 | [market-tactic-eligibility.md](market-tactic-eligibility.md) | versioned P3 tactic definitions, promotion status, deterministic context gates, and the defense fallback |
+| [market-tactic-routing.md](market-tactic-routing.md) | matured outcome visibility, immutable conditional scorecards, and deterministic top-three tactic routing |
 | [spill.md](spill.md) | the spill storage seam: `SaveTextSpill`, `SpillOwner`/`SpillSource`, `SpillRef`, the branded `SpillLocator` |
 | [workflow.md](workflow.md) | the workflow seam: `WorkflowStartRequest`, `WorkflowMeta`, `WorkflowRun`/`Result`, the `workflow/*` event payloads, `WorkflowError` fatality |
 | [jobs.md](jobs.md) | the background-job runtime: branded `JobId`s, the producer contract, consumer views, and `ctx.jobs` service behavior |

@@ -7107,6 +7107,28 @@ importers:
         specifier: workspace:^
         version: link:../market-tactic-eligibility
 
+  packages/market/market-tactic-routing:
+    dependencies:
+      '@deepseek-ai/dsh-util-values':
+        specifier: workspace:^
+        version: link:../../util/values
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@deepseek-ai/dsh-market-snapshot':
+        specifier: workspace:^
+        version: link:../market-snapshot
+      '@deepseek-ai/dsh-market-strategic-state':
+        specifier: workspace:^
+        version: link:../market-strategic-state
+      '@deepseek-ai/dsh-market-tactic-eligibility':
+        specifier: workspace:^
+        version: link:../market-tactic-eligibility
+
   packages/market/tool-maoq-snapshot:
     dependencies:
       '@deepseek-ai/schemastery':

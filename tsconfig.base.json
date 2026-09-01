@@ -385,6 +385,8 @@
       "@deepseek-ai/dsh-market-tactic-eligibility/invariant": ["./packages/market/market-tactic-eligibility/src/invariant.ts"],
       "@deepseek-ai/dsh-market-tactic-lab": ["./packages/market/market-tactic-lab/src"],
       "@deepseek-ai/dsh-market-tactic-lab/invariant": ["./packages/market/market-tactic-lab/src/invariant.ts"],
+      "@deepseek-ai/dsh-market-tactic-routing": ["./packages/market/market-tactic-routing/src"],
+      "@deepseek-ai/dsh-market-tactic-routing/invariant": ["./packages/market/market-tactic-routing/src/invariant.ts"],
       "@deepseek-ai/dsh-mcp-client": ["./packages/mcp/mcp-client/src"],
       "@deepseek-ai/dsh-mcp-client/invariant": ["./packages/mcp/mcp-client/src/invariant.ts"],
       "@deepseek-ai/dsh-message-feedback": ["./packages/feedback/message-feedback/src"],

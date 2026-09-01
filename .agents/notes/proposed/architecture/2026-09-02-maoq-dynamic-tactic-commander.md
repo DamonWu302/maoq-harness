@@ -6,11 +6,11 @@ English | [中文](2026-09-02-maoq-dynamic-tactic-commander.zh.md)
 
 ## Problem
 
-MAOQ has deterministic strategic-state features, a fixed-tactic research lab, and one shared tactic catalog that constrains eligibility and the DSH council. It still has no durable record that conditions tactic performance on the market state knowable at the decision cutoff, and no deterministic router turns that record into a bounded slate. Aggregate multi-year tactic results therefore measure isolated weapons but not whether the commander selected the appropriate weapon.
+MAOQ has deterministic strategic-state features, a fixed-tactic research lab, one shared tactic catalog, a cutoff-correct conditional scorecard, and a deterministic top-three router. It still has no bounded DSH commander that consumes the slate, no host contract that attributes model selection separately from deterministic routing, and no sealed stock-outcome comparison that measures whether model-assisted selection adds value.
 
 ## Proposal
 
-Complete a P3.5 dynamic tactic commander assembled from ordinary focused packages rather than a fork of the agent loop. The implemented P0 foundation makes one catalog own versioned tactic identity, promotion status, context requirements, execution constraints, invalidation, and risk limits; the research lab, eligibility evaluator, and commander schema already consume it. P1 and P2 add the conditional scorecard, deterministic router, bounded DSH selection, replay, and attribution without moving this logic into the agent loop.
+Complete a P3.5 dynamic tactic commander assembled from ordinary focused packages rather than a fork of the agent loop. The implemented P0 foundation makes one catalog own versioned tactic identity, promotion status, context requirements, execution constraints, invalidation, and risk limits. The implemented P1 foundation adds immutable matured outcomes, bounded conditional scorecards, and deterministic routing. P2 adds bounded DSH selection, host validation, replay comparison, and attribution without moving this logic into the agent loop.
 
 The first coverage target will contain ten active tactic families plus `defensive_no_trade`. The router will read only matured, cutoff-correct outcomes and produce a deterministic top-three slate with component scores, uncertainty, rejection reasons, risk ceilings, and a cash floor. The DSH commander may choose at most one primary and one secondary tactic from that slate. Host validation will reject unknown, ineligible, stale, over-budget, or promotion-inconsistent choices before an independent reviewer can approve or veto the result.
 

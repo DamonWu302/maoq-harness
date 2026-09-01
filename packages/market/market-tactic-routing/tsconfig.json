@@ -1,0 +1,15 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../market-snapshot" },
+    { "path": "../market-strategic-state" },
+    { "path": "../market-tactic-eligibility" },
+    { "path": "../../util/values" },
+    { "path": "../../runtime-diagnostics/invariants" }
+  ]
+}

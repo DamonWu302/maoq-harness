@@ -6,7 +6,7 @@ English | [中文](maoq-roadmap.zh.md)
 
 This document turns the MAOQ direction into an executable sequence. The outcome is not a chatbot that discusses stocks, but a research and paper-trading agent that can identify the principal contradiction, select the least-resistance battlefield, choose tactics for the current market state, rank stocks, state invalidation conditions, and accept an independent risk veto.
 
-The current focus is **P3 tactic coverage and P3.5 dynamic routing**. P0 through P2 are complete: full label fixtures, the corrected 12-snapshot/10-evaluation-day production canary, and the current Local Codex route canary are recorded in the [MAOQ operations runbook](maoq-operations.md#p2-canary). The [dynamic tactic commander](maoq-dynamic-tactic-commander.md) defines its own P0-P2 delivery plan: the shared catalog and fail-closed council use are implemented, while conditional routing and model-assisted attribution remain proposed.
+The current focus is **P3 tactic coverage and P3.5 dynamic routing**. Project-level P0 through P2 are complete: full label fixtures, the corrected 12-snapshot/10-evaluation-day production canary, and the current Local Codex route canary are recorded in the [MAOQ operations runbook](maoq-operations.md#p2-canary). The [dynamic tactic commander](maoq-dynamic-tactic-commander.md) defines a separate P0-P2 delivery plan: the shared catalog, conditional scorecard, and deterministic router are implemented, while bounded model-assisted selection and attribution remain proposed.
 
 ## Current baseline
 
@@ -130,7 +130,7 @@ The deterministic layer owns feature definitions, missing-data behavior, classif
 
 ## P3 — Tactical pool
 
-**Status:** in progress. The registry and eligibility path, point-in-time daily-history features, shared A-share next-open execution, content-addressed read-only MySQL history adapter, six fixed research trials, and the P3.5 shared tactic catalog are implemented. Two production-history waves span 969 strictly quality-approved sessions from 2022 through 2025; no active candidate passes promotion and only `defensive_no_trade` is eligible. These aggregate results are weapon records, not evidence that MAOQ can select the correct weapon. The [dynamic tactic commander](maoq-dynamic-tactic-commander.md) owns the implemented catalog foundation and the proposed conditional scorecard, deterministic router, and constrained DSH selection path; see [MAOQ P3 tactic research](maoq-p3-tactic-research.md) for fixed-trial evidence.
+**Status:** in progress. The registry and eligibility path, point-in-time daily-history features, shared A-share next-open execution, content-addressed read-only MySQL history adapter, six fixed research trials, and the P3.5 shared tactic catalog, conditional scorecard, and deterministic top-three router are implemented. Two production-history waves span 969 strictly quality-approved sessions from 2022 through 2025; no active candidate passes promotion and only `defensive_no_trade` is eligible. These aggregate results are weapon records, not evidence that MAOQ can select the correct weapon, and the new router has not yet been evaluated against a sealed stock-outcome stream. The [dynamic tactic commander](maoq-dynamic-tactic-commander.md) owns the implemented P0-P1 foundation and the proposed constrained DSH selection path; see [MAOQ P3 tactic research](maoq-p3-tactic-research.md) for fixed-trial evidence.
 
 | Tactic family | Eligible environment | Primary evidence | Typical invalidation |
 |---|---|---|---|

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/maoq-dynamic-tactic-commander.md
-maoq-dynamic-tactic-commander.md: cb2e8d784c84dde4e000cc044fe51678795c33b9
-maoq-dynamic-tactic-commander.zh.md: a657b6d435db59bd1758937797864d856d0f0cb6
+maoq-dynamic-tactic-commander.md: d7f35ef0c13f14aa09eb6cca7881ee245168e4f8
+maoq-dynamic-tactic-commander.zh.md: 1024b99810779e5f1121e39b5f55d208f88552c1

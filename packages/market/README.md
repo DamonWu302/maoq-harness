@@ -30,6 +30,7 @@ The market group turns acquired A-share daily, sector, breadth, emotion, and new
 | [`market-strategic-state`](market-strategic-state/README.md) | Computes replay-stable strategic features and validates evidence-bound interpretation | library |
 | [`market-tactic-lab`](market-tactic-lab/README.md) | Registers history providers, computes point-in-time research features, and replays one shared A-share next-open execution policy | `ctx.marketTacticHistory` |
 | [`market-tactic-eligibility`](market-tactic-eligibility/README.md) | Registers P3 tactics and rejects unpromoted or context-ineligible tactics before stock ranking | library |
+| [`market-tactic-routing`](market-tactic-routing/README.md) | Persists matured conditional evidence and produces a deterministic top-three tactic slate | library |
 | [`tool-maoq-snapshot`](tool-maoq-snapshot/README.md) | Exposes bounded snapshot discovery, generation, listing, and inspection | tools |
 | [`tool-maoq-tactic-research`](tool-maoq-tactic-research/README.md) | Exposes bounded tactic-history discovery and one fixed deterministic backtest per call | tools |
 
@@ -42,6 +43,7 @@ The market group turns acquired A-share daily, sector, breadth, emotion, and new
 - [Market strategic state subsystem](../../docs/subsystems/market-strategic-state.md) — deterministic labels, evidence references, and interpretation rules.
 - [Market tactic lab subsystem](../../docs/subsystems/market-tactic-lab.md) — daily-history measurements and realistic shared paper execution.
 - [Market tactic eligibility subsystem](../../docs/subsystems/market-tactic-eligibility.md) — tactic promotion status, deterministic gates, and defense fallback.
+- [Market tactic routing subsystem](../../docs/subsystems/market-tactic-routing.md) — cutoff-correct conditional scorecards and deterministic routing.
 - [MAOQ roadmap](../../docs/maoq-roadmap.md) — P1 scope and acceptance criteria.
 
 -----
