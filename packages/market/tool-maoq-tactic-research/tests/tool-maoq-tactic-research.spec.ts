@@ -44,8 +44,19 @@ describe('MAOQ tactic research tools', () => {
     expect(sources.value).toMatchObject({
       sources: [{ adapterName: 'fixture-history', evaluationAllowed: true, minimumStocks: 10, chunkSessions: 32 }],
     })
-    expect((sources.value as { tactics: unknown[] }).tactics).toHaveLength(3)
-    expect((sources.value as { tactics: unknown[] }).tactics[0]).toMatchObject({ tacticId: 'regime_signed_breakout_pullback' })
+    const tactics = (sources.value as {
+      tactics: { tacticId: string; publicEvidence: { evidenceId: string; decisionUse: string }[] }[]
+    }).tactics
+    expect(tactics).toHaveLength(3)
+    expect(tactics[0]).toMatchObject({ tacticId: 'regime_signed_breakout_pullback' })
+    expect(tactics[0]?.publicEvidence).toEqual(expect.arrayContaining([
+      expect.objectContaining({ evidenceId: 'china-factor-momentum-jef-2024', decisionUse: 'architecture-benchmark' }),
+      expect.objectContaining({ evidenceId: 'bigquant-industry-state-rotation-2026', decisionUse: 'hypothesis' }),
+    ]))
+    expect(tactics[1]?.publicEvidence).toEqual(expect.arrayContaining([
+      expect.objectContaining({ evidenceId: 'easyquant-highest-board-negative-control-2026', decisionUse: 'negative-control' }),
+      expect.objectContaining({ evidenceId: 'easyquant-first-board-low-open-2026', decisionUse: 'rejected' }),
+    ]))
 
     const evaluated = await execute('maoq_tactic_backtest', {
       adapterName: 'fixture-history',

@@ -17,18 +17,32 @@ P3 首批包含三个研究候选和一个生产安全对照：
 
 | 候选 | 最有用的公开证据 | 不能证明什么 | MAOQ 结论 |
 |---|---|---|---|
-| 状态签名突破回踩 | 一项覆盖 137 年、67 个市场的趋势研究发现每个市场平均收益为正，单市场毛夏普均值约 0.4；A 股研究发现传统动量强烈依赖市场状态是否延续。 | 期货证据不能证明 A 股个股突破规则，毛夏普也不是扣除 A 股成本后的夏普。 | 市场状态和板块战场是硬门禁。优先首次突破或失效点接近的回踩；拒绝全天候原始动量。 |
+| 状态签名突破回踩 | 一项覆盖 137 年、67 个市场的趋势研究发现每个市场平均收益为正，单市场毛夏普均值约 0.4。一项经过同行评审的 A 股因子动量研究报告了 9.91% 的年化收益和 1.15 的夏普，而签名动量证据表明，市场状态改变时，传统个股动量会改变方向。 | 期货证据不能证明 A 股个股突破规则。1.15 的结果使用十个按月构建的多空因子组合，不是日频只多个股执行。 | 市场状态和板块战场是硬门禁。优先首次突破或失效点接近的回踩；拒绝全天候原始动量。 |
 | 可成交情绪龙头 | 2011–2020 年 A 股研究发现，显著日度动量主要由触及涨跌停股票的次日异常收益贡献；另一项全 A 股高频研究发现，触板次日延续比反转更常见。 | 两者都不能证明交易者能买到封死涨停、能规避 T+1 风险，或能在排队与滑点后获得论文组合收益。 | 必须具备次日可执行价格、板块对应涨跌停规则、炸板风险和容量。一字板信号只能观察，绝不能虚构成交。 |
 | 行业相对超跌修复 | 一项覆盖 64 个国家、1990–2023 年的研究报告：中国行业调整反转月均 0.99%、年化夏普 0.76，普通反转夏普仅 0.31。中国专项研究把短期反向行为与 T+1 联系起来，并在日、周、月频率均发现该效应。 | 标题策略是多空组合，不能证明 MAOQ 所需的日级只做多修复入场。 | 先剔除板块走势，只交易个股独立冲击；必须同时出现抛压衰竭与市场／板块修复，并在 T+1 下验证只做多实现。 |
 
 主要来源：
 
 - Hurst、Ooi 与 Pedersen，[A Century of Evidence on Trend-Following Investing](https://www.aqr.com/-/media/AQR/Documents/Insights/Journal-Article/AQR-JPM-Fall-2017.pdf)。
+- Ma、Liao 与 Jiang，[Factor momentum in the Chinese stock market](https://doi.org/10.1016/j.jempfin.2023.101458)。
 - Gao、Guo 与 Xiong，[Signed momentum in the Chinese stock market](https://doi.org/10.1016/j.pacfin.2020.101433)。
 - 张瑞琪、张兵，[中国股市涨跌幅限制主导日度动量效应](https://xbbjb.cufe.edu.cn/EN/Y2025/V0/I1/59)。
 - Wan 等，[Statistical Properties and Pre-hit Dynamics of Price Limit Hits in the Chinese Stock Markets](https://arxiv.org/abs/1503.03548)。
 - Stosik 与 Zaremba，[Short-term reversal persists globally—If properly measured](https://doi.org/10.1016/j.econlet.2026.113113)。
 - Zhang 与 Zhu，[Only strong short-term contrarian effect exists in Chinese stock market: The role of the T+1 trading mechanism](https://doi.org/10.1016/j.iref.2024.103653)。
+
+## 公开实现审计
+
+公开代码和平台报告有助于发现可执行假设，但其中的夏普属于外部声明，并非 MAOQ 结果。审计会同时保留负面和无法兼容的结果，防止统帅只挑选漂亮数字。
+
+| 公开实现 | 报告结果 | 可复现性限制 | P3 用途 |
+|---|---|---|---|
+| [BigQuant 行业状态轮动](https://mf.bigquant.com/wiki/doc/oGZs02a2Lf) | A 股周频只多，2015-01-06 至 2026-08-12：夏普 1.04，最大回撤 23.87%。 | 公开结果计入手续费但没有滑点，不是独立封存的保留集，并且 595 周中有 380 周空仓。 | 保留为第二轮假设：根据行业排名稳定性选择动量或反转。禁止照搬参数。 |
+| [EasyQuant 最高连板龙头复现](https://github.com/HiRenyi/EasyQuant/blob/main/%E5%9B%9E%E6%B5%8B%E7%BB%93%E6%9E%9C.md) | A 股 2023–2025 复现：夏普 -1.243，最大回撤 92.24%。 | 一次公开平台复现不能构成普遍证明；开盘涨停委托也无法证明排队成交真实。 | 把单独使用连板高度设为负对照。龙头必须同时具备市场、板块、开盘价和容量证据。 |
+| [EasyQuant 首板低开复现](https://github.com/HiRenyi/EasyQuant/blob/main/%E5%9B%9E%E6%B5%8B%E7%BB%93%E6%9E%9C.md) | A 股 2023–2025 复现：夏普 1.187，最大回撤 27.28%。 | 它在 09:30 买入，并在 11:28 或 14:50 退出。当前纯日线约定无法复现该路径，样本也不是封存保留集。 | 拒绝直接采用。保留可检验假设：首板状态和开盘缺口可能比最高连板高度更重要。 |
+| 同一仓库中的首板混合报告 | 报告夏普 2.624，最大回撤 45.78%。 | 报告没有提供足够的战法逻辑以供独立回放，并且使用当前数据约定之外的盘中条件。 | 记录为不可采纳的高夏普声明，不得作为候选或目标。 |
+
+只有在互联网结果明确给出样本、组合方向、频率、成本、执行时点，并提供足够规则解释其与固定 MAOQ 试验的关系时，它才会进入战法注册表。其状态只能是 `hypothesis`、`architecture-benchmark`、`negative-control` 或 `rejected`；任何公开夏普都不能改变晋级状态。`maoq_tactic_research_sources` 会在扫描数据库之前展示已接纳记录及其限制。
 
 ## 为什么公开高夏普不等于战法证明
 

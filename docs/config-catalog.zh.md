@@ -3017,7 +3017,7 @@ export interface Config {
 }
 ```
 
-来源：[`packages/market/tool-maoq-tactic-research/src/index.ts:33`](../packages/market/tool-maoq-tactic-research/src/index.ts)
+来源：[`packages/market/tool-maoq-tactic-research/src/index.ts:34`](../packages/market/tool-maoq-tactic-research/src/index.ts)
 
 <a id="deepseek-aidsh-tool-pwsh"></a>
 

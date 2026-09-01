@@ -5,6 +5,7 @@ import z from '@deepseek-ai/schemastery'
 import {
   DEFAULT_RESEARCH_TACTIC_BACKTEST_CONFIGS,
   evaluateResearchTacticHistory,
+  PUBLIC_TACTIC_EVIDENCE,
   RESEARCH_TACTIC_VERSIONS,
   type ResearchTacticHistoryEvaluation,
   type ResearchTacticId,
@@ -212,6 +213,7 @@ export function apply(ctx: Context, config: Config): void {
         tacticId,
         tacticVersion: RESEARCH_TACTIC_VERSIONS[tacticId],
         backtestConfig: DEFAULT_RESEARCH_TACTIC_BACKTEST_CONFIGS[tacticId],
+        publicEvidence: PUBLIC_TACTIC_EVIDENCE.filter(item => item.tacticId === tacticId),
       })) as unknown as JsonValue,
     }),
     presentCall: () => presentCall('MAOQ tactic research sources'),

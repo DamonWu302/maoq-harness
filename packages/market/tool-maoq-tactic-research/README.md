@@ -59,7 +59,7 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-`maoq_tactic_research_sources` lists registered history sources and all three fixed tactic versions without scanning the database. `maoq_tactic_backtest` accepts one allowed source, one fixed tactic id, and an inclusive date range. The tool enforces deployment-owned quality and range limits, streams the selected adapter once, and returns counts, performance statistics, folds, recent non-empty candidate signals, content hashes, and promotion blockers rather than the full equity curve or all market rows.
+`maoq_tactic_research_sources` lists registered history sources, all three fixed tactic versions, and audited public benchmarks without scanning the database. Every benchmark retains its sample, portfolio frequency, reported Sharpe, decision use, and non-comparability limits; none changes promotion status. `maoq_tactic_backtest` accepts one allowed source, one fixed tactic id, and an inclusive date range. The tool enforces deployment-owned quality and range limits, streams the selected adapter once, and returns counts, performance statistics, folds, recent non-empty candidate signals, content hashes, and promotion blockers rather than the full equity curve or all market rows.
 
 The model cannot lower the stock-count floor, enlarge chunks or date ranges, change portfolio construction, tune signal thresholds, or remove the doubled-cost replay. Cancellation stops before the next history chunk; a database query already in progress depends on its provider to return before the tool can observe cancellation.
 

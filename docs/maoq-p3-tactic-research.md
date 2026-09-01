@@ -17,18 +17,32 @@ The first three begin with `research` promotion status. An LLM may explain them 
 
 | Candidate | Strongest useful public evidence | What it does not prove | MAOQ consequence |
 |---|---|---|---|
-| Regime-signed breakout/pullback | A 137-year, 67-market trend study reports positive average returns in every market and an average per-market gross Sharpe near 0.4; an A-share study finds conventional momentum depends strongly on whether the market state persists or changes. | Futures evidence does not prove an individual-stock A-share breakout rule, and gross Sharpe is not net A-share Sharpe. | Market regime and sector battlefield are hard gates. Prefer a first breakout or a pullback with nearby invalidation; reject a raw all-weather momentum rule. |
+| Regime-signed breakout/pullback | A 137-year, 67-market trend study reports positive average returns in every market and an average per-market gross Sharpe near 0.4. A peer-reviewed A-share factor-momentum study reports 9.91% annualized return and 1.15 Sharpe, while signed-momentum evidence shows that conventional stock momentum changes sign when the market state changes. | Futures evidence does not prove an individual-stock A-share breakout. The 1.15 result uses ten monthly long-short factor portfolios, not daily long-only stock execution. | Market regime and sector battlefield are hard gates. Prefer a first breakout or a pullback with nearby invalidation; reject a raw all-weather momentum rule. |
 | Openable emotion leader | A 2011–2020 A-share study finds significant daily momentum is dominated by next-day abnormal returns after price-limit hits. A separate all-A-share high-frequency study finds next-day continuation more likely than reversal after a limit hit. | Neither result proves that a trader can buy a sealed limit-up, survive T+1, or obtain the reported portfolio return after realistic queueing and slippage. | Require an executable next-session price, board-specific limit rules, failed-board risk, and capacity. A sealed-board signal is observation, never a fill. |
 | Industry-relative exhaustion repair | A 64-country 1990–2023 study reports China industry-adjusted reversal at 0.99% per month and annualized Sharpe 0.76 versus 0.31 for standard reversal. A China-specific study links short-term contrarian behavior to T+1 and finds it at daily, weekly, and monthly frequencies. | The headline strategy is long-short and does not prove the long-only daily repair entry MAOQ needs. | Remove the sector move first, demand selling exhaustion plus market/sector repair, and validate a long-only implementation under T+1. |
 
 Primary sources:
 
 - Hurst, Ooi, and Pedersen, [A Century of Evidence on Trend-Following Investing](https://www.aqr.com/-/media/AQR/Documents/Insights/Journal-Article/AQR-JPM-Fall-2017.pdf).
+- Ma, Liao, and Jiang, [Factor momentum in the Chinese stock market](https://doi.org/10.1016/j.jempfin.2023.101458).
 - Gao, Guo, and Xiong, [Signed momentum in the Chinese stock market](https://doi.org/10.1016/j.pacfin.2020.101433).
 - Zhang and Zhang, [Price Limit Dominates Daily Momentum Effect in the Chinese Stock Market](https://xbbjb.cufe.edu.cn/EN/Y2025/V0/I1/59).
 - Wan et al., [Statistical Properties and Pre-hit Dynamics of Price Limit Hits in the Chinese Stock Markets](https://arxiv.org/abs/1503.03548).
 - Stosik and Zaremba, [Short-term reversal persists globally—If properly measured](https://doi.org/10.1016/j.econlet.2026.113113).
 - Zhang and Zhu, [Only strong short-term contrarian effect exists in Chinese stock market: The role of the T+1 trading mechanism](https://doi.org/10.1016/j.iref.2024.103653).
+
+## Public implementation audit
+
+Public code and platform reports help identify executable hypotheses, but their Sharpe values are external claims rather than MAOQ results. The audit keeps adverse and incompatible results so the commander cannot cherry-pick only attractive numbers.
+
+| Public implementation | Reported result | Reproducibility limits | P3 use |
+|---|---|---|---|
+| [BigQuant industry-state rotation](https://mf.bigquant.com/wiki/doc/oGZs02a2Lf) | A-share weekly long-only, 2015-01-06 through 2026-08-12: Sharpe 1.04, maximum drawdown 23.87%. | The published result uses fees but no slippage, is not an independently sealed holdout, and stays in cash for 380 of 595 weeks. | Retain as a second-wave hypothesis: use industry-rank stability to choose momentum versus reversal. Do not copy its parameters. |
+| [EasyQuant highest-board leader replication](https://github.com/HiRenyi/EasyQuant/blob/main/%E5%9B%9E%E6%B5%8B%E7%BB%93%E6%9E%9C.md) | A-share 2023–2025 replication: Sharpe -1.243 and maximum drawdown 92.24%. | One public platform replication is not universal proof; opening limit orders also do not establish realistic queue fills. | Make board height alone a negative control. A leader requires market, sector, opening-price, and capacity evidence. |
+| [EasyQuant first-board low-open replication](https://github.com/HiRenyi/EasyQuant/blob/main/%E5%9B%9E%E6%B5%8B%E7%BB%93%E6%9E%9C.md) | A-share 2023–2025 replication: Sharpe 1.187 and maximum drawdown 27.28%. | It buys at 09:30 and exits at 11:28 or 14:50. The current daily-only contract cannot reproduce that path, and the sample is not a sealed holdout. | Reject direct adoption. Preserve the testable hypothesis that first-board state and opening gap matter more than maximum board height. |
+| The same repository's first-board mixed report | Reported Sharpe 2.624 with maximum drawdown 45.78%. | The report does not provide enough strategy logic for an independent replay and uses intraday conditions outside the current data contract. | Record as an inadmissible high-Sharpe claim, not as a candidate or target. |
+
+An internet result enters the tactic registry only when it names the sample, portfolio direction, frequency, costs, execution timing, and enough rules to explain its relationship to a fixed MAOQ trial. It remains `hypothesis`, `architecture-benchmark`, `negative-control`, or `rejected`; no public Sharpe can change promotion status. `maoq_tactic_research_sources` exposes the accepted records and their limitations before a database scan.
 
 ## Why published high Sharpe numbers are not tactic proof
 
