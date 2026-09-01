@@ -58,7 +58,7 @@ export interface Config {
   dailyStateMaximumAgeHours?: number
   /** Whether a live root Agent maintains the post-close daily state automatically (default false). */
   autoDailyRefresh?: boolean
-  /** Shanghai-market clock time for the first automatic attempt (default `15:35`). */
+  /** Shanghai-market clock time for the first automatic attempt (default `19:15`). */
   dailyRefreshTime?: string
   /** Minutes between cheap snapshot checks after the first attempt (default 15). */
   dailyRefreshRetryMinutes?: number
@@ -77,7 +77,7 @@ export const Config: z<Config> = z.object({
   maxSnapshotFiles: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(500),
   dailyStateMaximumAgeHours: z.number().min(0).max(Number.MAX_SAFE_INTEGER).default(24),
   autoDailyRefresh: z.boolean().default(false),
-  dailyRefreshTime: z.string().pattern(/^\d{2}:\d{2}$/).default('15:35'),
+  dailyRefreshTime: z.string().pattern(/^\d{2}:\d{2}$/).default('19:15'),
   dailyRefreshRetryMinutes: z.number().step(1).min(1).max(480).default(15),
   dailyRefreshWindowMinutes: z.number().step(1).min(0).max(480).default(120),
 })
@@ -273,7 +273,7 @@ function resolveConfig(config: Config): ResolvedConfig {
   const maxSnapshotFiles = config.maxSnapshotFiles ?? 500
   const dailyStateMaximumAgeHours = config.dailyStateMaximumAgeHours ?? 24
   const autoDailyRefresh = config.autoDailyRefresh ?? false
-  const dailyRefreshTime = config.dailyRefreshTime ?? '15:35'
+  const dailyRefreshTime = config.dailyRefreshTime ?? '19:15'
   const dailyRefreshRetryMinutes = config.dailyRefreshRetryMinutes ?? 15
   const dailyRefreshWindowMinutes = config.dailyRefreshWindowMinutes ?? 120
   if (subagentProvider.length === 0 || subagentProvider !== subagentProvider.trim()) {

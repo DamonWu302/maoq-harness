@@ -44,7 +44,7 @@ kind: "package-reference"
 | `maxSnapshotFiles` | `500` | 为核验最新可用市场输入而扫描的不可变快照上限。 |
 | `dailyStateMaximumAgeHours` | `24` | 宿主拥有的每日标准状态最大时效。 |
 | `autoDailyRefresh` | `false` | 让未来创建的实时根 Agent 在收盘后维护规范化状态。 |
-| `dailyRefreshTime` | `15:35` | 固定 `Asia/Shanghai` 市场时区中的首次自动检查时间。 |
+| `dailyRefreshTime` | `19:15` | 上游 19:00 日线更新后，在固定 `Asia/Shanghai` 市场时区中的首次自动检查时间。 |
 | `dailyRefreshRetryMinutes` | `15` | 刷新窗口内低成本快照检查的间隔。 |
 | `dailyRefreshWindowMinutes` | `120` | 接受延迟或同日修订快照的时间窗口。 |
 

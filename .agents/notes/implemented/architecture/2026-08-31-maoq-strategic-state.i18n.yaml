@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-31-maoq-strategic-state.md
-2026-08-31-maoq-strategic-state.md: cdbe89b6f8af92bf11d8cdc377e452dd54bdd751
-2026-08-31-maoq-strategic-state.zh.md: a37e33be72b08d27e3f517412435be6bc777095b
+2026-08-31-maoq-strategic-state.md: 4add3d62c8b5d7b4377eb6fb79b81281512a0297
+2026-08-31-maoq-strategic-state.zh.md: 563d0ea008be590e360e8dc7f85405077fe4ca59

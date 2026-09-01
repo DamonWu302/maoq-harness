@@ -74,7 +74,7 @@ describe('@deepseek-ai/dsh-maoq-app', () => {
       maxSnapshotFiles: 500,
       dailyStateMaximumAgeHours: 24,
       autoDailyRefresh: true,
-      dailyRefreshTime: '15:35',
+      dailyRefreshTime: '19:15',
       dailyRefreshRetryMinutes: 15,
       dailyRefreshWindowMinutes: 120,
     })

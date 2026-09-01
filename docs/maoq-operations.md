@@ -110,6 +110,8 @@ After this check passes, refresh one latest canonical daily state in MAOQ. Confi
 
 The final 2026-09-01 Local Codex canary used quick mode over the current mapping-v2 snapshot, started two children, returned a binding `vetoed` / non-actionable result, and reported 61,125 input, 3,286 output, and 64,411 total tokens with zero unavailable calls. The bounded model projection reduced total child usage by about 74% from the earlier full-sector prompt while the persisted result retained all 31 sector features. Exact refreshes of the same identity reuse the mirror with `agentsStarted: 0`.
 
+Production daily bars begin their automatic update at 19:00 Asia/Shanghai. MAOQ therefore makes its first formal snapshot check at 19:15, retries only the cheap identity check every 15 minutes through the two-hour revision window, and starts strategic agents only after a usable same-day immutable hash appears. A 19:00 timer must never assume the update is complete.
+
 ### P2 acceptance evidence
 
 | P2 property | Automated evidence | Production evidence |

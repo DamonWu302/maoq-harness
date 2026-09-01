@@ -2955,7 +2955,7 @@ export interface Config {
   dailyStateMaximumAgeHours?: number
   /** Whether a live root Agent maintains the post-close daily state automatically (default false). */
   autoDailyRefresh?: boolean
-  /** Shanghai-market clock time for the first automatic attempt (default `15:35`). */
+  /** Shanghai-market clock time for the first automatic attempt (default `19:15`). */
   dailyRefreshTime?: string
   /** Minutes between cheap snapshot checks after the first attempt (default 15). */
   dailyRefreshRetryMinutes?: number

@@ -44,7 +44,7 @@ The strategic result stores deterministic features separately from interpretatio
 | `maxSnapshotFiles` | `500` | Maximum immutable snapshots scanned to verify the newest usable market input. |
 | `dailyStateMaximumAgeHours` | `24` | Host-owned maximum age of a canonical daily state. |
 | `autoDailyRefresh` | `false` | Let a future live root Agent maintain the canonical state after close. |
-| `dailyRefreshTime` | `15:35` | First automatic attempt in the fixed `Asia/Shanghai` market zone. |
+| `dailyRefreshTime` | `19:15` | First automatic attempt after the upstream 19:00 daily-bar update in the fixed `Asia/Shanghai` market zone. |
 | `dailyRefreshRetryMinutes` | `15` | Interval between cheap snapshot checks inside the refresh window. |
 | `dailyRefreshWindowMinutes` | `120` | Window that accepts a late or revised same-day snapshot. |
 
