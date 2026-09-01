@@ -1525,7 +1525,7 @@ export interface Config {
 }
 ```
 
-来源：[`packages/market/market-snapshot-mysql/src/index.ts:14`](../packages/market/market-snapshot-mysql/src/index.ts)
+来源：[`packages/market/market-snapshot-mysql/src/index.ts:20`](../packages/market/market-snapshot-mysql/src/index.ts)
 
 <a id="deepseek-aidsh-mcp-client"></a>
 

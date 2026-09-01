@@ -1523,7 +1523,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/market/market-snapshot-mysql/src/index.ts:15`](../packages/market/market-snapshot-mysql/src/index.ts)
+Source: [`packages/market/market-snapshot-mysql/src/index.ts:20`](../packages/market/market-snapshot-mysql/src/index.ts)
 
 <a id="deepseek-aidsh-mcp-client"></a>
 

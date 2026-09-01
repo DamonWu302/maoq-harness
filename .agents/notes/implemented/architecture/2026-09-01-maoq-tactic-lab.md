@@ -14,7 +14,7 @@ Published tactic returns are not comparable when each implementation chooses its
 
 `simulateNextOpenExecution()` receives a separate unadjusted sequence with exact up/down limits, treats every signal date as an after-close decision, and attempts one fill at the next market session's raw open. It applies explicit board lots, cash, acquisition-date lots, T+1 sellability, suspension and delisting rejection, opening price-limit rejection, side-aware slippage, commission, sell stamp duty, transfer fees, and final raw-close marks. An unfilled order never carries forward to a later favorable session.
 
-Current daily decisions continue to use full immutable market snapshots, whose stock prices are already adjusted. Historical research will use a future read-only MySQL adapter to freeze both an adjusted feature sequence and a raw execution sequence from the same daily, adjustment, limit, quality, and point-in-time sector tables.
+Current daily decisions continue to use full immutable market snapshots, whose stock prices are already adjusted. Historical research reads the existing production tables through `LongShortStockTacticHistoryAdapter`. It streams content-addressed bounded chunks that pair an adjusted feature sequence with a raw execution sequence from the same daily, adjustment, limit, quality, and point-in-time sector facts. Required joins must preserve every selected daily-price row.
 
 ## Alternatives considered
 
@@ -28,8 +28,8 @@ Current daily decisions continue to use full immutable market snapshots, whose s
 - All three initial tactic candidates can be compared on identical measurement and execution semantics.
 - Corporate actions do not create false feature returns, while fills and equity marks remain raw and executable.
 - Daily-only research still cannot claim intraday stops, queue priority, or auction fills.
-- Real Sharpe and promotion evidence remain incomplete until the production history adapter and walk-forward evaluator are implemented and run.
+- Real Sharpe and promotion evidence remain incomplete until a runtime consumer mounts the history adapter and the walk-forward evaluator is implemented and run.
 
 ## Verification
 
-Gold tests cover 252-session features, adjustment-factor continuity, missing sessions, sector changes, next-session timing, both-side costs, opening limit-up rejection, suspension, invalid lots, duplicate orders, cash, positions, and immutable results.
+Gold tests cover content-addressed chunk stability and corruption rejection, adjusted-feature/raw-execution separation, required-join row preservation, point-in-time sectors, 252-session features, adjustment-factor continuity, missing sessions, sector changes, next-session timing, both-side costs, opening limit-up rejection, suspension, invalid lots, duplicate orders, cash, positions, and immutable results.

@@ -8,6 +8,8 @@ export const TACTIC_LAB_FEATURE_ENGINE_VERSION = 'maoq-daily-history-v1' as cons
 export const TACTIC_LAB_EXECUTION_SCHEMA_VERSION = 1 as const
 /** Current execution implementation identity. */
 export const TACTIC_LAB_EXECUTION_ENGINE_VERSION = 'maoq-a-share-next-open-v1' as const
+/** Current content-addressed history-chunk schema. */
+export const TACTIC_LAB_HISTORY_CHUNK_SCHEMA_VERSION = 1 as const
 
 /** Deterministic daily measurements for one stock at one immutable cutoff. */
 export interface DailyStockResearchFeatures {
@@ -148,3 +150,33 @@ export interface DailyExecutionResult {
 
 /** Immutable snapshot input accepted by the feature engine. */
 export type DailyHistorySnapshot = Pick<MarketSnapshot, 'identity' | 'stocks' | 'sectors'>
+
+/** Bounded provider-neutral request for complete daily research sessions. */
+export interface TacticLabHistoryRequest {
+  readonly startDate: string
+  readonly endDate: string
+  readonly chunkSessions: number
+  readonly minimumStocks: number
+}
+
+/** Unhashed complete session chunk returned by one history adapter. */
+export interface TacticLabHistoryChunkDraft {
+  readonly adapterVersion: string
+  readonly sourceVersions: readonly string[]
+  readonly featureSessions: readonly DailyHistorySnapshot[]
+  readonly executionSessions: readonly DailyExecutionSession[]
+}
+
+/** Immutable, content-addressed history chunk used by streaming evaluators. */
+export interface TacticLabHistoryChunk extends TacticLabHistoryChunkDraft {
+  readonly schemaVersion: typeof TACTIC_LAB_HISTORY_CHUNK_SCHEMA_VERSION
+  readonly startDate: string
+  readonly endDate: string
+  readonly contentHash: string
+}
+
+/** Streaming history source; callers never need the full multi-year universe in memory. */
+export interface TacticLabHistoryAdapter {
+  readonly name: string
+  load(request: TacticLabHistoryRequest): AsyncIterable<TacticLabHistoryChunk>
+}

@@ -4,6 +4,12 @@ English | [中文](market-tactic-lab.zh.md)
 
 The market tactic lab subsystem supplies the point-in-time measurements and one shared paper-execution truth needed to compare P3 tactics. It sits after immutable daily acquisition and before walk-forward performance evaluation. The implementation lives in [`@deepseek-ai/dsh-market-tactic-lab`](../../packages/market/market-tactic-lab/README.md).
 
+## Historical chunks
+
+`TacticLabHistoryAdapter.load()` streams caller-bounded, strictly ascending `TacticLabHistoryChunk` values for an inclusive date range. Each chunk contains one adjusted feature session and one raw execution session for every date. Construction rejects empty input, mismatched dates, nonascending sessions, and invalid session hashes; it sorts source versions and hashes the canonical chunk body. Persisted chunks can therefore be verified and cited without loading the complete research period.
+
+The production implementation in [`@deepseek-ai/dsh-market-snapshot-mysql`](../../packages/market/market-snapshot-mysql/README.md) selects only quality-approved dates. Required adjustment, turnover, and price-limit joins must preserve the daily-price row count. It applies HFQ only to feature prices, retains raw executable prices and exact limits separately, and chooses SW L1 membership effective on each trading date.
+
 ## Daily-history features
 
 `computeDailyHistoryFeatures()` sorts immutable daily inputs, rejects duplicate trading dates or invalid content hashes, and computes features only at the newest supplied cutoff. Snapshot stock prices are already adjusted and are used as-is; volume and amount remain raw. Complete session windows produce 1-, 5-, 20-, and 60-session adjusted returns, 20- and 252-session distance from adjusted highs, turnover and amount means, limit-up counts and streaks, and 5- and 20-session sector-relative returns. Sector returns compound daily relative levels rather than dividing them as though they were a continuous index.
@@ -18,4 +24,4 @@ The fill price applies side-aware slippage and remains inside the observed daily
 
 ## Research boundary
 
-The package neither generates tactic signals nor reports Sharpe. This separation forces regime-signed trend, openable emotion-leader, and industry-relative repair research to share identical feature and execution semantics. A later MySQL history adapter will freeze the production daily tables into lightweight sessions, and the evaluator will own walk-forward folds, realistic capacity, multiple-testing controls, and promotion artifacts.
+The package neither generates tactic signals nor reports Sharpe. This separation forces regime-signed trend, openable emotion-leader, and industry-relative repair research to share identical feature and execution semantics. The evaluator owns walk-forward folds, realistic capacity, multiple-testing controls, and promotion artifacts; the runtime history consumer is a separate pending capability.

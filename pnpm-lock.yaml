@@ -7046,6 +7046,9 @@ importers:
       '@deepseek-ai/dsh-market-snapshot':
         specifier: workspace:^
         version: link:../market-snapshot
+      '@deepseek-ai/dsh-market-tactic-lab':
+        specifier: workspace:^
+        version: link:../market-tactic-lab
 
   packages/market/market-strategic-state:
     dependencies:

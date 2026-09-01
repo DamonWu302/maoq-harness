@@ -10,6 +10,11 @@ import { LongShortStockMysqlAdapter, type MarketSnapshotQuery } from './adapter.
 
 export { LongShortStockMysqlAdapter, MarketSnapshotMysqlError } from './adapter.ts'
 export type { MarketSnapshotQuery } from './adapter.ts'
+export {
+  LONG_SHORT_STOCK_HISTORY_MAPPING_VERSION,
+  LongShortStockTacticHistoryAdapter,
+  MarketTacticHistoryMysqlError,
+} from './history-adapter.ts'
 
 /** Read-only database endpoint and quality thresholds. */
 export interface Config {

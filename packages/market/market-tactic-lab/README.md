@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-market-tactic-lab` supplies the common measurement and execution foundation for MAOQ tactic research. It computes adjusted returns, high proximity, sector-relative returns, liquidity, turnover, and limit-up history from immutable daily sessions. A separate replay fills close-authored orders only at the next market session's open under explicit A-share lot, T+1, suspension, opening-price-limit, commission, stamp-duty, transfer-fee, and slippage rules.
+`dsh-market-tactic-lab` supplies the common measurement and execution foundation for MAOQ tactic research. It content-addresses bounded pairs of adjusted feature sessions and raw execution sessions, computes daily research features, and replays close-authored orders only at the next market session's open under explicit A-share trading rules and costs.
 
 ## Table of Contents
 
@@ -30,6 +30,8 @@ Pass ordered or unordered immutable daily sessions to `computeDailyHistoryFeatur
 ```text
 const features = computeDailyHistoryFeatures(snapshots)
 ```
+
+History providers implement `TacticLabHistoryAdapter` and stream bounded `TacticLabHistoryChunk` values. `buildTacticLabHistoryChunk()` validates one-to-one date pairing, sorts source versions, records the inclusive range, and freezes a SHA-256 content address so evaluators can cite exact inputs without holding a multi-year universe in memory.
 
 Pass a separate raw, unadjusted execution sequence with exact daily up/down limits and close-authored orders to `simulateNextOpenExecution()`. The default policy starts with paper cash and conservative explicit costs. An order fills once on the next market session or records one stable rejection reason.
 
@@ -76,7 +78,7 @@ None. A later consumer owns any selected feature or result rendered to a model.
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- **No historical acquisition adapter yet** — production backtests still need a read-only MySQL adapter that freezes both adjusted feature sessions and raw execution sessions from the existing daily tables.
+- **No runtime history consumer yet** — `dsh-market-snapshot-mysql` supplies the read-only production adapter, but the evaluator and model-facing research tool do not mount it yet.
 - **One next-open order style** — intraday stops, auctions, queue priority, and volume participation need separate versioned execution policies.
 - **No portfolio optimizer** — the replay enforces cash and positions but does not choose weights, tactics, or orders.
 - **No performance statistics** — walk-forward folds, Sharpe, deflated Sharpe, PBO, drawdown, and capacity reports belong to the next evaluation layer.

@@ -5,12 +5,14 @@ import type {
 } from '@deepseek-ai/dsh-market-snapshot'
 import { describe, expect, it } from 'vitest'
 import {
+  buildTacticLabHistoryChunk,
   computeDailyHistoryFeatures,
   DEFAULT_A_SHARE_EXECUTION_POLICY,
   simulateNextOpenExecution,
   type DailyExecutionBar,
   type DailyExecutionSession,
   type DailyHistorySnapshot,
+  verifyTacticLabHistoryChunk,
 } from '../src/index.ts'
 
 function dateAt(index: number): string {
@@ -122,6 +124,94 @@ function executionSession(index: number, overrides: Partial<DailyExecutionBar> =
 }
 
 describe('daily history research features', () => {
+  it('content-addresses paired feature and raw-execution chunks', () => {
+    const chunk = buildTacticLabHistoryChunk({
+      adapterVersion: 'fixture-v1',
+      sourceVersions: ['price:v1', 'adjustment:v1'],
+      featureSessions: [snapshot(0), snapshot(1)],
+      executionSessions: [executionSession(0), executionSession(1)],
+    })
+    expect(chunk.startDate).toBe(dateAt(0))
+    expect(chunk.endDate).toBe(dateAt(1))
+    expect(chunk.contentHash).toMatch(/^[a-f0-9]{64}$/u)
+    expect(() => {
+      verifyTacticLabHistoryChunk(chunk)
+    }).not.toThrow()
+    expect(() => {
+      verifyTacticLabHistoryChunk({ ...chunk, contentHash: 'a'.repeat(64) })
+    })
+      .toThrow(/content hash mismatch/)
+  })
+
+  it('rejects malformed or unpaired history chunks', () => {
+    const firstFeature = snapshot(0)
+    const firstExecution = executionSession(0)
+    const cases = [
+      {
+        draft: { adapterVersion: '', sourceVersions: [], featureSessions: [firstFeature], executionSessions: [firstExecution] },
+        message: /adapterVersion must not be empty/,
+      },
+      {
+        draft: { adapterVersion: 'fixture', sourceVersions: [], featureSessions: [], executionSessions: [] },
+        message: /featureSessions must not be empty/,
+      },
+      {
+        draft: { adapterVersion: 'fixture', sourceVersions: [], featureSessions: [firstFeature], executionSessions: [] },
+        message: /session counts differ/,
+      },
+      {
+        draft: {
+          adapterVersion: 'fixture',
+          sourceVersions: [],
+          featureSessions: [undefined] as unknown as DailyHistorySnapshot[],
+          executionSessions: [firstExecution],
+        },
+        message: /session pairing is incomplete/,
+      },
+      {
+        draft: {
+          adapterVersion: 'fixture',
+          sourceVersions: [],
+          featureSessions: [firstFeature],
+          executionSessions: [executionSession(1)],
+        },
+        message: /feature and execution dates differ/,
+      },
+      {
+        draft: {
+          adapterVersion: 'fixture',
+          sourceVersions: [],
+          featureSessions: [snapshot(1), snapshot(0)],
+          executionSessions: [executionSession(1), executionSession(0)],
+        },
+        message: /not strictly ascending/,
+      },
+      {
+        draft: {
+          adapterVersion: 'fixture',
+          sourceVersions: [],
+          featureSessions: [{ ...firstFeature, identity: { ...firstFeature.identity, contentHash: 'invalid' } }],
+          executionSessions: [firstExecution],
+        },
+        message: /invalid session hash/,
+      },
+      {
+        draft: {
+          adapterVersion: 'fixture',
+          sourceVersions: [],
+          featureSessions: [firstFeature],
+          executionSessions: [{ ...firstExecution, contentHash: 'invalid' }],
+        },
+        message: /invalid session hash/,
+      },
+    ] as const
+    for (const testCase of cases) {
+      expect(() => {
+        buildTacticLabHistoryChunk(testCase.draft)
+      }).toThrow(testCase.message)
+    }
+  })
+
   it('computes adjusted, sector-relative, liquidity, high-distance, and emotion measurements', () => {
     const snapshots = Array.from({ length: 252 }, (_, index) => snapshot(index, {
       limitStatus: index >= 249 ? 'limit-up' : 'none',

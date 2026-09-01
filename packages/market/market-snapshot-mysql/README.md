@@ -60,6 +60,8 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 
 `discoverIdentity()` reads the dated quality decision and exact maximum fetch versions. It also binds the adapter's mapping version so a field-semantics correction creates a new immutable identity instead of colliding with an older artifact. `load()` repeats the version check, uses parameterized SELECT-only SQL, requires the joined price count to equal the quality count, converts turnover percent to a ratio, and stores index close-to-previous-close change as a decimal ratio (`0.01` means 1%) while applying HFQ only to stock prices. When price-limit `pre_close` is absent, the identity binds the previous-price version and the adapter uses the stock's previous session raw close. A new listing without a previous bar stays visible with `pre-close-unavailable-no-history` and is excluded from return-derived facts. Sector bars are equal-weight `raw price / pre-close` indices over the latest effective SW L1 membership. Emotion facts require the configured number of prior sessions with complete price and price-limit coverage; no model labels or stock ranking enter this package.
 
+`LongShortStockTacticHistoryAdapter` reads an inclusive quality-approved date range in caller-bounded chunks. Every source price row must survive the required adjustment, turnover, and price-limit joins. Each chunk pairs HFQ feature sessions with separate raw bars and exact price limits, applies point-in-time SW L1 membership, binds source and mapping versions, and receives a stable content hash. The adapter is read-only and streams chunks; it neither ranks stocks nor retains the complete range in memory.
+
 </details>
 
 -----
@@ -69,6 +71,7 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 
 - [Market snapshot service](../market-snapshot/README.md) — validation and immutable storage.
 - [Market snapshot subsystem](../../../docs/subsystems/market-snapshot.md) — temporal semantics and source rules.
+- [Market tactic lab subsystem](../../../docs/subsystems/market-tactic-lab.md) — historical chunk, feature, and execution semantics.
 
 -----
 

@@ -9,7 +9,7 @@ kind: "package-library"
 
 ## 概述
 
-`dsh-market-tactic-lab` 为 MAOQ 战法研究提供统一的测量和执行基础。它从不可变日线交易时段计算复权收益、距高点位置、板块相对收益、流动性、换手和涨停历史。另一套回放只允许收盘后生成的订单在次一市场交易时段开盘成交，并显式执行 A 股整手、T+1、停牌、开盘涨跌停、佣金、印花税、过户费和滑点规则。
+`dsh-market-tactic-lab` 为 MAOQ 战法研究提供统一的测量和执行基础。它为有界的复权特征交易时段与原始执行交易时段对生成内容地址，计算日线研究特征，并且只允许收盘后生成的订单在次一市场交易时段开盘成交，同时显式执行 A 股交易规则和成本。
 
 ## 目录
 
@@ -30,6 +30,8 @@ kind: "package-library"
 ```text
 const features = computeDailyHistoryFeatures(snapshots)
 ```
+
+历史提供方实现 `TacticLabHistoryAdapter`，并以流式方式返回有界 `TacticLabHistoryChunk`。`buildTacticLabHistoryChunk()` 校验日期一一对应关系，对来源版本排序，记录首尾日期，并冻结 SHA-256 内容地址，使评估器无需把多年全市场数据全部保存在内存中，也能引用精确输入。
 
 请把另一份包含每日精确涨跌停价的未复权原始执行序列，以及收盘后生成的订单传给 `simulateNextOpenExecution()`。默认策略从模拟现金开始，并采用保守的显式成本。订单只在次一市场交易时段尝试一次成交，否则记录一个稳定拒绝原因。
 
@@ -76,7 +78,7 @@ const result = simulateNextOpenExecution(snapshots, orders)
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- **尚无历史取得适配器**——生产回测仍需一个 MySQL 只读适配器，从既有日线表同时冻结复权特征交易时段和未复权执行交易时段。
+- **尚无运行时历史消费方**——`dsh-market-snapshot-mysql` 已提供生产只读适配器，但评估器与模型可见研究工具尚未挂载它。
 - **只有一种次日开盘订单**——盘中止损、集合竞价、排队优先级和成交量参与需要独立的带版本执行策略。
 - **没有组合优化器**——回放强制执行现金与持仓约束，但不选择权重、战法或订单。
 - **没有绩效统计**——walk-forward 折、夏普、Deflated Sharpe、PBO、回撤和容量报告属于下一评估层。
