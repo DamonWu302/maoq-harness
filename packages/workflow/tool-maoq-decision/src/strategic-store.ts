@@ -5,7 +5,9 @@ import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { MaoqAnalysisMode } from './index.ts'
 
 const HASH_PATTERN = /^[a-f0-9]{64}$/
+/** Current durable strategic-decision record version. */
 export const STRATEGIC_DECISION_SCHEMA_VERSION = 1 as const
+/** Workflow implementation identity included in every decision ID. */
 export const STRATEGIC_WORKFLOW_VERSION = 'maoq-strategic-workflow-v1' as const
 
 /** Exact inputs that make one strategic decision reusable. */
@@ -63,6 +65,7 @@ export interface StrategicDecisionSummary {
   readonly riskVerdict: string
 }
 
+/** Exhaustive machine-readable reasons that prevent current use. */
 export const STRATEGIC_STATE_STALE_REASONS = [
   'maximum_age_exceeded',
   'current_snapshot_unverified',
@@ -146,12 +149,20 @@ function verifyRecord(value: unknown, expectedId: string): StrategicDecisionReco
   return value as StrategicDecisionRecord
 }
 
-/** Derive the immutable identity for an exact strategic request. */
+/**
+ * Derive the immutable identity for an exact strategic request.
+ * @param input - Complete canonical decision input.
+ * @returns Lowercase SHA-256 content identity.
+ */
 export function strategicDecisionId(input: StrategicDecisionInput): string {
   return contentHash({ schemaVersion: STRATEGIC_DECISION_SCHEMA_VERSION, input })
 }
 
-/** Project a full decision mirror into a bounded history row. */
+/**
+ * Project a full decision mirror into a bounded history row.
+ * @param record - Verified immutable decision mirror.
+ * @returns Small query projection without feature or report payloads.
+ */
 export function summarizeStrategicDecision(record: StrategicDecisionRecord): StrategicDecisionSummary {
   const interpretation = recordOf(record.result.interpretation)
   const risk = recordOf(record.result.risk)
@@ -170,7 +181,12 @@ export function summarizeStrategicDecision(record: StrategicDecisionRecord): Str
   }
 }
 
-/** Decide whether an immutable mirror may still inform a current decision. */
+/**
+ * Decide whether an immutable mirror may still inform a current decision.
+ * @param record - Verified immutable decision mirror.
+ * @param context - Current host facts that may invalidate the mirror.
+ * @returns Explicit current-use verdict and every applicable stale reason.
+ */
 export function evaluateStrategicStateFreshness(
   record: StrategicDecisionRecord,
   context: StrategicStateFreshnessContext,
@@ -207,7 +223,11 @@ export class StrategicDecisionStore {
     this.root = resolve(root)
   }
 
-  /** Read one decision by its deterministic identity. */
+  /**
+   * Read one decision by its deterministic identity.
+   * @param decisionId - Lowercase SHA-256 decision identity.
+   * @returns Verified record, or `undefined` when absent.
+   */
   async get(decisionId: string): Promise<StrategicDecisionRecord | undefined> {
     if (!HASH_PATTERN.test(decisionId)) throw new TypeError('strategic decision id must be lowercase SHA-256')
     try {
@@ -218,12 +238,23 @@ export class StrategicDecisionStore {
     }
   }
 
-  /** Resolve an exact prior request without starting any agents. */
+  /**
+   * Resolve an exact prior request without starting any agents.
+   * @param input - Complete canonical decision input.
+   * @returns Verified matching record, or `undefined` when absent.
+   */
   getByInput(input: StrategicDecisionInput): Promise<StrategicDecisionRecord | undefined> {
     return this.get(strategicDecisionId(input))
   }
 
-  /** Persist the first completed result for an exact request and return the authoritative record. */
+  /**
+   * Persist the first completed result for an exact request and return the authoritative record.
+   * @param input - Complete canonical decision input.
+   * @param result - Completed validated workflow result.
+   * @param tradingDate - Trading date derived from deterministic features.
+   * @param cutoffTime - Exact current-snapshot cutoff.
+   * @returns First authoritative record for the deterministic identity.
+   */
   async put(
     input: StrategicDecisionInput,
     result: StrategicDecisionResult,
@@ -256,7 +287,12 @@ export class StrategicDecisionStore {
     }
   }
 
-  /** List newest decision mirrors first with a caller-owned scan bound. */
+  /**
+   * List newest decision mirrors first with a caller-owned scan bound.
+   * @param limit - Maximum records returned.
+   * @param maxFiles - Maximum catalog files inspected.
+   * @returns Verified records in deterministic newest-first order.
+   */
   async list(limit: number, maxFiles: number): Promise<readonly StrategicDecisionRecord[]> {
     if (!Number.isInteger(limit) || limit < 1) throw new TypeError('strategic decision list limit must be a positive integer')
     if (!Number.isInteger(maxFiles) || maxFiles < 1) throw new TypeError('strategic decision scan bound must be a positive integer')
@@ -284,7 +320,11 @@ export class StrategicDecisionStore {
       .slice(0, limit)
   }
 
-  /** Return the newest persisted decision mirror. */
+  /**
+   * Return the newest persisted decision mirror.
+   * @param maxFiles - Maximum catalog files inspected.
+   * @returns Newest verified record, or `undefined` when the store is empty.
+   */
   async latest(maxFiles: number): Promise<StrategicDecisionRecord | undefined> {
     return (await this.list(1, maxFiles))[0]
   }

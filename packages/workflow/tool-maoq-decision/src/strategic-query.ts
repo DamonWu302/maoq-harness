@@ -36,7 +36,11 @@ function resultView(_args: unknown, _result: { content: ContentBlock[]; isError:
   return { card: 'generic' }
 }
 
-/** Register zero-agent queries over persisted MAOQ strategic decision mirrors. */
+/**
+ * Register zero-agent queries over persisted MAOQ strategic decision mirrors.
+ * @param ctx - Context owning tools, snapshots, and optional settings.
+ * @param getConfig - Live validated MAOQ deployment policy reader.
+ */
 export function registerStrategicStateQueryTools(ctx: Context, getConfig: () => ResolvedConfig): void {
   const store = (): StrategicDecisionStore => new StrategicDecisionStore(getConfig().stateRoot)
   const freshness = async (record: StrategicDecisionRecord, args: FreshnessArgs) => {

@@ -416,9 +416,10 @@ const TOOL_PACKAGES: ToolPackage[] = [
     pkg: '@deepseek-ai/dsh-tool-maoq-decision',
     dir: 'tool-maoq-decision',
     source: 'packages/workflow/tool-maoq-decision/src/index.ts',
-    requires: ['ctx.tools', 'ctx.workflowEngine', 'ctx.subagents', 'ctx.systemPrompt', 'a calling Agent'],
+    requires: ['ctx.agents', 'ctx.tools', 'ctx.workflowEngine', 'ctx.subagents', 'ctx.systemPrompt', 'a calling Agent'],
     writes: ['tool/call', 'tool/result', 'workflow and child session events during execution'],
     async mount(ctx) {
+      await ctx.plugin(AgentRegistry)
       await ctx.plugin(SubagentRuntime)
       registerCatalogSubagentProvider(ctx, 'mock')
       await ctx.plugin(VmWorkflowEngine, { provider: 'mock' })

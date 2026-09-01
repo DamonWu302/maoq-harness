@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+import { AgentRegistry, type Agent } from '@deepseek-ai/dsh-agent'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { buildMarketSnapshot, MarketSnapshotService, MarketSnapshotStore, type MarketSnapshotDraft } from '@deepseek-ai/dsh-market-snapshot'
 import type { StrategicFeatureRecord } from '@deepseek-ai/dsh-market-strategic-state'
@@ -100,6 +100,7 @@ async function setup(analysisMode: 'quick' | 'deep' = 'deep', snapshotCount = 3)
   const store = new MarketSnapshotStore(root)
   await Promise.all(snapshots.map(snapshot => store.put(snapshot)))
   const ctx = new Context()
+  await ctx.plugin(AgentRegistry)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(SessionProjectionRegistry)

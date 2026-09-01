@@ -73,6 +73,10 @@ describe('@deepseek-ai/dsh-maoq-app', () => {
       maxStateFiles: 500,
       maxSnapshotFiles: 500,
       dailyStateMaximumAgeHours: 24,
+      autoDailyRefresh: true,
+      dailyRefreshTime: '15:35',
+      dailyRefreshRetryMinutes: 15,
+      dailyRefreshWindowMinutes: 120,
     })
     expect(insertion.insert).toContainEqual(expect.objectContaining({
       id: 'tool-maoq-snapshot',

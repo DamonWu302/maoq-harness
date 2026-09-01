@@ -6,7 +6,7 @@ English | [中文](maoq-roadmap.zh.md)
 
 This document turns the MAOQ direction into an executable sequence. The outcome is not a chatbot that discusses stocks, but a research and paper-trading agent that can identify the principal contradiction, select the least-resistance battlefield, choose tactics for the current market state, rank stocks, state invalidation conditions, and accept an independent risk veto.
 
-The immediate next step is **P0: prove one real commander decision end to end**. Market-data breadth and tactical breadth come only after the runtime path is observable and reliable.
+The current focus is **P2 validation closure, followed by P3 tactic eligibility**. P0 and P1 are complete; the P2 deterministic engine, canonical state store, and post-close automatic maintenance path are implemented, while full label fixtures and consecutive production-data canaries remain promotion evidence.
 
 ## Current baseline
 
@@ -15,6 +15,7 @@ The immediate next step is **P0: prove one real commander decision end to end**.
 - The commander dynamically selects no more than four specialists from market regime, emotion cycle, policy and macro, sector battlefield, tactic selection, and stock research.
 - Fresh specialist, synthesis, and risk-review agents produce structured output; the independent reviewer has final veto power.
 - Council token usage is reported per call and aggregated without invented estimates.
+- Immutable daily snapshots feed deterministic market-regime, emotion-cycle, and sector-battlefield features; canonical strategic mirrors are cached, freshness-checked, and maintained automatically after close when a same-day snapshot appears.
 - The system remains research and paper-trading only; it has no live-order authority.
 
 ## Product principles
@@ -99,6 +100,8 @@ P1 applies “seek truth from facts” by keeping acquired observations separate
 - Fixture replay succeeds without network access and produces byte-stable normalized output.
 
 ## P2 — Strategic state and principal-contradiction engine
+
+**Status:** core implementation complete; promotion validation remains. Deterministic features, evidence-bound interpretation, sourced Mao method attribution, independent risk veto, immutable mirrors, freshness invalidation, and idempotent post-close maintenance are shipped. P2 still needs gold coverage across every regime/cycle label and consecutive production-data canaries before it is treated as fully exited.
 
 ### Scope and deliverables
 

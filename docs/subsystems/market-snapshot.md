@@ -94,6 +94,20 @@ register(adapter: MarketSnapshotAdapter): () => void
 listAdapters(): readonly string[]
 
 /**
+ * Return registered sources and whether each can discover recent audited sessions.
+ * @returns Deterministically sorted source capabilities.
+ */
+describeAdapters(): readonly { readonly name: string; readonly supportsRecentDiscovery: boolean }[]
+
+/**
+ * Ask one named source for exact recent identities without loading market rows.
+ * @param adapterName - Registered source name.
+ * @param request - Explicit date ceiling, evidence cutoff, and bounded count.
+ * @returns Exact identities in ascending trading-date order.
+ */
+async discoverRecent( adapterName: string, request: MarketSnapshotDiscoveryRequest, ): Promise<readonly MarketSnapshotIdentityInput[]>
+
+/**
  * Load normalized facts from a named adapter, validate them, and persist canonical bytes.
  * @param adapterName - Exact registered adapter name.
  * @param identity - Complete requested identity that the adapter must preserve.
@@ -114,6 +128,13 @@ getByHash(hash: string): Promise<MarketSnapshot | undefined>
  * @returns A deeply frozen snapshot, or `undefined` when the identity is absent.
  */
 getByIdentity(identity: MarketSnapshotIdentityInput): Promise<MarketSnapshot | undefined>
+
+/**
+ * Verify and list stored content references under an explicit filesystem scan bound.
+ * @param maxFiles - Maximum number of stored content files to inspect.
+ * @returns Newest exact summaries first.
+ */
+listSummaries(maxFiles: number): Promise<readonly MarketSnapshotSummary[]>
 ```
 
 Source: [`packages/market/market-snapshot/src/index.ts`](../../packages/market/market-snapshot/src/index.ts)

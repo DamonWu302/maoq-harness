@@ -1,5 +1,5 @@
 import { Context } from '@deepseek-ai/cordis'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+import { AgentRegistry, type Agent } from '@deepseek-ai/dsh-agent'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
@@ -63,6 +63,7 @@ async function setup(config: toolMaoqDecision.Config = {}) {
 
 async function setupWithProvider(provider: SubagentProvider, config: toolMaoqDecision.Config) {
   const ctx = new Context()
+  await ctx.plugin(AgentRegistry)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(SessionProjectionRegistry)
@@ -238,6 +239,12 @@ describe('maoq_decide', () => {
       { subagentProvider: 'fresh', maxSpecialists: 1.5 },
       { subagentProvider: 'fresh', maxResultChars: 0 },
       { subagentProvider: 'fresh', maxResultChars: 1.5 },
+      { subagentProvider: 'fresh', dailyRefreshTime: '24:00' },
+      { subagentProvider: 'fresh', dailyRefreshTime: '23:00', dailyRefreshWindowMinutes: 120 },
+      { subagentProvider: 'fresh', dailyRefreshRetryMinutes: 0 },
+      { subagentProvider: 'fresh', dailyRefreshRetryMinutes: 481 },
+      { subagentProvider: 'fresh', dailyRefreshWindowMinutes: -1 },
+      { subagentProvider: 'fresh', dailyRefreshWindowMinutes: 481 },
     ]) {
       expect(() => { toolMaoqDecision.apply(defaults.ctx, config) }).toThrow()
     }

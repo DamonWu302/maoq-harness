@@ -1,4 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis'
+import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import { contentHash, type MarketSnapshot } from '@deepseek-ai/dsh-market-snapshot'
 import {
@@ -13,7 +14,7 @@ import {
   type StrategicInterpretationDraft,
 } from '@deepseek-ai/dsh-market-strategic-state'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { ToolCallView, ToolResultView, ToolRunContext } from '@deepseek-ai/dsh-tools'
+import type { ToolCallView, ToolResultView } from '@deepseek-ai/dsh-tools'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { WorkflowRun } from '@deepseek-ai/dsh-workflow'
 import { requireFreshProvider, type MaoqAnalysisMode, type ResolvedConfig, workflowError } from './index.ts'
@@ -34,7 +35,9 @@ const STRATEGIC_SPECIALISTS = [
 
 type StrategicSpecialist = typeof STRATEGIC_SPECIALISTS[number]
 
+/** Host-owned objective used by every canonical daily state. */
 export const MAOQ_DAILY_STATE_OBJECTIVE = 'Determine the daily A-share strategic state: principal contradiction, emotion cycle, least-resistance sector battlefield, counter-evidence, transition conditions, and risk-vetoed posture.'
+/** Fixed analytical lenses used by every canonical daily state. */
 export const MAOQ_DAILY_STATE_SPECIALISTS = ['market_regime', 'emotion_cycle', 'sector_battlefield'] as const satisfies readonly StrategicSpecialist[]
 
 interface StrategicCallArgs {
@@ -331,10 +334,10 @@ async function executeStrategicAnalysis(
   ctx: Context,
   config: ResolvedConfig,
   args: StrategicCallArgs,
-  exec: ToolRunContext,
+  agent: Agent,
+  signal: AbortSignal,
   preloadedCurrent?: MarketSnapshot,
 ): Promise<StrategicToolResult> {
-  if (exec.agent === undefined) throw new Error('MAOQ strategic tool requires a calling agent')
   if (args.objective.trim().length === 0) throw new Error('MAOQ strategic objective must be non-empty')
   if (args.specialists.length < 1
     || args.specialists.length > config.maxSpecialists
@@ -388,12 +391,12 @@ async function executeStrategicAnalysis(
     },
     subagentProvider: config.subagentProvider,
     maxTotalAgents: config.analysisMode === 'deep' ? args.specialists.length + 2 : 2,
-    parent: exec.agent,
-    signal: exec.signal,
+    parent: agent,
+    signal,
   })
   const onAbort = (): void => { run.cancel('parent step aborted') }
-  exec.signal.addEventListener('abort', onAbort, { once: true })
-  if (exec.signal.aborted) run.cancel('parent step aborted')
+  signal.addEventListener('abort', onAbort, { once: true })
+  if (signal.aborted) run.cancel('parent step aborted')
   try {
     const settled = await run.result
     const error = workflowError(settled)
@@ -422,12 +425,18 @@ async function executeStrategicAnalysis(
       cacheHit: false,
     }
   } finally {
-    exec.signal.removeEventListener('abort', onAbort)
+    signal.removeEventListener('abort', onAbort)
     await run.dispose()
   }
 }
 
-async function dailyStrategicArgs(ctx: Context, config: ResolvedConfig): Promise<{
+/**
+ * Select the fixed three-session input for one canonical daily refresh.
+ * @param ctx - Context containing the immutable snapshot service.
+ * @param config - Current validated MAOQ deployment policy.
+ * @returns Canonical arguments plus the preloaded current snapshot.
+ */
+export async function selectDailyStrategicInput(ctx: Context, config: ResolvedConfig): Promise<{
   readonly args: StrategicCallArgs
   readonly current: MarketSnapshot
 }> {
@@ -462,9 +471,29 @@ async function dailyStrategicArgs(ctx: Context, config: ResolvedConfig): Promise
 }
 
 /**
+ * Generate or reuse the canonical daily state through the shared strategic workflow.
+ * @param ctx - Context containing snapshot, workflow, provider, and settings services.
+ * @param config - Validated policy captured for this exact selection and run.
+ * @param agent - Exact parent Agent that owns the workflow children.
+ * @param signal - Caller-owned cancellation signal.
+ * @param selected - Optional canonical input already selected by the automatic runtime.
+ * @returns Persisted or cache-hit strategic result.
+ */
+export async function refreshDailyStrategicState(
+  ctx: Context,
+  config: ResolvedConfig,
+  agent: Agent,
+  signal: AbortSignal,
+  selected?: Awaited<ReturnType<typeof selectDailyStrategicInput>>,
+): Promise<StrategicToolResult> {
+  const daily = selected ?? await selectDailyStrategicInput(ctx, config)
+  return executeStrategicAnalysis(ctx, config, daily.args, agent, signal, daily.current)
+}
+
+/**
  * Register the P2 evidence-bound strategic-state tool.
  * @param ctx - Active plugin context that owns tools, workflows, subagents, and optional snapshot service.
- * @param config - Validated shared MAOQ deployment limits.
+ * @param getConfig - Live validated MAOQ deployment policy reader.
  */
 export function registerStrategicStateTool(ctx: Context, getConfig: () => ResolvedConfig): void {
   ctx.tools.register(defineTool({
@@ -483,7 +512,8 @@ export function registerStrategicStateTool(ctx: Context, getConfig: () => Resolv
       render: (_args, value) => [{ type: 'text', text: render(value as Record<string, unknown>, getConfig().maxResultChars) }],
     },
     async execute(args, exec) {
-      return executeStrategicAnalysis(ctx, getConfig(), args, exec)
+      if (exec.agent === undefined) throw new Error('MAOQ strategic tool requires a calling agent')
+      return executeStrategicAnalysis(ctx, getConfig(), args, exec.agent, exec.signal)
     },
     presentCall: (args: StrategicCallArgs): ToolCallView => ({ card: 'generic', title: 'MAOQ strategic state', rawInput: args.objective }),
     presentResult: (_args: StrategicCallArgs, _result: { content: ContentBlock[]; isError: boolean }): ToolResultView => ({ card: 'generic' }),
@@ -498,9 +528,9 @@ export function registerStrategicStateTool(ctx: Context, getConfig: () => Resolv
       render: (_args, value) => [{ type: 'text', text: render(value as Record<string, unknown>, getConfig().maxResultChars) }],
     },
     async execute(_args, exec) {
+      if (exec.agent === undefined) throw new Error('MAOQ strategic tool requires a calling agent')
       const config = getConfig()
-      const daily = await dailyStrategicArgs(ctx, config)
-      return executeStrategicAnalysis(ctx, config, daily.args, exec, daily.current)
+      return refreshDailyStrategicState(ctx, config, exec.agent, exec.signal)
     },
     presentCall: (): ToolCallView => ({ card: 'generic', title: 'Refresh canonical MAOQ daily state' }),
     presentResult: (_args: unknown, _result: { content: ContentBlock[]; isError: boolean }): ToolResultView => ({ card: 'generic' }),

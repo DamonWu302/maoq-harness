@@ -6,7 +6,11 @@ import type { MarketSnapshot, MarketSnapshotIdentityInput, MarketSnapshotSummary
 
 const CONTENT_HASH_PATTERN = /^[a-f0-9]{64}$/
 
-/** Project one validated snapshot into the bounded facts tools may catalog. */
+/**
+ * Project one validated snapshot into the bounded facts tools may catalog.
+ * @param snapshot - Verified immutable market snapshot.
+ * @returns Bounded catalog summary without full market rows.
+ */
 export function summarizeMarketSnapshot(snapshot: MarketSnapshot): MarketSnapshotSummary {
   return {
     tradingDate: snapshot.identity.tradingDate,

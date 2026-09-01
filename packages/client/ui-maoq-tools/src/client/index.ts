@@ -28,11 +28,13 @@ export function apply(ctx: ClientContext): void {
   }, MaoqSettingsSection))
 }
 
+/** Browser-editable MAOQ decision policy fields. */
 export interface MaoqDecisionSettings {
   /** Strategic-analysis depth used by the next tool call. */
   analysisMode: 'quick' | 'deep'
 }
 
+/** Browser-editable Codex council route fields. */
 export interface CodexCouncilSettings {
   /** Codex model used by the next council child. */
   model?: string

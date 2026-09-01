@@ -200,6 +200,7 @@ function writableStore(ctx: Context): CredentialProvider {
  * only `modify` refuses it, because a write that cannot land must not report
  * that it did.
  * @param ctx - the plugin context carrying the optional `ctx.credentials`.
+ * @param options - Optional local Codex credential discovery policy.
  * @returns the store to hand `createModels()`.
  */
 export function credentialStoreFrom(ctx: Context, options: CredentialStoreOptions = {}): CredentialStore {

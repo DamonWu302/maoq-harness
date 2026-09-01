@@ -1,5 +1,7 @@
+/** Locale namespace registered by the MAOQ Client plugin. */
 export const NS = 'maoqTools'
 
+/** Simplified Chinese MAOQ tool and settings copy. */
 export const zh = {
   'source.title': '查看快照数据源',
   'generate.title': '生成交易日快照',
@@ -39,12 +41,14 @@ export const zh = {
   'settings.failed': '保存失败，请重试。',
 } satisfies Record<string, string>
 
+/** Complete MAOQ locale key set. */
 export type MaoqToolKey = keyof typeof zh
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap { maoqTools: MaoqToolKey }
 }
 
+/** English MAOQ tool and settings copy. */
 export const en = {
   'source.title': 'Check snapshot sources',
   'generate.title': 'Generate trading-day snapshots',

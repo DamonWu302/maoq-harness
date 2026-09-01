@@ -1242,6 +1242,18 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'A sorted snapshot of the current registry names.',
       },
       {
+        signature: 'describeAdapters(): readonly { readonly name: string; readonly supportsRecentDiscovery: boolean }[]',
+        description: 'Return registered sources and whether each can discover recent audited sessions.',
+        parameters: [],
+        returns: 'Deterministically sorted source capabilities.',
+      },
+      {
+        signature: 'async discoverRecent( adapterName: string, request: MarketSnapshotDiscoveryRequest, ): Promise<readonly MarketSnapshotIdentityInput[]>',
+        description: 'Ask one named source for exact recent identities without loading market rows.',
+        parameters: [{ name: 'adapterName', description: 'Registered source name.' }, { name: 'request', description: 'Explicit date ceiling, evidence cutoff, and bounded count.' }],
+        returns: 'Exact identities in ascending trading-date order.',
+      },
+      {
         signature: 'async build(adapterName: string, identity: MarketSnapshotIdentityInput): Promise<MarketSnapshot>',
         description: 'Load normalized facts from a named adapter, validate them, and persist canonical bytes.',
         parameters: [{ name: 'adapterName', description: 'Exact registered adapter name.' }, { name: 'identity', description: 'Complete requested identity that the adapter must preserve.' }],
@@ -1258,6 +1270,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Read the snapshot for one exact versioned cutoff identity.',
         parameters: [{ name: 'identity', description: 'Complete versioned identity without a content hash.' }],
         returns: 'A deeply frozen snapshot, or `undefined` when the identity is absent.',
+      },
+      {
+        signature: 'listSummaries(maxFiles: number): Promise<readonly MarketSnapshotSummary[]>',
+        description: 'Verify and list stored content references under an explicit filesystem scan bound.',
+        parameters: [{ name: 'maxFiles', description: 'Maximum number of stored content files to inspect.' }],
+        returns: 'Newest exact summaries first.',
       },
     ],
   },
@@ -4477,7 +4495,11 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'MarketSnapshotAdapter',
-    declaration: 'export interface MarketSnapshotAdapter {\n    readonly name: string;\n    load(identity: MarketSnapshotIdentityInput): Promise<MarketSnapshotDraft>;\n}',
+    declaration: 'export interface MarketSnapshotAdapter {\n    readonly name: string;\n    load(identity: MarketSnapshotIdentityInput): Promise<MarketSnapshotDraft>;\n    discoverRecent?(request: MarketSnapshotDiscoveryRequest): Promise<readonly MarketSnapshotIdentityInput[]>;\n}',
+  },
+  {
+    name: 'MarketSnapshotDiscoveryRequest',
+    declaration: 'export interface MarketSnapshotDiscoveryRequest {\n    readonly beforeOrOn: string;\n    readonly cutoffTime: string;\n    readonly limit: number;\n}',
   },
   {
     name: 'MarketSnapshotDraft',
@@ -4490,6 +4512,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'MarketSnapshotIdentityInput',
     declaration: 'export interface MarketSnapshotIdentityInput {\n    readonly tradingDate: string;\n    readonly cutoffTime: string;\n    readonly calendarVersion: string;\n    readonly adjustmentVersion: string;\n    readonly sectorClassificationVersion: string;\n    readonly sourceVersions: readonly string[];\n}',
+  },
+  {
+    name: 'MarketSnapshotSummary',
+    declaration: 'export interface MarketSnapshotSummary {\n    readonly tradingDate: string;\n    readonly cutoffTime: string;\n    readonly contentHash: string;\n    readonly stocks: number;\n    readonly sectors: number;\n    readonly indices: number;\n    readonly news: number;\n    readonly warnings: readonly string[];\n}',
   },
   {
     name: 'MarketSource',

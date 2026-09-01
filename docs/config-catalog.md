@@ -2930,7 +2930,7 @@ Source: [`packages/lsp/tool-lsp/src/index.ts:57`](../packages/lsp/tool-lsp/src/i
 
 ## `@deepseek-ai/dsh-tool-maoq-decision`
 
-Requires: `tools` · `workflowEngine` · `subagents` · `systemPrompt`
+Requires: `agents` · `tools` · `workflowEngine` · `subagents` · `systemPrompt`
 
 ```ts config-catalog
 /** Deployment policy for the MAOQ council. */
@@ -2951,13 +2951,21 @@ export interface Config {
   maxSnapshotFiles?: number
   /** Maximum age of the canonical daily state in hours (default 24). */
   dailyStateMaximumAgeHours?: number
+  /** Whether a live root Agent maintains the post-close daily state automatically (default false). */
+  autoDailyRefresh?: boolean
+  /** Shanghai-market clock time for the first automatic attempt (default `15:35`). */
+  dailyRefreshTime?: string
+  /** Minutes between cheap snapshot checks after the first attempt (default 15). */
+  dailyRefreshRetryMinutes?: number
+  /** Minutes after the first attempt during which revised same-day snapshots may refresh state (default 120). */
+  dailyRefreshWindowMinutes?: number
 }
 
 /** Strategic-analysis execution depth. */
 export type MaoqAnalysisMode = typeof MAOQ_ANALYSIS_MODES[number]
 ```
 
-Source: [`packages/workflow/tool-maoq-decision/src/index.ts:41`](../packages/workflow/tool-maoq-decision/src/index.ts)
+Source: [`packages/workflow/tool-maoq-decision/src/index.ts:42`](../packages/workflow/tool-maoq-decision/src/index.ts)
 
 <a id="deepseek-aidsh-tool-maoq-snapshot"></a>
 

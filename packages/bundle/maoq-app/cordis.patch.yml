@@ -77,6 +77,10 @@
         maxStateFiles: 500
         maxSnapshotFiles: 500
         dailyStateMaximumAgeHours: 24
+        autoDailyRefresh: true
+        dailyRefreshTime: '15:35'
+        dailyRefreshRetryMinutes: 15
+        dailyRefreshWindowMinutes: 120
 
     - id: tool-maoq-snapshot
       name: '@deepseek-ai/dsh-tool-maoq-snapshot'

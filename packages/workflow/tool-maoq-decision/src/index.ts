@@ -13,11 +13,12 @@ import type { ToolCallView, ToolResultView } from '@deepseek-ai/dsh-tools'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { WorkflowResult, WorkflowRun } from '@deepseek-ai/dsh-workflow'
 import type {} from '@deepseek-ai/dsh-settings'
+import { dailyRefreshStartMinutes, MaoqDailyRefreshRuntime } from './daily-runtime.ts'
 import { registerStrategicStateQueryTools } from './strategic-query.ts'
-import { registerStrategicStateTool } from './strategic.ts'
+import { refreshDailyStrategicState, registerStrategicStateTool, selectDailyStrategicInput } from './strategic.ts'
 
 export const name = 'tool-maoq-decision'
-export const inject = ['tools', 'workflowEngine', 'subagents', 'systemPrompt']
+export const inject = ['agents', 'tools', 'workflowEngine', 'subagents', 'systemPrompt']
 
 const SPECIALIST_ROLES = [
   'market_regime',
@@ -55,6 +56,14 @@ export interface Config {
   maxSnapshotFiles?: number
   /** Maximum age of the canonical daily state in hours (default 24). */
   dailyStateMaximumAgeHours?: number
+  /** Whether a live root Agent maintains the post-close daily state automatically (default false). */
+  autoDailyRefresh?: boolean
+  /** Shanghai-market clock time for the first automatic attempt (default `15:35`). */
+  dailyRefreshTime?: string
+  /** Minutes between cheap snapshot checks after the first attempt (default 15). */
+  dailyRefreshRetryMinutes?: number
+  /** Minutes after the first attempt during which revised same-day snapshots may refresh state (default 120). */
+  dailyRefreshWindowMinutes?: number
 }
 
 /** Schemastery configuration for the MAOQ decision tool. */
@@ -67,6 +76,10 @@ export const Config: z<Config> = z.object({
   maxStateFiles: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(500),
   maxSnapshotFiles: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(500),
   dailyStateMaximumAgeHours: z.number().min(0).max(Number.MAX_SAFE_INTEGER).default(24),
+  autoDailyRefresh: z.boolean().default(false),
+  dailyRefreshTime: z.string().pattern(/^\d{2}:\d{2}$/).default('15:35'),
+  dailyRefreshRetryMinutes: z.number().step(1).min(1).max(480).default(15),
+  dailyRefreshWindowMinutes: z.number().step(1).min(0).max(480).default(120),
 })
 
 /** Validated deployment values shared by both MAOQ tool registrations. */
@@ -79,6 +92,10 @@ export interface ResolvedConfig {
   readonly maxStateFiles: number
   readonly maxSnapshotFiles: number
   readonly dailyStateMaximumAgeHours: number
+  readonly autoDailyRefresh: boolean
+  readonly dailyRefreshTime: string
+  readonly dailyRefreshRetryMinutes: number
+  readonly dailyRefreshWindowMinutes: number
 }
 
 interface MaoqCallArgs {
@@ -255,6 +272,10 @@ function resolveConfig(config: Config): ResolvedConfig {
   const maxStateFiles = config.maxStateFiles ?? 500
   const maxSnapshotFiles = config.maxSnapshotFiles ?? 500
   const dailyStateMaximumAgeHours = config.dailyStateMaximumAgeHours ?? 24
+  const autoDailyRefresh = config.autoDailyRefresh ?? false
+  const dailyRefreshTime = config.dailyRefreshTime ?? '15:35'
+  const dailyRefreshRetryMinutes = config.dailyRefreshRetryMinutes ?? 15
+  const dailyRefreshWindowMinutes = config.dailyRefreshWindowMinutes ?? 120
   if (subagentProvider.length === 0 || subagentProvider !== subagentProvider.trim()) {
     throw new TypeError('subagentProvider must be a non-empty normalized string')
   }
@@ -274,6 +295,16 @@ function resolveConfig(config: Config): ResolvedConfig {
   if (!Number.isFinite(dailyStateMaximumAgeHours) || dailyStateMaximumAgeHours < 0) {
     throw new TypeError('dailyStateMaximumAgeHours must be a non-negative finite number')
   }
+  const refreshStartMinutes = dailyRefreshStartMinutes(dailyRefreshTime)
+  if (!Number.isSafeInteger(dailyRefreshRetryMinutes) || dailyRefreshRetryMinutes < 1 || dailyRefreshRetryMinutes > 480) {
+    throw new TypeError('dailyRefreshRetryMinutes must be an integer from 1 to 480')
+  }
+  if (!Number.isSafeInteger(dailyRefreshWindowMinutes) || dailyRefreshWindowMinutes < 0 || dailyRefreshWindowMinutes > 480) {
+    throw new TypeError('dailyRefreshWindowMinutes must be an integer from 0 to 480')
+  }
+  if (refreshStartMinutes + dailyRefreshWindowMinutes >= 24 * 60) {
+    throw new TypeError('dailyRefreshTime plus dailyRefreshWindowMinutes must stay within one Shanghai calendar day')
+  }
   return {
     subagentProvider,
     maxSpecialists,
@@ -283,6 +314,10 @@ function resolveConfig(config: Config): ResolvedConfig {
     maxStateFiles,
     maxSnapshotFiles,
     dailyStateMaximumAgeHours,
+    autoDailyRefresh,
+    dailyRefreshTime,
+    dailyRefreshRetryMinutes,
+    dailyRefreshWindowMinutes,
   }
 }
 
@@ -394,10 +429,39 @@ export function apply(ctx: Context, config: Config): void {
   const base = resolveConfig(config)
   let source = (): Config => base
   const current = (): ResolvedConfig => resolveConfig(source())
+  const dailyRuntime = new MaoqDailyRefreshRuntime(ctx, {
+    policy: () => {
+      const resolved = current()
+      return {
+        enabled: resolved.autoDailyRefresh,
+        time: resolved.dailyRefreshTime,
+        retryMinutes: resolved.dailyRefreshRetryMinutes,
+        windowMinutes: resolved.dailyRefreshWindowMinutes,
+      }
+    },
+    select: async () => {
+      const resolved = current()
+      const selected = await selectDailyStrategicInput(ctx, resolved)
+      return {
+        tradingDate: selected.current.identity.tradingDate,
+        snapshotHash: selected.current.identity.contentHash,
+        payload: { resolved, selected },
+      }
+    },
+    refresh: async (agent, signal, selection) => {
+      await refreshDailyStrategicState(
+        ctx,
+        selection.payload.resolved,
+        agent,
+        signal,
+        selection.payload.selected,
+      )
+    },
+  })
   ctx.inject(['settings'], (settingsCtx) => {
     settingsCtx.settings.installSection(ctx, MAOQ_DECISION_SETTINGS_NAMESPACE, Config, base, {
       setSource: (next) => { source = next },
-      onChange: () => {},
+      onChange: () => { dailyRuntime.invalidate() },
     })
   })
   ctx.systemPrompt.section({
@@ -407,6 +471,15 @@ export function apply(ctx: Context, config: Config): void {
   })
   registerStrategicStateTool(ctx, current)
   registerStrategicStateQueryTools(ctx, current)
+  ctx.effect(() => {
+    const stopCreated = ctx.on('agent/created', ({ agent }) => { dailyRuntime.adopt(agent) })
+    const stopDisposed = ctx.on('agent/disposed', ({ agent }) => { dailyRuntime.depart(agent) })
+    return async () => {
+      stopCreated()
+      stopDisposed()
+      await dailyRuntime.dispose()
+    }
+  }, 'maoq.dailyRefreshRuntime()')
   ctx.tools.register(defineTool({
     name: 'maoq_decide',
     description: DESCRIPTION,
