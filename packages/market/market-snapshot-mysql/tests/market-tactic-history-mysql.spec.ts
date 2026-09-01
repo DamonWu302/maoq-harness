@@ -131,6 +131,22 @@ async function collect(
 }
 
 describe('long_short_stock tactic history adapter', () => {
+  it('requires an explicit complete quality decision before admitting a history date', async () => {
+    const base = fixture()
+    let datesSql = ''
+    const query: MarketSnapshotQuery = {
+      rows: async <T extends object>(sql: string, parameters: readonly unknown[]): Promise<T[]> => {
+        if (sql.includes('maoq:tactic-history-dates')) datesSql = sql
+        return base.rows<T>(sql, parameters)
+      },
+    }
+    await collect(new LongShortStockTacticHistoryAdapter(query))
+    expect(datesSql).toContain('JOIN daily_price_session_quality')
+    expect(datesSql).toContain("q.status='complete'")
+    expect(datesSql).toContain('q.usable_for_model=1')
+    expect(datesSql).toContain('COUNT(*) = q.observed_rows')
+  })
+
   it('streams stable paired adjusted-feature and raw-execution chunks', async () => {
     const first = await collect(new LongShortStockTacticHistoryAdapter(fixture()))
     const second = await collect(new LongShortStockTacticHistoryAdapter(fixture()))

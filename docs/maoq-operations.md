@@ -123,3 +123,21 @@ Production daily bars begin their automatic update at 19:00 Asia/Shanghai. MAOQ 
 | Structured synthesis, sourced method attribution, independent veto, and token accounting remain enforced | [`loader-composition.spec.ts`](../packages/workflow/tool-maoq-decision/tests/loader-composition.spec.ts) and [`tool-maoq-decision.spec.ts`](../packages/workflow/tool-maoq-decision/tests/tool-maoq-decision.spec.ts) | Refresh one latest canonical daily state after each model or prompt change |
 
 P2 is complete when label gold coverage, the rolling production-data canary, focused package tests, documentation gates, and one current-route canonical-state canary all pass. Stock ranking remains outside this milestone.
+
+## P3 canary
+
+Run the low-load production probe only after the 19:00 upstream update has produced a quality-approved date. It reads one session, returns stock, execution-bar, sector, and immutable-hash counts, and never starts a tactic evaluation:
+
+```bash
+pnpm run maoq:p3-canary -- --start 2026-09-01 --end 2026-09-01
+```
+
+After the probe passes, evaluate exactly one fixed tactic over an explicit range. Start with the industry-relative repair candidate and a 10-session database chunk; do not run all tactics by habit:
+
+```bash
+pnpm run maoq:p3-canary -- --mode evaluate \
+  --tactic industry_relative_exhaustion_repair \
+  --start 2026-03-02 --end 2026-08-31 --chunk-sessions 10
+```
+
+The CLI reads `MAOQ_MYSQL_HOST`, `MAOQ_MYSQL_PORT`, `MAOQ_MYSQL_SOCKET`, `MAOQ_MYSQL_USER`, and `MAOQ_MYSQL_DATABASE` when present. An optional `MAOQ_MYSQL_PASSWORD` is process-only and is never included in output. Connection and statement waits default to 5 and 60 seconds. A successful evaluation proves the production history path and records exact source hashes, base and doubled-cost metrics, and promotion blockers; its decision remains `research`. Promotion still requires the full multi-regime, DSR, PBO, concentration, capacity, and holdout protocol in [MAOQ P3 tactic research](maoq-p3-tactic-research.md).

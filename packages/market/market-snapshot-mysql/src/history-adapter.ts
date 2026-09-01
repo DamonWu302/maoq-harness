@@ -75,12 +75,14 @@ interface HistorySectorRow {
 const HISTORY_DATES_SQL = `/* maoq:tactic-history-dates */
 SELECT DATE_FORMAT(p.trade_date, '%Y-%m-%d') trading_date, COUNT(*) expected_rows
 FROM daily_price_bar p
-LEFT JOIN daily_price_session_quality q ON q.trade_date=p.trade_date
+JOIN daily_price_session_quality q ON q.trade_date=p.trade_date
 WHERE p.trade_date BETWEEN ? AND ?
   AND WEEKDAY(p.trade_date) BETWEEN 0 AND 4
-  AND (q.usable_for_model IS NULL OR q.usable_for_model=1)
-GROUP BY p.trade_date, q.minimum_required_rows
-HAVING COUNT(*) >= GREATEST(COALESCE(q.minimum_required_rows, 0), ?)
+  AND q.status='complete'
+  AND q.usable_for_model=1
+  AND q.observed_rows >= q.minimum_required_rows
+GROUP BY p.trade_date, q.minimum_required_rows, q.observed_rows
+HAVING COUNT(*) = q.observed_rows AND COUNT(*) >= GREATEST(q.minimum_required_rows, ?)
 ORDER BY p.trade_date`
 
 const HISTORY_DAILY_SQL = `/* maoq:tactic-history-daily */

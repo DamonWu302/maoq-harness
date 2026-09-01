@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/market/market-snapshot-mysql/README.md
-README.md: c0073370103e1fc2b0336ed6e2700f44d969920b
-README.zh.md: 25873710571fa09db096af3400a4b8f7a45559e2
+README.md: 8f790754e7de61d09bbd96a698b2a32ddc04d2be
+README.zh.md: ae07e2f45abfd1e1eda997b6d37c20564fe2940b

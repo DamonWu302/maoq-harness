@@ -123,3 +123,21 @@ Profile 会延迟挂载生产日线适配器，因为数据库端点和凭据属
 | 结构化综合、有来源的方法归因、独立否决和 token 统计持续受宿主强制执行 | [`loader-composition.spec.ts`](../packages/workflow/tool-maoq-decision/tests/loader-composition.spec.ts) 及 [`tool-maoq-decision.spec.ts`](../packages/workflow/tool-maoq-decision/tests/tool-maoq-decision.spec.ts) | 每次模型或提示词变更后刷新一次最新规范日级状态 |
 
 标签金标覆盖、滚动生产数据 canary、定向包测试、文档门禁和一次当前路由规范状态 canary 全部通过时，P2 即完成。个股排序仍不属于本里程碑。
+
+## P3 canary
+
+只有 19:00 上游更新已经产出质量批准日期后，才运行低负载生产探针。它只读取一个交易日，返回股票、执行行情、板块和不可变哈希数量，绝不启动战法评估：
+
+```bash
+pnpm run maoq:p3-canary -- --start 2026-09-01 --end 2026-09-01
+```
+
+探针通过后，在明确日期范围内只评估一条固定战法。先从行业相对修复候选和 10 个交易日数据库分块开始；不要习惯性运行全部战法：
+
+```bash
+pnpm run maoq:p3-canary -- --mode evaluate \
+  --tactic industry_relative_exhaustion_repair \
+  --start 2026-03-02 --end 2026-08-31 --chunk-sessions 10
+```
+
+CLI 会读取已配置的 `MAOQ_MYSQL_HOST`、`MAOQ_MYSQL_PORT`、`MAOQ_MYSQL_SOCKET`、`MAOQ_MYSQL_USER` 和 `MAOQ_MYSQL_DATABASE`。可选的 `MAOQ_MYSQL_PASSWORD` 只存在于进程内，绝不进入输出。连接和语句默认分别最多等待 5 秒与 60 秒。评估成功只能证明生产历史路径可用，并记录精确来源哈希、基础／成本翻倍指标与晋级阻断项；决策仍保持 `research`。晋级仍须完成 [MAOQ P3 战法研究](maoq-p3-tactic-research.zh.md)中的完整多状态、DSR、PBO、集中度、容量与留出集协议。
