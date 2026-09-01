@@ -62,6 +62,7 @@ const PACKAGE_LIBRARIES: Readonly<Record<string, string>> = {
   'packages/hooks/hook-protocol': 'Shared wire-protocol library between the hook bridges.',
   'packages/identity/anonymous-user-id': 'Harness-home identity helper with no plugin registration.',
   'packages/market/market-strategic-state': 'Pure deterministic strategic feature and interpretation validation library.',
+  'packages/market/market-tactic-eligibility': 'Pure deterministic tactic registry and fail-closed eligibility library.',
   'packages/sandbox/sandbox-windows-acl': 'Windows ACL sandbox library consumed by sandbox-local.',
   'packages/sdk/client': 'Client-process library; the spawned runtime owns plugin behavior.',
   'packages/sdk/protocol': 'Wire-protocol library with type declarations only.',

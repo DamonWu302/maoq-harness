@@ -3698,6 +3698,7 @@ export interface Config {
 - `@deepseek-ai/dsh-loader-smoke`（[`packages/test-support/loader-smoke/src/index.ts`](../packages/test-support/loader-smoke/src/index.ts)）
 - `@deepseek-ai/dsh-maoq-app`（[`packages/bundle/maoq-app/src/index.ts`](../packages/bundle/maoq-app/src/index.ts)）
 - `@deepseek-ai/dsh-market-strategic-state`（[`packages/market/market-strategic-state/src/index.ts`](../packages/market/market-strategic-state/src/index.ts)）
+- `@deepseek-ai/dsh-market-tactic-eligibility`（[`packages/market/market-tactic-eligibility/src/index.ts`](../packages/market/market-tactic-eligibility/src/index.ts)）
 - `@deepseek-ai/dsh-native-command`（[`packages/util/native-command/src/index.ts`](../packages/util/native-command/src/index.ts)）
 - `@deepseek-ai/dsh-output-retention`（[`packages/util/output-retention/src/index.ts`](../packages/util/output-retention/src/index.ts)）
 - `@deepseek-ai/dsh-sandbox-windows-acl`（[`packages/sandbox/sandbox-windows-acl/src/index.ts`](../packages/sandbox/sandbox-windows-acl/src/index.ts)）

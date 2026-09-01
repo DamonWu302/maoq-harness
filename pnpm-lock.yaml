@@ -7063,6 +7063,22 @@ importers:
         specifier: workspace:^
         version: link:../market-snapshot
 
+  packages/market/market-tactic-eligibility:
+    dependencies:
+      '@deepseek-ai/dsh-util-values':
+        specifier: workspace:^
+        version: link:../../util/values
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@deepseek-ai/dsh-market-strategic-state':
+        specifier: workspace:^
+        version: link:../market-strategic-state
+
   packages/market/tool-maoq-snapshot:
     dependencies:
       '@deepseek-ai/schemastery':

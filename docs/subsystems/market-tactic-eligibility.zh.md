@@ -1,0 +1,25 @@
+# 市场战法资格子系统
+
+[English](market-tactic-eligibility.md) | 中文
+
+市场战法资格子系统是 P2 战略状态与 P4 个股排序之间的确定性边界。它识别哪些战法适合当前证据，同时独立强制执行每条战法是否已经获得晋级资格。实现位于 [`@deepseek-ai/dsh-market-tactic-eligibility`](../../packages/market/market-tactic-eligibility/README.zh.md)。
+
+## 注册表约定
+
+每个 `TacticDefinition` 都包含稳定战法 ID、战法族、晋级状态、证据等级、历史要求、最大持有期、最大模拟仓位、入场与退出策略、失效策略和执行要求。首批主动候选是状态签名突破回踩、可成交情绪龙头和行业相对超跌修复。三者均从 `research` 开始；防守／空仓从 `eligible` 开始。
+
+晋级与状态适配彼此独立。`research` 加上状态匹配只能得到 `research_only`；`paper` 只能得到 `watch_only`；只有定义本身为 `eligible` 且门禁全部通过，才能进入 `eligibleTacticIds`。模型分析不能修改任一字段。
+
+## 确定性门禁
+
+`evaluateTacticEligibility()` 消费一份 `StrategicFeatureRecord`。主动战法首先要求市场状态、情绪周期和板块战场组件均已就绪。随后，每个战法族应用获准战略标签与排名第一板块得分为正的门禁。通过后最多暴露三个正得分板块 ID；失败结果携带稳定原因码和准确的 P2 证据引用。
+
+任一必需组件不可用时，所有主动战法都会失败关闭。`defensive_no_trade` 仍然合格，其仓位为零，执行要求是不下单。这保证残缺证据不会因为模型叙事有信心而被忽略。
+
+## 数据时钟
+
+上游日线在 `Asia/Shanghai` 19:00 自动更新。MAOQ 自动运行时会在 19:15 首次检查，并在修订窗口内轻量重试不可变身份查询。只有可用的当日快照哈希出现后，战略 agent 才会启动。资格评估接收该冻结记录，且从不读取环境时钟，因此回放保持确定性。
+
+## 晋级边界
+
+注册表既不实现回测，也不会自动晋级战法。晋级要求时点正确的 walk-forward 证据、符合 A 股 T+1 与涨跌停约束的真实执行、显式成本与容量、多重检验控制，以及预先声明的风险边界。完整策略和研究来源记录在 [MAOQ P3 战法研究](../maoq-p3-tactic-research.zh.md)中。
