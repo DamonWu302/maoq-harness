@@ -184,6 +184,14 @@ function historySnapshot(index: number): DailyHistorySnapshot {
     },
     stocks,
     sectors: [sector],
+    benchmarks: [{
+      benchmarkId: '000001.SH',
+      name: 'SSE Composite',
+      kind: 'market_index',
+      tradingDate: date,
+      dailyReturn: index === 0 ? 0 : 0.005,
+      provenance: provenance(date, '000001.SH'),
+    }],
   }
 }
 

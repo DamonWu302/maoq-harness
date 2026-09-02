@@ -18,6 +18,7 @@ import {
   type ResearchTacticSuiteAudit,
 } from './promotion.ts'
 import type {
+  DailyBenchmarkReturn,
   DailyExecutionFill,
   DailyExecutionOrder,
   DailyExecutionPolicy,
@@ -154,6 +155,7 @@ export interface ResearchTacticSuiteHistoryEvaluation {
   readonly historyChunkHashes: readonly string[]
   readonly sourceExecutionHashes: readonly string[]
   readonly strategicFeatures: readonly StrategicFeatureRecord[]
+  readonly benchmarks: Readonly<Record<string, readonly DailyBenchmarkReturn[]>>
   readonly evaluations: Readonly<Record<ResearchTacticId, ResearchTacticEvaluation>>
   readonly promotionAudit: ResearchTacticSuiteAudit
 }
@@ -534,6 +536,7 @@ export async function evaluateResearchTacticSuiteHistory(
   const historyChunkHashes: string[] = []
   const sourceExecutionHashes: string[] = []
   const strategicFeatures: StrategicFeatureRecord[] = []
+  const benchmarks = new Map<string, DailyBenchmarkReturn[]>()
   const required = <Value>(map: ReadonlyMap<ResearchTacticId, Value>, tacticId: ResearchTacticId): Value => (
     map.get(tacticId) as Value
   )
@@ -545,6 +548,9 @@ export async function evaluateResearchTacticSuiteHistory(
       const executionSession = chunk.executionSessions[index] as NonNullable<typeof chunk.executionSessions[number]>
       const record = featureStream.push(featureSession)
       strategicFeatures.push(strategicStream.push(featureSession, executionSession, record))
+      for (const benchmark of featureSession.benchmarks) {
+        benchmarks.set(benchmark.benchmarkId, [...benchmarks.get(benchmark.benchmarkId) ?? [], benchmark])
+      }
       const relevantSymbols = new Set<string>()
       for (const config of configs) {
         const signal = generateResearchTacticSignal(config.tacticId, record)
@@ -563,6 +569,11 @@ export async function evaluateResearchTacticSuiteHistory(
     }
   }
   if (sessions.length < 2) throw new Error('history evaluation requires at least two complete sessions')
+  for (const [benchmarkId, observations] of benchmarks) {
+    if (observations.length !== sessions.length) {
+      throw new Error(`benchmark ${benchmarkId} is not aligned to every history session`)
+    }
+  }
   const results = configs.map(config => evaluationResult(
     required(signals, config.tacticId),
     required(orders, config.tacticId),
@@ -578,6 +589,7 @@ export async function evaluateResearchTacticSuiteHistory(
     historyChunkHashes,
     sourceExecutionHashes,
     strategicFeatures,
+    benchmarks: Object.fromEntries([...benchmarks.entries()].sort(([left], [right]) => left.localeCompare(right))),
     evaluations,
     promotionAudit: auditResearchTacticSuite(results, attemptedTrials),
   })

@@ -1,4 +1,4 @@
-import type { MarketSnapshot, StockDailyBar } from '@deepseek-ai/dsh-market-snapshot'
+import type { MarketProvenance, MarketSnapshot, StockDailyBar } from '@deepseek-ai/dsh-market-snapshot'
 
 /** Current daily-history feature schema. */
 export const TACTIC_LAB_FEATURE_SCHEMA_VERSION = 2 as const
@@ -9,7 +9,7 @@ export const TACTIC_LAB_EXECUTION_SCHEMA_VERSION = 1 as const
 /** Current execution implementation identity. */
 export const TACTIC_LAB_EXECUTION_ENGINE_VERSION = 'maoq-a-share-next-open-v1' as const
 /** Current content-addressed history-chunk schema. */
-export const TACTIC_LAB_HISTORY_CHUNK_SCHEMA_VERSION = 1 as const
+export const TACTIC_LAB_HISTORY_CHUNK_SCHEMA_VERSION = 2 as const
 
 /** Deterministic daily measurements for one stock at one immutable cutoff. */
 export interface DailyStockResearchFeatures {
@@ -171,8 +171,20 @@ export interface DailyExecutionResult {
   readonly finalEquity: number
 }
 
-/** Immutable snapshot input accepted by the feature engine. */
-export type DailyHistorySnapshot = Pick<MarketSnapshot, 'identity' | 'stocks' | 'sectors'>
+/** One auditable close-to-close benchmark return aligned to a research session. */
+export interface DailyBenchmarkReturn {
+  readonly benchmarkId: string
+  readonly name: string
+  readonly kind: 'market_index' | 'equal_weight_universe'
+  readonly tradingDate: string
+  readonly dailyReturn: number
+  readonly provenance: MarketProvenance
+}
+
+/** Immutable snapshot input accepted by the feature and benchmark engines. */
+export type DailyHistorySnapshot = Pick<MarketSnapshot, 'identity' | 'stocks' | 'sectors'> & {
+  readonly benchmarks: readonly DailyBenchmarkReturn[]
+}
 
 /** Bounded provider-neutral request for complete daily research sessions. */
 export interface TacticLabHistoryRequest {

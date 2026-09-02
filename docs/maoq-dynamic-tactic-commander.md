@@ -114,7 +114,7 @@ The first implementation uses delayed contextual score updates, not reinforcemen
 
 The 2022–2025 history is a development corpus because its aggregate results have already been inspected. A prequential replay can still test whether each simulated decision used only prior information, but it cannot serve as a sealed promotion holdout. Final promotion requires a separately frozen period that was not used to choose tactics, router features, weights, prompts, or model routes.
 
-The replay compares `defensive_no_trade`, equal allocation, each fixed tactic, the deterministic router, the router plus DSH commander, and the complete result after risk veto. It reports net return, drawdown, turnover, switching cost, conditional regret, abstention contribution, tactic concentration, state attribution, rejected-trade contribution, token use, latency, and model-route differences. An oracle that sees future outcomes is diagnostic only and never a deployable baseline.
+The replay compares `defensive_no_trade`, equal allocation, each fixed tactic, the deterministic router, the router plus DSH commander, and the complete result after risk veto. It binds each comparable session to the SSE Composite, CSI 300, CSI 500, CSI 1000, and a labeled equal-weight A-share universe. Each comparison reports geometric excess return, annualized excess return, information ratio, beta, upside and downside capture, cash opportunity cost, avoided loss, and strategy-versus-benchmark attribution by decision-date market regime. An oracle that sees future outcomes is diagnostic only and never a deployable baseline.
 
 -----
 
@@ -128,8 +128,8 @@ The replay compares `defensive_no_trade`, equal allocation, each fixed tactic, t
 5. The output preserves the top-three slate, score components, rejected tactics, uncertainty, cash weight, and invalidation conditions.
 6. `defensive_no_trade` competes as a real action and is mandatory when no tactic has positive evidence after uncertainty and costs.
 7. Host validation and the independent risk reviewer both fail closed, and a veto cannot render as approval.
-8. Evaluation separates value added by strategic state, deterministic routing, DSH synthesis, stock ranking, execution, and risk veto.
-9. The dynamic selector must beat preregistered fixed and equal-allocation baselines net of switching costs before paper promotion; the sealed-holdout policy in [P3 tactic research](maoq-p3-tactic-research.md) remains binding.
+8. Evaluation separates value added by strategic state, deterministic routing, DSH synthesis, stock ranking, execution, and risk veto, and reports the same track against complete real-index and equal-weight baselines.
+9. The dynamic selector must beat its preregistered fixed, equal-allocation, abstention-aware, and market-index baselines net of switching costs before paper promotion; the sealed-holdout policy in [P3 tactic research](maoq-p3-tactic-research.md) remains binding.
 10. Standard daily operation does not scan full history or invoke all specialists; bounded scorecard reads, token use, latency, and unavailable evidence are observable.
 
 -----
@@ -143,7 +143,7 @@ These phases belong to P3.5 and do not replace the project-wide P0-P5 milestones
 |---|---|---|---|
 | P0 — One tactic truth | Complete | Versioned catalog, derived research IDs, model schema, and fail-closed host validation | The catalog, lab, research tool, and council share one identity; focused tests and the real Loader composition pass |
 | P1 — Conditional record and routing | Complete | Matured outcomes, immutable conditional scorecard, deterministic top-three slate, and defensive fallback | Automated coverage proves cutoff, content identity, insufficient-evidence, and future-data rejection behavior |
-| P2 — Commander and attribution | Implemented; not promoted | `maoq_select_tactics`, commander decision records, independent veto, and prequential replay | Deterministic replay is complete but loses to no-trade after costs; historical model coverage is zero, so paper promotion is prohibited |
+| P2 — Commander and attribution | Implemented; not promoted | `maoq_select_tactics`, commander decision records, independent veto, prequential replay, and real-index attribution | Deterministic replay loses to no-trade and the SSE Composite after costs; historical model coverage is zero, so paper promotion is prohibited |
 
 ### P0 — One tactic truth and fail-closed use
 
@@ -161,9 +161,11 @@ P1 exits with content identities for every outcome, scorecard, and route; open-c
 
 **Status: implemented and not promoted.** `maoq_select_tactics` gives the DSH commander only the deterministic top-three slate, defensive fallback, and smallest sufficient evidence. The commander may choose one primary and one secondary tactic, while host validation owns scope and risk limits and an independent reviewer keeps final veto authority. Structured decisions, token use, route identity, and final veto are persisted for later attribution.
 
-The point-in-time replay from 2022-01-01 through 2025-12-31 covers 969 sessions, of which 964 are routable. The deterministic route selects defense on 925 sessions and breakout-pullback on 39. With 5 basis points of switching cost, it returns -2.43%, reaches 7.14% maximum drawdown, switches 68 times, and pays 3.40% in switching costs. The fixed breakout-pullback tactic returns 80.50% with 36.71% maximum drawdown, equal allocation returns -15.99%, and no-trade returns zero. The current router reduces drawdown, but excessive switching consumes its advantage and fails the paper-promotion criterion.
+The point-in-time replay from 2022-01-01 through 2025-12-31 covers 969 sessions, of which 967 are routable. The deterministic route selects defense on 929 sessions and breakout-pullback on 38. With 5 basis points of switching cost, it returns -3.14%, reaches 7.49% maximum drawdown, switches 66 times, and pays 3.30% in switching costs. The fixed breakout-pullback tactic returns 78.06% with 36.71% maximum drawdown, equal allocation returns -18.94%, and no-trade returns zero. The current router reduces drawdown, but excessive abstention and switching fail the paper-promotion criterion.
 
-The historical range contains no recorded DSH commander decisions, so the model-proposal and final-veto tracks both fall back to no-trade and model coverage is zero. This replay can reject the current deterministic dynamic router; it cannot show that model selection has no value, and the same 2022–2025 range cannot be tuned and then presented as a passing holdout. The next version must freeze hysteresis, a minimum holding period, or another cost-aware transition rule before evaluation on a separate development range and sealed holdout.
+The benchmark baseline uses 968 aligned return observations. The SSE Composite returns 9.26%, so the deterministic route trails it by 11.35%. During 301 `risk_on_trend` decision sessions, the route is active on only 38 sessions and returns -1.77% while the SSE Composite returns 59.16%. During 366 `risk_contraction` sessions, the route returns -0.80% while the index loses 13.14%. Defense therefore avoids contraction losses, but the selector incorrectly carries abstention into the main risk-on opportunity set.
+
+The historical range contains no recorded DSH commander decisions, so the model-proposal and final-veto tracks both fall back to no-trade and model coverage is zero. This replay can reject the current deterministic dynamic router; it cannot show that model selection has no value, and the same 2022–2025 range cannot be tuned and then presented as a passing holdout. The next version must first define state-specific participation and tactic-family coverage, then freeze its evidence threshold, hysteresis, minimum holding period, and cost-aware transition policy before evaluation on a separate development range and sealed holdout.
 
 P2 exits when every model-assisted decision is cutoff-correct and replayable, unknown or unpromoted actions fail closed, standard mode avoids full-history scans and unnecessary specialists, and the complete selector beats preregistered fixed and abstention-aware baselines net of switching costs before paper promotion.
 
@@ -172,4 +174,4 @@ P2 exits when every model-assisted decision is cutoff-correct and replayable, un
 <a id="dev-note"></a>
 ## Dev Note
 
-P0 through P2 host capabilities and no-look-ahead replay are implemented, but the current historical result rejects paper promotion and model-assisted incremental value remains unmeasured. The next sealed date range, model route, and switching rule remain preregistration decisions owned by a successor trial and its Agent Note.
+P0 through P2 host capabilities and no-look-ahead replay are implemented, but the current historical result rejects paper promotion and model-assisted incremental value remains unmeasured. The next regime-specific participation policy, sealed date range, model route, and transition rule remain preregistration decisions owned by a successor trial and its Agent Note.

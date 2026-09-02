@@ -24,6 +24,7 @@ function validateDraft(draft: TacticLabHistoryChunkDraft): readonly string[] {
     throw new TacticLabHistoryChunkError('feature and execution session counts differ')
   }
   const dates: string[] = []
+  let benchmarkIds: readonly string[] | undefined
   for (let index = 0; index < draft.featureSessions.length; index += 1) {
     const feature = draft.featureSessions[index]
     const execution = draft.executionSessions[index]
@@ -36,6 +37,19 @@ function validateDraft(draft: TacticLabHistoryChunkDraft): readonly string[] {
     }
     if (!/^[a-f0-9]{64}$/u.test(feature.identity.contentHash) || !/^[a-f0-9]{64}$/u.test(execution.contentHash)) {
       throw new TacticLabHistoryChunkError(`${date} contains an invalid session hash`)
+    }
+    const currentBenchmarkIds = feature.benchmarks.map(item => item.benchmarkId).sort()
+    if (currentBenchmarkIds.length === 0 || new Set(currentBenchmarkIds).size !== currentBenchmarkIds.length) {
+      throw new TacticLabHistoryChunkError(`${date} benchmarks must be non-empty and unique`)
+    }
+    for (const benchmark of feature.benchmarks) {
+      if (benchmark.tradingDate !== date || !Number.isFinite(benchmark.dailyReturn) || benchmark.dailyReturn <= -1) {
+        throw new TacticLabHistoryChunkError(`${date} contains an invalid benchmark return`)
+      }
+    }
+    benchmarkIds ??= currentBenchmarkIds
+    if (currentBenchmarkIds.join('\n') !== benchmarkIds.join('\n')) {
+      throw new TacticLabHistoryChunkError(`${date} benchmark coverage differs within the chunk`)
     }
     dates.push(date)
   }

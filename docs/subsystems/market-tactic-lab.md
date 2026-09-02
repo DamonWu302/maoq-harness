@@ -8,7 +8,7 @@ The market tactic lab subsystem supplies the point-in-time measurements and one 
 
 ## Historical chunks
 
-`TacticLabHistoryAdapter.load()` streams caller-bounded, strictly ascending `TacticLabHistoryChunk` values for an inclusive date range. Each chunk contains one adjusted feature session and one raw execution session for every date. Construction rejects empty input, mismatched dates, nonascending sessions, and invalid session hashes; it sorts source versions and hashes the canonical chunk body. Persisted chunks can therefore be verified and cited without loading the complete research period.
+`TacticLabHistoryAdapter.load()` streams caller-bounded, strictly ascending `TacticLabHistoryChunk` values for an inclusive date range. Each chunk contains one adjusted feature session, its aligned benchmark returns, and one raw execution session for every date. Construction rejects empty input, mismatched dates, nonascending sessions, changing benchmark coverage, and invalid session hashes; it sorts source versions and hashes the canonical chunk body. Persisted chunks can therefore be verified and cited without loading the complete research period.
 
 The production implementation in [`@deepseek-ai/dsh-market-snapshot-mysql`](../../packages/market/market-snapshot-mysql/README.md) selects only quality-approved dates. Required adjustment, turnover, and price-limit joins must preserve the daily-price row count. It applies HFQ only to feature prices, retains raw executable prices and exact limits separately, and fetches overlapping SW L1 membership periods separately so it can choose the latest membership effective on each trading date without a range-wide SQL window sort.
 
@@ -36,7 +36,7 @@ The fill price applies side-aware slippage and remains inside the observed daily
 
 `HistoricalStrategicFeatureStream` reconstructs the canonical strategic feature type from stock breadth, equal-weight return, raw limit prices, board-streak structure, and point-in-time sectors. It labels the proxy version, emits no invented news, and makes a cutoff unavailable when its sector session is absent. This supplies context for routing without pretending that the production history contains a full archived market snapshot.
 
-`evaluateDynamicTacticReplay()` advances one conditional scorecard at each daily cutoff using only tactic results whose observation windows have matured. It derives the route before scheduling future outcomes. Fixed and doubled-cost equity curves provide the same execution evidence used by each fixed trial. The report compares every fixed tactic, equal allocation, no-trade, deterministic routing, optional commander proposals, and optional final-veto decisions under a fixed switching cost. Missing commander decisions remain explicit zero coverage.
+`evaluateDynamicTacticReplay()` advances one conditional scorecard at each daily cutoff using only tactic results whose observation windows have matured. It derives the route before scheduling future outcomes. Fixed and doubled-cost equity curves provide the same execution evidence used by each fixed trial. The report compares every fixed tactic, equal allocation, no-trade, deterministic routing, optional commander proposals, and optional final-veto decisions under a fixed switching cost. It attributes every track against the date-aligned real indices and equal-weight universe through geometric excess return, information ratio, beta, capture ratios, cash opportunity cost or avoided loss, and market-regime slices. Missing commander decisions remain explicit zero coverage.
 
 ## Model-facing research consumer
 
@@ -46,7 +46,7 @@ The report contains source hashes, fixed trial identity, execution counts, base 
 
 ## Research boundary
 
-The subsystem generates versioned deterministic research signals, comparable fixed-tactic evidence, and cutoff-correct dynamic routing evidence. It does not claim promotion or tune parameters on an inspected period. Historical strategic inputs remain documented proxies, and model-assisted tracks require recorded route-matched decisions. Final promotion still requires realistic capacity, Deflated Sharpe, PBO, regime-profit concentration, and a sealed holdout.
+The subsystem generates versioned deterministic research signals, comparable fixed-tactic evidence, and cutoff-correct dynamic routing evidence. It does not claim promotion or tune parameters on an inspected period. Historical strategic labels remain documented proxies even though real index returns are retained for attribution, and model-assisted tracks require recorded route-matched decisions. Final promotion still requires realistic capacity, Deflated Sharpe, PBO, regime-profit concentration, and a sealed holdout.
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 

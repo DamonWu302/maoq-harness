@@ -36,6 +36,7 @@ function daily(date: string, close = '11', overrides: DailyFixtureRow = {}): Dai
     basic_source: 'tushare_official',
     basic_version: FETCHED,
     pre_close: '10',
+    pre_close_derived: 0,
     up_limit: '11',
     down_limit: '9',
     limit_source: 'tushare_official',
@@ -62,6 +63,9 @@ function fixture(options: {
   invalidDateChunk?: boolean
   rowsForDate?: (date: string) => DailyFixtureRow[]
   memberships?: DailyFixtureRow[]
+  benchmarkPreviousClose?: string
+  missingBenchmarkDate?: string
+  previousCloses?: DailyFixtureRow[]
 } = {}): MarketSnapshotQuery {
   return {
     rows: async <T extends object>(sql: string, parameters: readonly unknown[]): Promise<T[]> => {
@@ -102,6 +106,13 @@ function fixture(options: {
           }))
         return [...new Map(memberships.map(row => [JSON.stringify(row), row])).values()] as T[]
       }
+      if (sql.includes('maoq:tactic-history-previous-closes')) {
+        return (options.previousCloses ?? []).map(row => ({
+          symbol: row.symbol,
+          close_price: row.close_price,
+          price_version: row.price_version,
+        })) as T[]
+      }
       if (sql.includes('maoq:tactic-history-daily')) {
         const start = String(parameters[0])
         const end = String(parameters[1])
@@ -109,6 +120,26 @@ function fixture(options: {
           .filter(date => date >= start && date <= end)
           .filter(date => !(options.omitLastRow === true && date === end))
           .flatMap(date => options.rowsForDate?.(date) ?? [daily(date)]) as T[]
+      }
+      if (sql.includes('maoq:tactic-history-indices')) {
+        const start = String(parameters[0])
+        const end = String(parameters[1])
+        return DATES
+          .filter(date => date >= start && date <= end && date !== options.missingBenchmarkDate)
+          .flatMap(trade_date => [
+            ['000001.SH', '上证指数'],
+            ['000300.SH', '沪深300'],
+            ['000905.SH', '中证500'],
+            ['000852.SH', '中证1000'],
+          ].map(([symbol, name]) => ({
+            trade_date,
+            symbol,
+            name,
+            close_price: '101',
+            previous_close: options.benchmarkPreviousClose ?? '100',
+            source: 'tushare_official',
+            fetched_at: FETCHED,
+          }))) as T[]
       }
       throw new Error(`unexpected SQL: ${sql}`)
     },
@@ -147,6 +178,18 @@ describe('long_short_stock tactic history adapter', () => {
     expect(datesSql).toContain('COUNT(*) = q.observed_rows')
   })
 
+  it('streams the previous raw close when the price-limit source omits pre-close', async () => {
+    const rowsForDate = (date: string): DailyFixtureRow[] => [daily(date, '11', {
+      pre_close: null,
+    })]
+    const previousCloses = [daily('2026-08-25', '10')]
+    const chunks = await collect(new LongShortStockTacticHistoryAdapter(fixture({ rowsForDate, previousCloses })))
+    expect(chunks[0]?.featureSessions[0]?.stocks[0]?.qualityFlags)
+      .toContain('pre-close-derived-from-previous-session')
+    expect(chunks[0]?.featureSessions[0]?.benchmarks)
+      .toContainEqual(expect.objectContaining({ benchmarkId: 'equal_weight_a_share', dailyReturn: 0.1 }))
+  })
+
   it('streams stable paired adjusted-feature and raw-execution chunks', async () => {
     const first = await collect(new LongShortStockTacticHistoryAdapter(fixture()))
     const second = await collect(new LongShortStockTacticHistoryAdapter(fixture()))
@@ -176,6 +219,10 @@ describe('long_short_stock tactic history adapter', () => {
       upLimit: 11,
       downLimit: 9,
     })
+    expect(first[0]?.featureSessions[0]?.benchmarks).toEqual(expect.arrayContaining([
+      expect.objectContaining({ benchmarkId: '000001.SH', dailyReturn: 0.01 }),
+      expect.objectContaining({ benchmarkId: 'equal_weight_a_share', dailyReturn: 0.1 }),
+    ]))
     const firstChunk = first[0]
     expect(firstChunk).toBeDefined()
     if (firstChunk === undefined) throw new Error('expected the first history chunk')
@@ -189,6 +236,23 @@ describe('long_short_stock tactic history adapter', () => {
   it('rejects a required-table join that silently loses source rows', async () => {
     const adapter = new LongShortStockTacticHistoryAdapter(fixture({ omitLastRow: true }))
     await expect(collect(adapter)).rejects.toThrow(/joined 0 rows; daily source contains 1/)
+  })
+
+  it('rejects an incomplete benchmark date instead of substituting an index proxy', async () => {
+    const adapter = new LongShortStockTacticHistoryAdapter(fixture({ missingBenchmarkDate: DATES[1] }))
+    await expect(collect(adapter)).rejects.toThrow(/2026-08-27 benchmark indices are incomplete/)
+  })
+
+  it('rejects unusable equal-weight and index benchmark observations', async () => {
+    const noEqualWeight = fixture({
+      rowsForDate: date => [daily(date, '11', { pre_close: null })],
+    })
+    await expect(collect(new LongShortStockTacticHistoryAdapter(noEqualWeight)))
+      .rejects.toThrow(/has no equal-weight benchmark observations/)
+
+    const invalidIndex = fixture({ benchmarkPreviousClose: '0' })
+    await expect(collect(new LongShortStockTacticHistoryAdapter(invalidIndex)))
+      .rejects.toThrow(/previous_close must be positive/)
   })
 
   it('preserves delisting, limit, lifecycle, and point-in-time sector states', async () => {
@@ -262,7 +326,6 @@ describe('long_short_stock tactic history adapter', () => {
 
   it('marks sector evidence unavailable when every row lacks dated membership', async () => {
     const rowsForDate = (date: string): DailyFixtureRow[] => [daily(date, '10', {
-      pre_close: null,
       sector_id: null,
       sector_name: null,
       in_date: null,

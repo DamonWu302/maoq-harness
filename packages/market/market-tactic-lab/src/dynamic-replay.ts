@@ -18,6 +18,11 @@ import {
   type TacticScorecardRecord,
 } from '@deepseek-ai/dsh-market-tactic-routing'
 import { deepFreeze } from '@deepseek-ai/dsh-util-values'
+import {
+  evaluateDynamicBenchmarks,
+  type DynamicBenchmarkEvaluation,
+  type DynamicReplayReturnSeries,
+} from './benchmark.ts'
 import type {
   ResearchEquityPoint,
   ResearchTacticEvaluation,
@@ -26,7 +31,7 @@ import type {
 import type { ResearchTacticId } from './signals.ts'
 
 /** Current prequential route, attribution, and switching-cost policy. */
-export const DYNAMIC_TACTIC_REPLAY_VERSION = 'maoq-dynamic-tactic-replay-v1' as const
+export const DYNAMIC_TACTIC_REPLAY_VERSION = 'maoq-dynamic-tactic-replay-v2' as const
 
 /** Predeclared historical comparison policy; changing it creates a new replay version. */
 export const DYNAMIC_TACTIC_REPLAY_POLICY = deepFreeze({ switchingCostBps: 5 })
@@ -74,6 +79,12 @@ export interface DynamicTacticReplayEvaluation {
     readonly commanderProposed: DynamicTacticReplayTrack
     readonly commanderFinal: DynamicTacticReplayTrack
   }
+  readonly benchmarks: Readonly<Record<string, DynamicBenchmarkEvaluation>>
+}
+
+interface TrackCalculation {
+  readonly summary: DynamicTacticReplayTrack
+  readonly series: DynamicReplayReturnSeries
 }
 
 function rounded(value: number): number {
@@ -154,7 +165,7 @@ function track(
   returns: readonly number[],
   selections: readonly TacticId[],
   switchingCostBps: number,
-): DynamicTacticReplayTrack {
+): TrackCalculation {
   let equity = 1
   let peak = 1
   let drawdown = 0
@@ -179,15 +190,21 @@ function track(
   const average = mean(netReturns)
   const variance = netReturns.reduce((sum, value) => sum + (value - average) ** 2, 0) / (netReturns.length - 1)
   return deepFreeze({
-    observations: netReturns.length,
-    finalEquity: rounded(equity),
-    totalReturn: rounded(equity - 1),
-    annualizedReturn: rounded(equity ** (252 / netReturns.length) - 1),
-    annualizedSharpe: variance === 0 ? 0 : rounded(average / Math.sqrt(variance) * Math.sqrt(252)),
-    maximumDrawdown: rounded(drawdown),
-    activeSessions,
-    switches,
-    switchingCostPaid: rounded(switchingCostPaid),
+    summary: {
+      observations: netReturns.length,
+      finalEquity: rounded(equity),
+      totalReturn: rounded(equity - 1),
+      annualizedReturn: rounded(equity ** (252 / netReturns.length) - 1),
+      annualizedSharpe: variance === 0 ? 0 : rounded(average / Math.sqrt(variance) * Math.sqrt(252)),
+      maximumDrawdown: rounded(drawdown),
+      activeSessions,
+      switches,
+      switchingCostPaid: rounded(switchingCostPaid),
+    },
+    series: {
+      returns: netReturns,
+      active: selections.map(selection => selection !== 'defensive_no_trade'),
+    },
   })
 }
 
@@ -205,7 +222,7 @@ function trackFromDecisionMap(
   suite: ResearchTacticSuiteHistoryEvaluation,
   selectedByDate: ReadonlyMap<string, TacticId>,
   switchingCostBps: number,
-): DynamicTacticReplayTrack {
+): TrackCalculation {
   const dates = suite.strategicFeatures.map(features => features.tradingDate)
   const selections: TacticId[] = []
   const returns: number[] = []
@@ -289,10 +306,10 @@ export function evaluateDynamicTacticReplay(
       pending.set(matured.maturityDate, [...pending.get(matured.maturityDate) ?? [], matured])
     }
   }
-  const fixed = Object.fromEntries(ACTIVE_TACTIC_IDS.map((tacticId) => {
+  const fixedCalculations = Object.fromEntries(ACTIVE_TACTIC_IDS.map((tacticId) => {
     const returns = suite.evaluations[tacticId].equityCurve.slice(1).map(point => point.dailyReturn)
     return [tacticId, track(returns, returns.map(() => tacticId), 0)]
-  })) as Record<ResearchTacticId, DynamicTacticReplayTrack>
+  })) as Record<ResearchTacticId, TrackCalculation>
   const equalReturns = suite.strategicFeatures.slice(1).map((_features, offset) => (
     mean(ACTIVE_TACTIC_IDS.map(tacticId => (
       suite.evaluations[tacticId].equityCurve[offset + 1] as ResearchEquityPoint
@@ -300,6 +317,24 @@ export function evaluateDynamicTacticReplay(
   ))
   const defensiveSelections = equalReturns.map(() => 'defensive_no_trade' as const)
   const equalSelections = equalReturns.map(() => ACTIVE_TACTIC_IDS[0] as ActiveTacticId)
+  const equalAllocation = track(equalReturns, equalSelections, 0)
+  const defensiveNoTrade = track(equalReturns.map(() => 0), defensiveSelections, 0)
+  const deterministicRoute = trackFromDecisionMap(suite, deterministicByDate, switchingCostBps)
+  const commanderProposed = trackFromDecisionMap(suite, proposedByDate, switchingCostBps)
+  const commanderFinal = trackFromDecisionMap(suite, finalByDate, switchingCostBps)
+  const benchmarks = evaluateDynamicBenchmarks(suite.benchmarks, {
+    fixed: Object.fromEntries(Object.entries(fixedCalculations).map(([tacticId, calculation]) => [
+      tacticId,
+      calculation.series,
+    ])) as Record<ResearchTacticId, DynamicReplayReturnSeries>,
+    equalAllocation: equalAllocation.series,
+    defensiveNoTrade: defensiveNoTrade.series,
+    deterministicRoute: deterministicRoute.series,
+    commanderProposed: commanderProposed.series,
+    commanderFinal: commanderFinal.series,
+  }, suite.strategicFeatures.slice(0, -1).map(features => (
+    features.marketRegime.status === 'ready' ? features.marketRegime.value.label : 'unavailable'
+  )), suite.strategicFeatures.map(features => features.tradingDate))
   const result: DynamicTacticReplayEvaluation = {
     replayVersion: DYNAMIC_TACTIC_REPLAY_VERSION,
     switchingCostBps,
@@ -311,13 +346,17 @@ export function evaluateDynamicTacticReplay(
     routes,
     days,
     tracks: {
-      fixed,
-      equalAllocation: track(equalReturns, equalSelections, 0),
-      defensiveNoTrade: track(equalReturns.map(() => 0), defensiveSelections, 0),
-      deterministicRoute: trackFromDecisionMap(suite, deterministicByDate, switchingCostBps),
-      commanderProposed: trackFromDecisionMap(suite, proposedByDate, switchingCostBps),
-      commanderFinal: trackFromDecisionMap(suite, finalByDate, switchingCostBps),
+      fixed: Object.fromEntries(Object.entries(fixedCalculations).map(([tacticId, calculation]) => [
+        tacticId,
+        calculation.summary,
+      ])) as Record<ResearchTacticId, DynamicTacticReplayTrack>,
+      equalAllocation: equalAllocation.summary,
+      defensiveNoTrade: defensiveNoTrade.summary,
+      deterministicRoute: deterministicRoute.summary,
+      commanderProposed: commanderProposed.summary,
+      commanderFinal: commanderFinal.summary,
     },
+    benchmarks,
   }
   return deepFreeze(result)
 }

@@ -3981,6 +3981,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type CredentialRef = Branded<\'CredentialRef\'>;',
   },
   {
+    name: 'DailyBenchmarkReturn',
+    declaration: 'export interface DailyBenchmarkReturn {\n    readonly benchmarkId: string;\n    readonly name: string;\n    readonly kind: \'market_index\' | \'equal_weight_universe\';\n    readonly tradingDate: string;\n    readonly dailyReturn: number;\n    readonly provenance: MarketProvenance;\n}',
+  },
+  {
     name: 'DailyExecutionBar',
     declaration: 'export interface DailyExecutionBar {\n    readonly symbol: string;\n    readonly tradingDate: string;\n    readonly open: number;\n    readonly high: number;\n    readonly low: number;\n    readonly close: number;\n    readonly upLimit: number;\n    readonly downLimit: number;\n    readonly tradingStatus: StockDailyBar[\'tradingStatus\'];\n}',
   },
@@ -3990,7 +3994,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'DailyHistorySnapshot',
-    declaration: 'export type DailyHistorySnapshot = Pick<MarketSnapshot, \'identity\' | \'stocks\' | \'sectors\'>;',
+    declaration: 'export type DailyHistorySnapshot = Pick<MarketSnapshot, \'identity\' | \'stocks\' | \'sectors\'> & {\n    readonly benchmarks: readonly DailyBenchmarkReturn[];\n};',
   },
   {
     name: 'DeepSeekLlmApiExtensionMap',

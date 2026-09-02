@@ -181,9 +181,10 @@ function dynamicEvaluationReport(result: ResearchTacticSuiteHistoryEvaluation): 
     routeSelections,
     rejectionCounts,
     tracks: replay.tracks,
+    benchmarks: replay.benchmarks,
     recentRoutes: replay.days.slice(-10),
     limitations: [
-      'Historical strategic state reconstructs breadth and emotion from quality-gated daily facts, uses equal-weight stock return as the market-index proxy, and has no historical news catalyst.',
+      'Historical strategic state reconstructs breadth and emotion from quality-gated daily facts and has no historical news catalyst; performance attribution uses separately sourced real index returns plus the labeled equal-weight universe benchmark.',
       'Matured observations are overlapping forward sleeves of each fixed tactic; they are not independent trades.',
       'No model-assisted result is imputed when a recorded commander decision is absent; commander tracks remain defensive on uncovered routes.',
     ],

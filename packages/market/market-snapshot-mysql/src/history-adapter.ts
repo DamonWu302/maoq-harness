@@ -7,6 +7,7 @@ import type {
 import { contentHash } from '@deepseek-ai/dsh-market-snapshot'
 import {
   buildTacticLabHistoryChunk,
+  type DailyBenchmarkReturn,
   type DailyExecutionBar,
   type DailyExecutionSession,
   type DailyHistorySnapshot,
@@ -17,7 +18,15 @@ import {
 import type { MarketSnapshotQuery } from './adapter.ts'
 
 /** Provider mapping version included in every frozen historical chunk. */
-export const LONG_SHORT_STOCK_HISTORY_MAPPING_VERSION = 'long-short-stock-history-v2' as const
+export const LONG_SHORT_STOCK_HISTORY_MAPPING_VERSION = 'long-short-stock-history-v3' as const
+
+/** Predeclared investable-market comparisons required by the MAOQ P0 replay. */
+export const MAOQ_HISTORY_BENCHMARK_INDEX_SYMBOLS = Object.freeze([
+  '000001.SH',
+  '000300.SH',
+  '000905.SH',
+  '000852.SH',
+] as const)
 
 interface AvailableHistoryDateRow {
   trading_date: string
@@ -42,6 +51,7 @@ interface HistoryDailyRow {
   basic_source: string
   basic_version: string
   pre_close: string | null
+  pre_close_derived: number
   up_limit: string
   down_limit: string
   limit_source: string
@@ -72,6 +82,22 @@ interface HistorySectorRow {
   sector_version: string | null
 }
 
+interface HistoryIndexRow {
+  trade_date: string
+  symbol: string
+  name: string
+  close_price: string
+  previous_close: string | null
+  source: string
+  fetched_at: string
+}
+
+interface HistoryPreviousCloseRow {
+  symbol: string
+  close_price: string
+  price_version: string
+}
+
 const HISTORY_DATES_SQL = `/* maoq:tactic-history-dates */
 SELECT DATE_FORMAT(p.trade_date, '%Y-%m-%d') trading_date, COUNT(*) expected_rows
 FROM daily_price_bar p
@@ -92,7 +118,8 @@ SELECT
   p.source price_source, DATE_FORMAT(p.updated_at, '%Y-%m-%dT%H:%i:%s.%f+08:00') price_version,
   a.adj_factor, a.source adjustment_source, DATE_FORMAT(a.fetched_at, '%Y-%m-%dT%H:%i:%s.%f+08:00') adjustment_version,
   b.turnover_rate, b.source basic_source, DATE_FORMAT(b.fetched_at, '%Y-%m-%dT%H:%i:%s.%f+08:00') basic_version,
-  l.pre_close, l.up_limit, l.down_limit, l.source limit_source, DATE_FORMAT(l.fetched_at, '%Y-%m-%dT%H:%i:%s.%f+08:00') limit_version,
+  l.pre_close, 0 pre_close_derived,
+  l.up_limit, l.down_limit, l.source limit_source, DATE_FORMAT(l.fetched_at, '%Y-%m-%dT%H:%i:%s.%f+08:00') limit_version,
   s.list_status, DATE_FORMAT(s.list_date, '%Y-%m-%d') list_date, DATE_FORMAT(s.delist_date, '%Y-%m-%d') delist_date,
   COALESCE(s.source, 'daily_price_bar:first-observed') lifecycle_source,
   COALESCE(DATE_FORMAT(s.fetched_at, '%Y-%m-%dT%H:%i:%s.%f+08:00'), DATE_FORMAT(p.updated_at, '%Y-%m-%dT%H:%i:%s.%f+08:00')) lifecycle_version
@@ -104,6 +131,16 @@ LEFT JOIN security_lifecycle s ON s.symbol=p.symbol
 WHERE p.trade_date BETWEEN ? AND ?
 ORDER BY trade_date, symbol`
 
+const HISTORY_PREVIOUS_CLOSE_SQL = `/* maoq:tactic-history-previous-closes */
+SELECT current.symbol, current.close_price,
+ DATE_FORMAT(current.updated_at, '%Y-%m-%dT%H:%i:%s.%f+08:00') price_version
+FROM daily_price_bar current
+JOIN (
+ SELECT symbol, MAX(trade_date) trade_date
+ FROM daily_price_bar WHERE trade_date < ? GROUP BY symbol
+) previous ON previous.symbol=current.symbol AND previous.trade_date=current.trade_date
+ORDER BY current.symbol`
+
 const HISTORY_SECTOR_SQL = `/* maoq:tactic-history-sectors */
 SELECT symbol, index_code sector_id, industry_name sector_name,
  DATE_FORMAT(in_date, '%Y-%m-%d') in_date, DATE_FORMAT(out_date, '%Y-%m-%d') out_date,
@@ -111,6 +148,17 @@ SELECT symbol, index_code sector_id, industry_name sector_name,
 FROM security_industry_period
 WHERE industry_level='L1' AND in_date <= ? AND (out_date IS NULL OR out_date >= ?)
 ORDER BY symbol, in_date DESC, fetched_at DESC, index_code`
+
+const HISTORY_INDEX_SQL = `/* maoq:tactic-history-indices */
+SELECT DATE_FORMAT(i.trade_date, '%Y-%m-%d') trade_date, i.symbol, i.name, i.close_price,
+ (SELECT previous.close_price FROM market_index_daily_bar previous
+  WHERE previous.symbol=i.symbol AND previous.trade_date<i.trade_date
+  ORDER BY previous.trade_date DESC LIMIT 1) previous_close,
+ i.source, DATE_FORMAT(i.fetched_at, '%Y-%m-%dT%H:%i:%s.%f+08:00') fetched_at
+FROM market_index_daily_bar i
+WHERE i.trade_date BETWEEN ? AND ?
+  AND i.symbol IN ('000001.SH', '000300.SH', '000905.SH', '000852.SH')
+ORDER BY trade_date, symbol`
 
 /** Rejected production history evidence. */
 export class MarketTacticHistoryMysqlError extends Error {
@@ -167,7 +215,7 @@ function provenance(
   }
 }
 
-function sourceVersions(rows: readonly HistoryDailyRow[]): readonly string[] {
+function sourceVersions(rows: readonly HistoryDailyRow[], indices: readonly HistoryIndexRow[]): readonly string[] {
   return [
     `mapping:${LONG_SHORT_STOCK_HISTORY_MAPPING_VERSION}`,
     `price:${latest(rows.map(row => row.price_version))}`,
@@ -176,6 +224,7 @@ function sourceVersions(rows: readonly HistoryDailyRow[]): readonly string[] {
     `limit:${latest(rows.map(row => row.limit_version))}`,
     `lifecycle:${latest(rows.map(row => row.lifecycle_version))}`,
     `sector:${latest(rows.map(row => row.sector_version)) || 'unavailable'}`,
+    `index:${latest(indices.map(row => row.fetched_at))}`,
   ]
 }
 
@@ -208,6 +257,7 @@ function stock(row: HistoryDailyRow): StockDailyBar {
     listingDays: daysInclusive(row.list_date, row.trade_date),
     qualityFlags: [
       ...row.list_status === null ? ['lifecycle-inferred-from-observed-bar'] : [],
+      ...row.pre_close_derived === 1 ? ['pre-close-derived-from-previous-session'] : [],
       ...row.pre_close === null ? ['pre-close-unavailable-no-history'] : [],
       ...row.sector_id === null ? ['point-in-time-sector-unavailable'] : [],
     ],
@@ -216,7 +266,12 @@ function stock(row: HistoryDailyRow): StockDailyBar {
       LONG_SHORT_STOCK_HISTORY_MAPPING_VERSION,
       retrievedAt,
       `${row.trade_date}:${row.symbol}`,
-      ['hfq-price=raw-price*adj-factor', 'turnover-ratio=turnover-rate-percent/100', 'volume-and-amount-unadjusted'],
+      [
+        'hfq-price=raw-price*adj-factor',
+        'turnover-ratio=turnover-rate-percent/100',
+        'volume-and-amount-unadjusted',
+        ...row.pre_close_derived === 1 ? ['missing-limit-pre-close=previous-session-raw-close'] : [],
+      ],
     ),
   }
 }
@@ -284,26 +339,73 @@ function sectors(date: string, rows: readonly HistoryDailyRow[]): SectorDailySna
   }).sort((left, right) => left.sectorId.localeCompare(right.sectorId))
 }
 
-function featureSession(date: string, rows: readonly HistoryDailyRow[], versions: readonly string[]): DailyHistorySnapshot {
+function benchmarkReturns(
+  date: string,
+  rows: readonly HistoryDailyRow[],
+  indices: readonly HistoryIndexRow[],
+): readonly DailyBenchmarkReturn[] {
+  const eligible = rows.filter(row => row.pre_close !== null && numberOf(row.pre_close, `${date}:${row.symbol}.pre_close`) > 0)
+  if (eligible.length === 0) throw new MarketTacticHistoryMysqlError(`${date} has no equal-weight benchmark observations`)
+  const equalWeightReturn = rounded(eligible.reduce((sum, row) => (
+    sum + numberOf(row.close_price, `${date}:${row.symbol}.close`) / numberOf(row.pre_close, `${date}:${row.symbol}.pre_close`) - 1
+  ), 0) / eligible.length)
+  const equalWeightVersion = latest(eligible.map(row => row.price_version))
+  return [
+    ...indices.map((row): DailyBenchmarkReturn => {
+      const previous = numberOf(row.previous_close, `${date}:${row.symbol}.previous_close`)
+      if (previous <= 0) throw new MarketTacticHistoryMysqlError(`${date}:${row.symbol}.previous_close must be positive`)
+      return {
+        benchmarkId: row.symbol,
+        name: row.name,
+        kind: 'market_index',
+        tradingDate: date,
+        dailyReturn: rounded(numberOf(row.close_price, `${date}:${row.symbol}.close`) / previous - 1),
+        provenance: provenance('market_index_daily_bar', row.fetched_at, row.fetched_at, `${date}:${row.symbol}`, [
+          'return=close/previous-session-close-1',
+        ]),
+      }
+    }),
+    {
+      benchmarkId: 'equal_weight_a_share',
+      name: 'A-share equal-weight quality universe',
+      kind: 'equal_weight_universe' as const,
+      tradingDate: date,
+      dailyReturn: equalWeightReturn,
+      provenance: provenance('daily_price_bar', equalWeightVersion, equalWeightVersion, `${date}:equal-weight`, [
+        'return=mean(raw-close/pre-close-1)',
+        ...eligible.some(row => row.pre_close_derived === 1) ? ['missing-limit-pre-close=previous-session-raw-close'] : [],
+        'missing-pre-close=excluded',
+      ]),
+    },
+  ].sort((left, right) => left.benchmarkId.localeCompare(right.benchmarkId))
+}
+
+function featureSession(
+  date: string,
+  rows: readonly HistoryDailyRow[],
+  indices: readonly HistoryIndexRow[],
+  versions: readonly string[],
+): DailyHistorySnapshot {
   const stocks = rows.map(stock).sort((left, right) => left.symbol.localeCompare(right.symbol))
   const sectorRows = sectors(date, rows)
+  const benchmarks = benchmarkReturns(date, rows, indices)
   const identityInput: MarketSnapshotIdentityInput = {
     tradingDate: date,
-    cutoffTime: latest(rows.flatMap(row => [
+    cutoffTime: latest([...rows.flatMap(row => [
       row.price_version,
       row.adjustment_version,
       row.basic_version,
       row.limit_version,
       row.lifecycle_version,
       row.sector_version,
-    ])),
+    ]), ...indices.map(row => row.fetched_at)]),
     calendarVersion: 'quality-gated-daily-price-v1',
     adjustmentVersion: `hfq:${latest(rows.map(row => row.adjustment_version))}`,
     sectorClassificationVersion: `sw-l1:${latest(rows.map(row => row.sector_version)) || 'unavailable'}`,
     sourceVersions: [...versions],
   }
-  const hash = contentHash({ identity: identityInput, stocks, sectors: sectorRows })
-  return { identity: { ...identityInput, contentHash: hash }, stocks, sectors: sectorRows }
+  const hash = contentHash({ identity: identityInput, stocks, sectors: sectorRows, benchmarks })
+  return { identity: { ...identityInput, contentHash: hash }, stocks, sectors: sectorRows, benchmarks }
 }
 
 function executionSession(date: string, rows: readonly HistoryDailyRow[], versions: readonly string[]): DailyExecutionSession {
@@ -343,6 +445,29 @@ function attachSectors(rows: readonly HistoryDailyCoreRow[], memberships: readon
   })
 }
 
+function applyPreviousCloses(
+  rows: readonly HistoryDailyCoreRow[],
+  previousBySymbol: Map<string, HistoryPreviousCloseRow>,
+): HistoryDailyCoreRow[] {
+  return rows.map((row) => {
+    const previous = previousBySymbol.get(row.symbol)
+    const resolved = row.pre_close === null && previous !== undefined
+      ? {
+        ...row,
+        pre_close: previous.close_price,
+        pre_close_derived: 1,
+        price_version: latest([row.price_version, previous.price_version]),
+      }
+      : row
+    previousBySymbol.set(row.symbol, {
+      symbol: row.symbol,
+      close_price: row.close_price,
+      price_version: row.price_version,
+    })
+    return resolved
+  })
+}
+
 function validateRequest(request: TacticLabHistoryRequest): void {
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(request.startDate) || !/^\d{4}-\d{2}-\d{2}$/u.test(request.endDate)) {
     throw new MarketTacticHistoryMysqlError('dates must use YYYY-MM-DD')
@@ -375,16 +500,24 @@ export class LongShortStockTacticHistoryAdapter implements TacticLabHistoryAdapt
       request.minimumStocks,
     ])
     if (dates.length === 0) throw new MarketTacticHistoryMysqlError('no complete sessions matched the requested range')
+    const previousRows = await this.query.rows<HistoryPreviousCloseRow>(HISTORY_PREVIOUS_CLOSE_SQL, [
+      dates[0]?.trading_date,
+    ])
+    const previousBySymbol = new Map(previousRows.map(row => [row.symbol, row]))
     for (let offset = 0; offset < dates.length; offset += request.chunkSessions) {
       const slice = dates.slice(offset, offset + request.chunkSessions)
       const start = dates[offset]?.trading_date
       const end = dates[Math.min(offset + request.chunkSessions, dates.length) - 1]?.trading_date
       if (start === undefined || end === undefined) throw new MarketTacticHistoryMysqlError('date chunk is incomplete')
-      const coreRows = await this.query.rows<HistoryDailyCoreRow>(HISTORY_DAILY_SQL, [start, end])
+      const sourceRows = await this.query.rows<HistoryDailyCoreRow>(HISTORY_DAILY_SQL, [start, end])
+      const coreRows = applyPreviousCloses(sourceRows, previousBySymbol)
       const memberships = await this.query.rows<HistorySectorRow>(HISTORY_SECTOR_SQL, [end, start])
+      const indexRows = await this.query.rows<HistoryIndexRow>(HISTORY_INDEX_SQL, [start, end])
       const rows = attachSectors(coreRows, memberships)
       const byDate = new Map<string, HistoryDailyRow[]>()
       for (const row of rows) byDate.set(row.trade_date, [...byDate.get(row.trade_date) ?? [], row])
+      const indicesByDate = new Map<string, HistoryIndexRow[]>()
+      for (const row of indexRows) indicesByDate.set(row.trade_date, [...indicesByDate.get(row.trade_date) ?? [], row])
       const completeSessions: { date: string; rows: HistoryDailyRow[] }[] = []
       for (const expected of slice) {
         const sessionRows = byDate.get(expected.trading_date)
@@ -395,11 +528,23 @@ export class LongShortStockTacticHistoryAdapter implements TacticLabHistoryAdapt
         }
         completeSessions.push({ date: expected.trading_date, rows: sessionRows })
       }
-      const versions = sourceVersions(rows)
+      for (const expected of slice) {
+        const observed = indicesByDate.get(expected.trading_date) ?? []
+        const symbols = observed.map(row => row.symbol).sort()
+        if (symbols.join('\n') !== [...MAOQ_HISTORY_BENCHMARK_INDEX_SYMBOLS].sort().join('\n')) {
+          throw new MarketTacticHistoryMysqlError(`${expected.trading_date} benchmark indices are incomplete`)
+        }
+      }
+      const versions = sourceVersions(rows, indexRows)
       yield buildTacticLabHistoryChunk({
         adapterVersion: LONG_SHORT_STOCK_HISTORY_MAPPING_VERSION,
         sourceVersions: versions,
-        featureSessions: completeSessions.map(item => featureSession(item.date, item.rows, versions)),
+        featureSessions: completeSessions.map(item => featureSession(
+          item.date,
+          item.rows,
+          indicesByDate.get(item.date) as HistoryIndexRow[],
+          versions,
+        )),
         executionSessions: completeSessions.map(item => executionSession(item.date, item.rows, versions)),
       })
     }

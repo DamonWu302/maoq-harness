@@ -2,6 +2,7 @@
 
 export * from './chunk.ts'
 export * from './dynamic-replay.ts'
+export * from './benchmark.ts'
 export * from './evidence.ts'
 export * from './evaluation.ts'
 export * from './execution.ts'

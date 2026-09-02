@@ -122,6 +122,25 @@ function suite(sessions = 20): ResearchTacticSuiteHistoryEvaluation {
     historyChunkHashes: [hashAt(0, 500)],
     sourceExecutionHashes: Array.from({ length: sessions }, (_, index) => hashAt(index, 100)),
     strategicFeatures: Array.from({ length: sessions }, (_, index) => strategic(index)),
+    benchmarks: {
+      '000001.SH': Array.from({ length: sessions }, (_, index) => ({
+        benchmarkId: '000001.SH',
+        name: 'SSE Composite',
+        kind: 'market_index' as const,
+        tradingDate: dateAt(index),
+        dailyReturn: index === 0 ? 0 : index % 2 === 0 ? 0.004 : -0.002,
+        provenance: {
+          source: {
+            adapter: 'dynamic-fixture',
+            dataset: 'index',
+            version: 'v1',
+            retrievedAt: `${dateAt(index)}T19:00:00+08:00`,
+            recordId: `${dateAt(index)}:000001.SH`,
+          },
+          transforms: ['return=fixture'],
+        },
+      })),
+    },
     evaluations: Object.fromEntries(ACTIVE_TACTIC_IDS.map(tacticId => [
       tacticId,
       evaluation(tacticId, sessions),
@@ -131,9 +150,10 @@ function suite(sessions = 20): ResearchTacticSuiteHistoryEvaluation {
 }
 
 type MutableReplaySuite = Omit<ResearchTacticSuiteHistoryEvaluation,
-  'sourceExecutionHashes' | 'strategicFeatures' | 'evaluations'> & {
+  'sourceExecutionHashes' | 'strategicFeatures' | 'benchmarks' | 'evaluations'> & {
     sourceExecutionHashes: string[]
     strategicFeatures: StrategicFeatureRecord[]
+    benchmarks: Record<string, ResearchTacticSuiteHistoryEvaluation['benchmarks'][string]>
     evaluations: Record<typeof ACTIVE_TACTIC_IDS[number], ResearchTacticEvaluation>
   }
 
@@ -170,6 +190,17 @@ describe('dynamic tactic prequential replay', () => {
     expect(deterministic.replayVersion).toBe(DYNAMIC_TACTIC_REPLAY_VERSION)
     expect(deterministic.days.slice(0, 9).every(day => day.deterministicTacticId === 'defensive_no_trade')).toBe(true)
     expect(deterministic.tracks.deterministicRoute.activeSessions).toBeGreaterThan(0)
+    expect(deterministic.benchmarks['000001.SH']).toMatchObject({
+      benchmarkId: '000001.SH',
+      performance: { observations: 19 },
+      comparisons: {
+        defensiveNoTrade: {
+          beta: 0,
+        },
+      },
+    })
+    expect(deterministic.benchmarks['000001.SH']?.comparisons.deterministicRoute.byMarketRegime)
+      .toHaveProperty('risk_on_trend')
     const decision = defensiveDecision(input)
     const route = deterministic.routes.find(item => item.routeId === decision.routeId)!
     const assisted = evaluateDynamicTacticReplay(input, [decision])
@@ -197,6 +228,10 @@ describe('dynamic tactic prequential replay', () => {
       doubledCostEquityCurve: current.doubledCostEquityCurve.slice(1),
     }
     expect(() => evaluateDynamicTacticReplay(curveMismatch)).toThrow(/curve mismatch/)
+
+    const benchmarkMismatch = mutableSuite()
+    benchmarkMismatch.benchmarks['000001.SH'] = benchmarkMismatch.benchmarks['000001.SH']!.slice(1)
+    expect(() => evaluateDynamicTacticReplay(benchmarkMismatch)).toThrow(/not aligned to the replay/)
   })
 
   it('rejects duplicate recorded decisions for one route', () => {
