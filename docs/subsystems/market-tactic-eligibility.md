@@ -12,7 +12,7 @@ Promotion and context fit are independent. `research` plus matching context beco
 
 ## Deterministic gates
 
-`evaluateTacticEligibility()` consumes one `StrategicFeatureRecord`. Active tactics first require ready market-regime, emotion-cycle, and sector-battlefield components. Each family then applies allowlisted strategic labels plus a positive top-sector gate. Passing results expose at most three positively scored sector IDs; failures carry stable reason codes and exact P2 evidence references.
+`evaluateTacticEligibility()` consumes one `StrategicFeatureRecord`. Active tactics first require ready market-regime, emotion-cycle, and sector-battlefield components. Each catalog definition owns its market-regime and emotion-cycle coverage, then applies a positive top-sector gate. Automated coverage requires at least one active tactic family for every market regime. Passing results expose at most three positively scored sector IDs; failures carry stable reason codes and exact P2 evidence references.
 
 If any required component is unavailable, every active tactic fails closed. `defensive_no_trade` remains eligible with zero position and no-order execution requirements. This ensures that incomplete evidence cannot disappear merely because model prose is confident.
 

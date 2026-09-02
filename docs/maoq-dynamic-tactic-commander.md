@@ -90,7 +90,7 @@ route score =
   - drawdown, crowding, transition, and uncertainty penalties
 ```
 
-The v1 implementation requires eight exact-context matured samples, positive 95% expectancy lower bound, positive doubled-cost expectancy, at least 50% fill rate, and a positive final score. It freezes exact transforms and weights before replay. A weight, context bucket, decay rule, or risk-budget change creates a new router version and trial identity. The router returns the top three permitted tactics, score components, evidence references, uncertainty, maximum risk budget, cash floor, and rejection reasons; it does not select stocks.
+The v2 implementation selects the narrowest evidence tier that reaches eight matured samples: exact context, then market regime plus emotion cycle, then the same market regime. Evidence never crosses a market-regime boundary. Wider tiers recompute return, risk, and execution metrics from cell sufficient statistics, sample-weight recent effectiveness, and receive a smaller context-alignment contribution. Positive 95% expectancy lower bound, positive doubled-cost expectancy, at least 50% fill rate, and a positive final score remain mandatory. A weight, context bucket, evidence ladder, decay rule, or risk-budget change creates a new router version and trial identity. The router returns the top three permitted tactics, score components, evidence tier, evidence references, uncertainty, maximum risk budget, cash floor, and rejection reasons; it does not select stocks.
 
 -----
 
@@ -165,7 +165,19 @@ The point-in-time replay from 2022-01-01 through 2025-12-31 covers 969 sessions,
 
 The benchmark baseline uses 968 aligned return observations. The SSE Composite returns 9.26%, so the deterministic route trails it by 11.35%. During 301 `risk_on_trend` decision sessions, the route is active on only 38 sessions and returns -1.77% while the SSE Composite returns 59.16%. During 366 `risk_contraction` sessions, the route returns -0.80% while the index loses 13.14%. Defense therefore avoids contraction losses, but the selector incorrectly carries abstention into the main risk-on opportunity set.
 
-The historical range contains no recorded DSH commander decisions, so the model-proposal and final-veto tracks both fall back to no-trade and model coverage is zero. This replay can reject the current deterministic dynamic router; it cannot show that model selection has no value, and the same 2022–2025 range cannot be tuned and then presented as a passing holdout. The next version must first define state-specific participation and tactic-family coverage, then freeze its evidence threshold, hysteresis, minimum holding period, and cost-aware transition policy before evaluation on a separate development range and sealed holdout.
+The historical range contains no recorded DSH commander decisions, so the model-proposal and final-veto tracks both fall back to no-trade and model coverage is zero. This replay can reject the current deterministic dynamic router; it cannot show that model selection has no value, and the same 2022–2025 range cannot be tuned and then presented as a passing holdout. The regime-evidence successor defines catalog-owned state and emotion coverage plus a same-regime evidence ladder. It intentionally does not force participation: absence of same-regime evidence or negative cost-adjusted evidence still selects defense. Hysteresis, minimum holding period, and cost-aware transition remain a separate successor decision that must be frozen before evaluation on a separate development range and sealed holdout.
+
+### Router-correction P0-P2
+
+These correction phases address the over-defense finding above and are separate from the original P3.5 delivery phases.
+
+| Phase | Status | Deliverable | Acceptance |
+|---|---|---|---|
+| P0 — Diagnose participation | Complete | Regime-sliced benchmark, route counts, rejection counts, and fixed-tactic comparison | Prove whether defense is justified by state or caused by router sparsity |
+| P1 — Regime evidence router | Implemented, acceptance failed | Catalog-owned regime/emotion coverage, exact → regime-emotion → same-regime evidence ladder, audited evidence scope | No cross-regime leakage and fewer sparse-evidence rejections passed; active participation did not increase |
+| P2 — Regime combat policy | Pending | Separate hard impossibility gates from state-fit priors, compare every feasible tactic family within each regime, include benchmark opportunity cost, then add cost-aware transition control | Participate when a feasible same-regime tactic has positive robust evidence; defend when none does; improve net state-sliced performance without forcing trades |
+
+The v3 audit replay retains 969 sessions and 967 routable cutoffs. Missing or insufficient evidence rejections fall from 446 in v1 to 93, proving that the ladder repairs scorecard sparsity. However, the route still selects defense 929 times and breakout-pullback 38 times; all 38 active selections use exact-context evidence, while no regime-emotion or market-regime aggregate clears the remaining gates. The route therefore remains at -3.14%, versus +9.26% for the SSE Composite. P1 is retained as a safer evidence primitive but fails its participation acceptance criterion. The next principal contradiction is the 4,205 static context exclusions plus nonpositive same-regime expectancy and cost evidence, not missing samples or transition churn.
 
 P2 exits when every model-assisted decision is cutoff-correct and replayable, unknown or unpromoted actions fail closed, standard mode avoids full-history scans and unnecessary specialists, and the complete selector beats preregistered fixed and abstention-aware baselines net of switching costs before paper promotion.
 
@@ -174,4 +186,4 @@ P2 exits when every model-assisted decision is cutoff-correct and replayable, un
 <a id="dev-note"></a>
 ## Dev Note
 
-P0 through P2 host capabilities and no-look-ahead replay are implemented, but the current historical result rejects paper promotion and model-assisted incremental value remains unmeasured. The next regime-specific participation policy, sealed date range, model route, and transition rule remain preregistration decisions owned by a successor trial and its Agent Note.
+P0 through P2 host capabilities and no-look-ahead replay are implemented, but the current historical result rejects paper promotion and model-assisted incremental value remains unmeasured. Router-correction P1 repairs evidence sparsity without improving participation. The next regime combat policy must distinguish truly impossible execution from a soft state prior, compare all feasible tactic families against defense and benchmark opportunity cost inside each regime, and only then freeze its transition rule. Those decisions and a sealed date range remain owned by a successor trial and its Agent Note.

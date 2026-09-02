@@ -1,9 +1,13 @@
-import type { StrategicFeatureRecord } from '@deepseek-ai/dsh-market-strategic-state'
+import type {
+  EmotionCycle,
+  MarketRegime,
+  StrategicFeatureRecord,
+} from '@deepseek-ai/dsh-market-strategic-state'
 
 /** Current deterministic tactic eligibility schema. */
 export const TACTIC_ELIGIBILITY_SCHEMA_VERSION = 2 as const
 /** Current registry and gate implementation identity. */
-export const TACTIC_ELIGIBILITY_ENGINE_VERSION = 'maoq-tactic-eligibility-v2' as const
+export const TACTIC_ELIGIBILITY_ENGINE_VERSION = 'maoq-tactic-eligibility-v3' as const
 
 /** Stable IDs for every implemented tactic and the defensive fallback. */
 export type TacticId =
@@ -22,12 +26,16 @@ export type ActiveTacticId = Exclude<TacticId, 'defensive_no_trade'>
 export type TacticPromotionStatus = 'research' | 'paper' | 'eligible'
 /** Current deterministic eligibility outcome after promotion and context gates. */
 export type TacticEligibilityStatus = 'eligible' | 'watch_only' | 'research_only' | 'ineligible'
+/** Catalog-owned tactic family used to audit market-regime coverage. */
+export type TacticFamily = 'trend' | 'emotion' | 'reversal' | 'rotation' | 'relative_strength' | 'low_volatility' | 'defense'
 
 /** Host-owned static tactic definition; model prose cannot modify these constraints. */
 export interface TacticDefinition {
   readonly tacticId: TacticId
   readonly tacticVersion: string
-  readonly family: 'trend' | 'emotion' | 'reversal' | 'rotation' | 'relative_strength' | 'low_volatility' | 'defense'
+  readonly family: TacticFamily
+  readonly eligibleMarketRegimes: readonly MarketRegime[]
+  readonly eligibleEmotionCycles: readonly EmotionCycle[]
   readonly promotionStatus: TacticPromotionStatus
   readonly evidenceGrade: 'A' | 'B' | 'control'
   readonly requiredHistorySessions: number

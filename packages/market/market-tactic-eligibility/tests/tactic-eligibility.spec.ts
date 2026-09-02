@@ -1,4 +1,5 @@
 import type { StrategicFeatureRecord } from '@deepseek-ai/dsh-market-strategic-state'
+import type { MarketRegime } from '@deepseek-ai/dsh-market-strategic-state'
 import { describe, expect, it } from 'vitest'
 import {
   ACTIVE_TACTIC_IDS,
@@ -12,6 +13,7 @@ function features(overrides: {
   market?: 'risk_on_trend' | 'rotation' | 'high_volatility_divergence' | 'risk_contraction' | 'repair'
   emotion?: 'startup' | 'acceleration' | 'climax' | 'divergence' | 'ebb' | 'repair'
   unavailable?: boolean
+  emptySectors?: boolean
 } = {}): StrategicFeatureRecord {
   const unavailable = { status: 'unavailable' as const, reasonCodes: ['fixture'], evidenceRefs: [] }
   const market = {
@@ -40,7 +42,7 @@ function features(overrides: {
   }
   const sectors = {
     status: 'ready' as const,
-    value: [{
+    value: overrides.emptySectors ? [] : [{
       sectorId: 'sw-1',
       name: 'Sector',
       strength: 0.8,
@@ -104,6 +106,13 @@ describe('P3 tactic eligibility', () => {
       .toBe(true)
   })
 
+  it('fails active tactics closed when no positive sector battlefield exists', () => {
+    const result = evaluateTacticEligibility(features({ emptySectors: true }))
+    expect(result.researchCandidateIds).toEqual([])
+    expect(result.tactics.find(tactic => tactic.tacticId === 'regime_signed_breakout_pullback')?.reasonCodes)
+      .toContain('GATE_FAILED:positive_sector_battlefield')
+  })
+
   it('publishes immutable host-owned promotion and execution policy', () => {
     const definitions = tacticDefinitions()
     expect(definitions.map(definition => [definition.tacticId, definition.promotionStatus])).toEqual([
@@ -123,5 +132,22 @@ describe('P3 tactic eligibility', () => {
     expect(new Set(definitions.map(definition => definition.tacticVersion)).size).toBe(definitions.length)
     expect(definitions.find(definition => definition.tacticId === 'openable_emotion_leader')?.executionRequirements)
       .toContain('sealed one-price limit is observation only')
+  })
+
+  it('covers every market regime with at least one active tactic family', () => {
+    const regimes: readonly MarketRegime[] = [
+      'risk_on_trend',
+      'rotation',
+      'high_volatility_divergence',
+      'risk_contraction',
+      'repair',
+    ]
+    const active = tacticDefinitions().filter(definition => definition.tacticId !== 'defensive_no_trade')
+    for (const regime of regimes) {
+      const families = new Set(active
+        .filter(definition => definition.eligibleMarketRegimes.includes(regime))
+        .map(definition => definition.family))
+      expect(families.size, `${regime} has no active tactic family`).toBeGreaterThan(0)
+    }
   })
 })

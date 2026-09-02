@@ -163,9 +163,18 @@ function dynamicEvaluationReport(result: ResearchTacticSuiteHistoryEvaluation): 
   const routeSelections = Object.fromEntries([...new Set(replay.days.map(day => day.deterministicTacticId))]
     .sort()
     .map(tacticId => [tacticId, replay.days.filter(day => day.deterministicTacticId === tacticId).length]))
+  const evidenceScopeSelections = Object.fromEntries(
+    ['exact_context', 'regime_emotion', 'market_regime', 'defense'].map(scope => [
+      scope,
+      replay.days.filter(day => (day.deterministicEvidenceScope ?? 'defense') === scope).length,
+    ]),
+  )
   const rejectionReasons = replay.routes.flatMap(route => route.rejected.flatMap(item => item.reasons))
   const rejectionCounts = Object.fromEntries([...new Set(rejectionReasons)].sort()
     .map(reason => [reason, rejectionReasons.filter(item => item === reason).length]))
+  const rejectedEvidenceScopes = replay.routes.flatMap(route => route.rejected.map(item => item.evidenceScope ?? 'none'))
+  const rejectedEvidenceScopeCounts = Object.fromEntries([...new Set(rejectedEvidenceScopes)].sort()
+    .map(scope => [scope, rejectedEvidenceScopes.filter(item => item === scope).length]))
   return {
     status: 'passed',
     mode: 'evaluate-dynamic',
@@ -179,7 +188,9 @@ function dynamicEvaluationReport(result: ResearchTacticSuiteHistoryEvaluation): 
     commanderDecisions: replay.commanderDecisions,
     commanderCoverage: replay.commanderCoverage,
     routeSelections,
+    evidenceScopeSelections,
     rejectionCounts,
+    rejectedEvidenceScopeCounts,
     tracks: replay.tracks,
     benchmarks: replay.benchmarks,
     recentRoutes: replay.days.slice(-10),

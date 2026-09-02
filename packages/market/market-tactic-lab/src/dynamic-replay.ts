@@ -13,6 +13,7 @@ import {
   verifyTacticCommanderDecisionRecord,
   type ExecutionQualityBand,
   type MaturedTacticOutcome,
+  type TacticEvidenceScope,
   type TacticCommanderDecisionRecord,
   type TacticRoutingRecord,
   type TacticScorecardRecord,
@@ -31,7 +32,7 @@ import type {
 import type { ResearchTacticId } from './signals.ts'
 
 /** Current prequential route, attribution, and switching-cost policy. */
-export const DYNAMIC_TACTIC_REPLAY_VERSION = 'maoq-dynamic-tactic-replay-v2' as const
+export const DYNAMIC_TACTIC_REPLAY_VERSION = 'maoq-dynamic-tactic-replay-v3' as const
 
 /** Predeclared historical comparison policy; changing it creates a new replay version. */
 export const DYNAMIC_TACTIC_REPLAY_POLICY = deepFreeze({ switchingCostBps: 5 })
@@ -42,6 +43,7 @@ export interface DynamicTacticReplayDay {
   readonly routeId: string
   readonly scorecardId: string
   readonly deterministicTacticId: TacticId
+  readonly deterministicEvidenceScope: TacticEvidenceScope | null
   readonly commanderDecisionId: string | null
   readonly proposedTacticId: TacticId
   readonly finalTacticId: TacticId
@@ -283,6 +285,7 @@ export function evaluateDynamicTacticReplay(
     const route = routeEligibleTactics(features, evaluateTacticEligibility(features), scorecard, quality)
     routes.push(route)
     const deterministic = (route.slate[0] as NonNullable<typeof route.slate[number]>).tacticId
+    const deterministicEvidenceScope = (route.slate[0] as NonNullable<typeof route.slate[number]>).evidenceScope
     const recorded = decisionByRoute.get(route.routeId)
     const commander = recorded === undefined ? undefined : verifyTacticCommanderDecisionRecord(recorded, route)
     if (commander !== undefined) usedCommanderDecisions += 1
@@ -296,6 +299,7 @@ export function evaluateDynamicTacticReplay(
       routeId: route.routeId,
       scorecardId: route.scorecardId,
       deterministicTacticId: deterministic,
+      deterministicEvidenceScope,
       commanderDecisionId: commander?.decisionId ?? null,
       proposedTacticId: proposed,
       finalTacticId: final,

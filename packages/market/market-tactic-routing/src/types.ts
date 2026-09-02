@@ -14,7 +14,7 @@ export const TACTIC_OUTCOME_SCHEMA_VERSION = 1 as const
 /** Current incremental conditional-scorecard format. */
 export const TACTIC_SCORECARD_SCHEMA_VERSION = 1 as const
 /** Current fixed transforms, thresholds, and route-score identity. */
-export const TACTIC_ROUTER_VERSION = 'maoq-deterministic-tactic-router-v1' as const
+export const TACTIC_ROUTER_VERSION = 'maoq-deterministic-tactic-router-v2' as const
 /** Current context bucketing identity. */
 export const TACTIC_CONTEXT_VERSION = 'maoq-tactic-context-v1' as const
 /** Current host-owned bounded commander decision format. */
@@ -30,6 +30,8 @@ export type VolatilityBand = 'low' | 'normal' | 'high'
 export type CrowdingBand = 'low' | 'medium' | 'high'
 /** Recent execution-quality condition supplied by deterministic execution evidence. */
 export type ExecutionQualityBand = 'unknown' | 'weak' | 'normal' | 'strong'
+/** Most specific scorecard aggregation that supplied one route decision. */
+export type TacticEvidenceScope = 'exact_context' | 'regime_emotion' | 'market_regime'
 
 /** Exact bounded context used to index comparable matured outcomes. */
 export interface TacticRoutingContext {
@@ -109,6 +111,13 @@ export interface TacticConditionalMetrics {
   readonly lastAvailableAt: string
 }
 
+/** Selected sufficient-statistics evidence without borrowing across market regimes. */
+export interface TacticScorecardEvidence {
+  readonly scope: TacticEvidenceScope
+  readonly cellCount: number
+  readonly metrics: TacticConditionalMetrics
+}
+
 /** One immutable aggregate generation derived only from newly available outcomes. */
 export interface TacticScorecardRecord {
   readonly schemaVersion: typeof TACTIC_SCORECARD_SCHEMA_VERSION
@@ -152,6 +161,7 @@ export interface TacticRouteCandidate {
   readonly eligibilityStatus: TacticEligibilityStatus
   readonly scope: 'research' | 'watch' | 'paper' | 'defense'
   readonly routeScore: number
+  readonly evidenceScope: TacticEvidenceScope | null
   readonly scoreComponents: TacticRouteScoreComponents
   readonly metrics: TacticConditionalMetrics | null
   readonly maximumPaperPositionPct: number
@@ -164,6 +174,7 @@ export interface RejectedTacticRoute {
   readonly tacticVersion: string
   readonly reasons: readonly TacticRouteRejectionReason[]
   readonly routeScore: number | null
+  readonly evidenceScope: TacticEvidenceScope | null
 }
 
 /** Replayable deterministic top-three tactic slate for one strategic cutoff. */

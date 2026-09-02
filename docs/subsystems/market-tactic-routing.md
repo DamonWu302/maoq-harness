@@ -16,7 +16,7 @@ The context key contains the versioned market regime, emotion cycle, top-sector 
 
 ## Deterministic route
 
-The v1 router first applies P0 eligibility and exact catalog-version checks. An active tactic then needs at least eight matured exact-context samples, a positive 95% expectation lower bound, positive doubled-cost expectation, at least 50% fill rate, and a positive score. The fixed score preserves each positive and negative component separately. A change to thresholds, bands, decay, or weights requires a new router or context version.
+The v2 router first applies P0 eligibility and exact catalog-version checks. It then selects the narrowest evidence tier with at least eight matured samples: exact context, market regime plus emotion cycle, or the same market regime. Evidence never crosses a market-regime boundary. An active tactic still needs a positive 95% expectation lower bound, positive doubled-cost expectation, at least 50% fill rate, and a positive score. The route records the chosen evidence scope and preserves each positive and negative score component separately. A change to thresholds, tiers, bands, decay, or weights requires a new router or context version.
 
 Qualified tactics compete with `defensive_no_trade` in stable score and tactic-ID order. The slate contains at most three entries, while the defensive candidate remains separately addressable even when it falls below three positive active scores. Research and paper promotion remain explicit: research candidates have a zero paper-position ceiling. The record preserves current snapshot, eligibility engine, scorecard, router, context, score components, evidence references, rejected tactics, risk ceilings, and cash floor as replay identities.
 

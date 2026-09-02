@@ -31,7 +31,7 @@ Call `evaluateTacticEligibility(features)` after `dsh-market-strategic-state` ha
 const eligibility = evaluateTacticEligibility(features)
 ```
 
-The catalog contains six active research tactics—regime-signed breakout/pullback, openable emotion leader, industry-relative exhaustion repair, correlation-cluster sector rotation, sector-residual strength, and low-volatility sector leadership—plus defensive no-trade. Every active tactic is intentionally `research`; matching context produces `research_only`, never `eligible`.
+The catalog contains six active research tactics—regime-signed breakout/pullback, openable emotion leader, industry-relative exhaustion repair, correlation-cluster sector rotation, sector-residual strength, and low-volatility sector leadership—plus defensive no-trade. Every definition owns its tactic family and explicit market-regime and emotion-cycle coverage. Every active tactic is intentionally `research`; matching context produces `research_only`, never `eligible`.
 
 -----
 
@@ -41,7 +41,7 @@ The catalog contains six active research tactics—regime-signed breakout/pullba
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-Each active tactic first requires ready market-regime, emotion-cycle, and sector-battlefield components. Tactic-specific label gates then constrain the environment, and a positive top sector is required before sector IDs are exposed. The result keeps context fit separate from promotion status so model prose cannot promote research. Missing evidence fails active tactics closed while defense remains available.
+Each active tactic first requires ready market-regime, emotion-cycle, and sector-battlefield components. Catalog-owned regime and emotion coverage then constrains the environment, and a positive top sector is required before sector IDs are exposed. Coverage is tested across every market regime so a state cannot become defense-only by catalog omission. The result keeps context fit separate from promotion status so model prose cannot promote research. Missing evidence fails active tactics closed while defense remains available.
 
 The upstream daily pipeline updates at 19:00 `Asia/Shanghai`; the MAOQ runtime first checks for a complete same-day immutable snapshot at 19:15. This library reads only that already-frozen feature record and never schedules acquisition or assumes that a timer implies data readiness.
 

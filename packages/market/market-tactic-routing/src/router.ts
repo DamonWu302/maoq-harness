@@ -11,8 +11,7 @@ import {
 import { deepFreeze } from '@deepseek-ai/dsh-util-values'
 import { deriveTacticRoutingContext } from './context.ts'
 import {
-  findTacticScorecardCell,
-  tacticConditionalMetrics,
+  selectTacticScorecardEvidence,
 } from './scorecard.ts'
 import {
   TACTIC_ROUTER_VERSION,
@@ -22,6 +21,7 @@ import {
   type TacticRouteCandidate,
   type TacticRouteRejectionReason,
   type TacticRouteScoreComponents,
+  type TacticEvidenceScope,
   type TacticRoutingRecord,
   type TacticScorecardRecord,
 } from './types.ts'
@@ -35,6 +35,12 @@ export const TACTIC_ROUTER_POLICY = deepFreeze({
 
 const DEFINITIONS = tacticDefinitions()
 const DEFINITION_BY_ID = new Map(DEFINITIONS.map(definition => [definition.tacticId, definition]))
+const ROUTE_SCOPE_BY_PROMOTION = deepFreeze({
+  research: 'research',
+  paper: 'watch',
+  eligible: 'paper',
+} as const)
+const POSITION_AUTHORITY_BY_PROMOTION = deepFreeze({ research: 0, paper: 0, eligible: 1 } as const)
 const ZERO_COMPONENTS: TacticRouteScoreComponents = deepFreeze({
   stateFit: 0,
   conditionalExpectancy: 0,
@@ -55,11 +61,15 @@ function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value))
 }
 
-function components(metrics: TacticConditionalMetrics, context: TacticRoutingRecord['context']): TacticRouteScoreComponents {
+function components(
+  metrics: TacticConditionalMetrics,
+  context: TacticRoutingRecord['context'],
+  evidenceScope: TacticEvidenceScope,
+): TacticRouteScoreComponents {
   return {
     stateFit: 0.15,
     conditionalExpectancy: rounded(clamp(metrics.expectancyLowerBound * 5, -0.5, 0.5)),
-    contextAlignment: 0.1,
+    contextAlignment: evidenceScope === 'exact_context' ? 0.1 : evidenceScope === 'regime_emotion' ? 0.06 : 0.03,
     recentEffectiveness: rounded(clamp(metrics.recentEffectiveness * 2, -0.2, 0.2)),
     executionAndCost: rounded(clamp((metrics.fillRate - 0.5) * 0.1 + metrics.doubledCostExpectancy * 2, -0.2, 0.2)),
     drawdownPenalty: rounded(metrics.maximumDrawdown * 0.5),
@@ -82,11 +92,8 @@ function totalScore(value: TacticRouteScoreComponents): number {
     - value.uncertaintyPenalty)
 }
 
-function scope(definition: TacticDefinition): TacticRouteCandidate['scope'] {
-  if (definition.tacticId === 'defensive_no_trade') return 'defense'
-  if (definition.promotionStatus === 'research') return 'research'
-  if (definition.promotionStatus === 'paper') return 'watch'
-  return 'paper'
+function scope(definition: TacticDefinition & { readonly tacticId: ActiveTacticId }): TacticRouteCandidate['scope'] {
+  return ROUTE_SCOPE_BY_PROMOTION[definition.promotionStatus]
 }
 
 function defensiveCandidate(eligibility: TacticEligibilityResult, snapshotHash: string): TacticRouteCandidate {
@@ -98,6 +105,7 @@ function defensiveCandidate(eligibility: TacticEligibilityResult, snapshotHash: 
     eligibilityStatus: eligibility.status,
     scope: 'defense',
     routeScore: 0,
+    evidenceScope: null,
     scoreComponents: ZERO_COMPONENTS,
     metrics: null,
     maximumPaperPositionPct: 0,
@@ -126,6 +134,9 @@ function validCandidate(value: unknown): value is TacticRouteCandidate {
     && Number.isFinite(record['maximumPaperPositionPct'])
     && record['maximumPaperPositionPct'] >= 0
     && record['maximumPaperPositionPct'] <= 100
+    && (record['tacticId'] === 'defensive_no_trade'
+      ? record['evidenceScope'] === null
+      : ['exact_context', 'regime_emotion', 'market_regime'].includes(record['evidenceScope'] as string))
     && Array.isArray(evidenceRefs)
     && evidenceRefs.every(ref => typeof ref === 'string' && ref.length > 0)
 }
@@ -172,12 +183,14 @@ function reject(
   definition: TacticDefinition & { readonly tacticId: ActiveTacticId },
   reasons: readonly TacticRouteRejectionReason[],
   routeScore: number | null,
+  evidenceScope: TacticEvidenceScope | null,
 ): RejectedTacticRoute {
   return {
     tacticId: definition.tacticId,
     tacticVersion: definition.tacticVersion,
     reasons,
     routeScore,
+    evidenceScope,
   }
 }
 
@@ -215,20 +228,26 @@ export function routeEligibleTactics(
     const definition = item as TacticDefinition & { readonly tacticId: ActiveTacticId }
     const gate = eligibilityById.get(definition.tacticId)
     if (gate === undefined || gate.status === 'ineligible') {
-      rejected.push(reject(definition, ['context_ineligible'], null))
+      rejected.push(reject(definition, ['context_ineligible'], null, null))
       continue
     }
     if (gate.tacticVersion !== definition.tacticVersion) {
-      rejected.push(reject(definition, ['catalog_version_mismatch'], null))
+      rejected.push(reject(definition, ['catalog_version_mismatch'], null, null))
       continue
     }
-    const cell = findTacticScorecardCell(scorecard, definition.tacticId, definition.tacticVersion, context)
-    if (cell === undefined) {
-      rejected.push(reject(definition, ['missing_conditional_record'], null))
+    const evidence = selectTacticScorecardEvidence(
+      scorecard,
+      definition.tacticId,
+      definition.tacticVersion,
+      context,
+      TACTIC_ROUTER_POLICY.minimumMaturedSamples,
+    )
+    if (evidence === undefined) {
+      rejected.push(reject(definition, ['missing_conditional_record'], null, null))
       continue
     }
-    const metrics = tacticConditionalMetrics(cell)
-    const scoreComponents = components(metrics, context)
+    const metrics = evidence.metrics
+    const scoreComponents = components(metrics, context, evidence.scope)
     const routeScore = totalScore(scoreComponents)
     const reasons: TacticRouteRejectionReason[] = [
       ...metrics.sampleCount < TACTIC_ROUTER_POLICY.minimumMaturedSamples ? ['insufficient_matured_sample' as const] : [],
@@ -238,7 +257,7 @@ export function routeEligibleTactics(
       ...routeScore <= 0 ? ['nonpositive_route_score' as const] : [],
     ]
     if (reasons.length > 0) {
-      rejected.push(reject(definition, reasons, routeScore))
+      rejected.push(reject(definition, reasons, routeScore, evidence.scope))
       continue
     }
     qualified.push({
@@ -248,13 +267,13 @@ export function routeEligibleTactics(
       eligibilityStatus: gate.status,
       scope: scope(definition),
       routeScore,
+      evidenceScope: evidence.scope,
       scoreComponents,
       metrics,
-      maximumPaperPositionPct: definition.promotionStatus === 'eligible'
-        ? definition.maximumPaperPositionPct
-        : 0,
+      maximumPaperPositionPct: definition.maximumPaperPositionPct
+        * POSITION_AUTHORITY_BY_PROMOTION[definition.promotionStatus],
       evidenceRefs: [
-        `scorecard:${scorecard.scorecardId}#cells/${definition.tacticId}`,
+        `scorecard:${scorecard.scorecardId}#evidence/${definition.tacticId}/${evidence.scope}`,
         `snapshot:${features.currentSnapshotHash}#tactic-eligibility/${definition.tacticId}`,
       ],
     })
@@ -269,6 +288,7 @@ export function routeEligibleTactics(
       tacticVersion: item.tacticVersion,
       reasons: ['outside_top_three'],
       routeScore: item.routeScore,
+      evidenceScope: item.evidenceScope,
     })
   }
   rejected.sort((left, right) => left.tacticId.localeCompare(right.tacticId))

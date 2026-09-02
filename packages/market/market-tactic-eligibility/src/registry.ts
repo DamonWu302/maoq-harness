@@ -1,4 +1,8 @@
-import type { StrategicComponent, StrategicFeatureRecord } from '@deepseek-ai/dsh-market-strategic-state'
+import type {
+  SectorBattlefieldFeature,
+  StrategicComponent,
+  StrategicFeatureRecord,
+} from '@deepseek-ai/dsh-market-strategic-state'
 import { deepFreeze } from '@deepseek-ai/dsh-util-values'
 import {
   TACTIC_ELIGIBILITY_ENGINE_VERSION,
@@ -16,6 +20,8 @@ const DEFINITIONS: readonly TacticDefinition[] = deepFreeze([
     tacticId: 'regime_signed_breakout_pullback',
     tacticVersion: 'regime-signed-breakout-pullback-v1',
     family: 'trend',
+    eligibleMarketRegimes: ['risk_on_trend', 'rotation'],
+    eligibleEmotionCycles: ['startup', 'acceleration', 'repair'],
     promotionStatus: 'research',
     evidenceGrade: 'A',
     requiredHistorySessions: 252,
@@ -30,6 +36,8 @@ const DEFINITIONS: readonly TacticDefinition[] = deepFreeze([
     tacticId: 'openable_emotion_leader',
     tacticVersion: 'openable-emotion-leader-v1',
     family: 'emotion',
+    eligibleMarketRegimes: ['risk_on_trend', 'rotation'],
+    eligibleEmotionCycles: ['startup', 'acceleration'],
     promotionStatus: 'research',
     evidenceGrade: 'B',
     requiredHistorySessions: 20,
@@ -44,6 +52,8 @@ const DEFINITIONS: readonly TacticDefinition[] = deepFreeze([
     tacticId: 'industry_relative_exhaustion_repair',
     tacticVersion: 'industry-relative-exhaustion-repair-v1',
     family: 'reversal',
+    eligibleMarketRegimes: ['repair', 'rotation', 'high_volatility_divergence'],
+    eligibleEmotionCycles: ['repair', 'ebb', 'divergence'],
     promotionStatus: 'research',
     evidenceGrade: 'A',
     requiredHistorySessions: 60,
@@ -58,6 +68,8 @@ const DEFINITIONS: readonly TacticDefinition[] = deepFreeze([
     tacticId: 'correlation_cluster_sector_rotation',
     tacticVersion: 'correlation-cluster-sector-rotation-v1',
     family: 'rotation',
+    eligibleMarketRegimes: ['rotation', 'risk_on_trend'],
+    eligibleEmotionCycles: ['startup', 'acceleration', 'repair'],
     promotionStatus: 'research',
     evidenceGrade: 'B',
     requiredHistorySessions: 20,
@@ -72,6 +84,8 @@ const DEFINITIONS: readonly TacticDefinition[] = deepFreeze([
     tacticId: 'sector_residual_strength',
     tacticVersion: 'sector-residual-strength-v1',
     family: 'relative_strength',
+    eligibleMarketRegimes: ['risk_on_trend', 'rotation'],
+    eligibleEmotionCycles: ['startup', 'acceleration', 'repair'],
     promotionStatus: 'research',
     evidenceGrade: 'B',
     requiredHistorySessions: 60,
@@ -86,6 +100,8 @@ const DEFINITIONS: readonly TacticDefinition[] = deepFreeze([
     tacticId: 'low_volatility_sector_leader',
     tacticVersion: 'low-volatility-sector-leader-v1',
     family: 'low_volatility',
+    eligibleMarketRegimes: ['rotation', 'risk_contraction'],
+    eligibleEmotionCycles: ['divergence', 'ebb', 'repair'],
     promotionStatus: 'research',
     evidenceGrade: 'B',
     requiredHistorySessions: 20,
@@ -100,6 +116,8 @@ const DEFINITIONS: readonly TacticDefinition[] = deepFreeze([
     tacticId: 'defensive_no_trade',
     tacticVersion: 'defensive-no-trade-v1',
     family: 'defense',
+    eligibleMarketRegimes: ['risk_on_trend', 'rotation', 'high_volatility_divergence', 'risk_contraction', 'repair'],
+    eligibleEmotionCycles: ['startup', 'acceleration', 'climax', 'divergence', 'ebb', 'repair'],
     promotionStatus: 'eligible',
     evidenceGrade: 'control',
     requiredHistorySessions: 0,
@@ -111,6 +129,16 @@ const DEFINITIONS: readonly TacticDefinition[] = deepFreeze([
     executionRequirements: ['no order', 'no model override'],
   },
 ])
+const FIT_STATUS_BY_PROMOTION = deepFreeze({
+  research: 'research_only',
+  paper: 'watch_only',
+  eligible: 'eligible',
+} as const)
+const FIT_REASONS_BY_PROMOTION = deepFreeze({
+  research: ['RESEARCH_NOT_PROMOTED'],
+  paper: ['PAPER_ONLY'],
+  eligible: [],
+} as const)
 
 /** Canonical implemented tactic order consumed by every P3 and commander surface. */
 export const TACTIC_IDS: readonly TacticId[] = deepFreeze(DEFINITIONS.map(definition => definition.tacticId))
@@ -201,38 +229,26 @@ function sectorGate(features: StrategicFeatureRecord): TacticGateResult {
   }
 }
 
-function activeGates(tacticId: ActiveTacticId, features: StrategicFeatureRecord): readonly TacticGateResult[] {
+function activeGates(
+  definition: TacticDefinition & { readonly tacticId: ActiveTacticId },
+  features: StrategicFeatureRecord,
+): readonly TacticGateResult[] {
   const common = availabilityGate(features)
   const market = labelOf(features.marketRegime)
   const emotion = labelOf(features.emotionCycle)
   const marketRefs = refsOf(features.marketRegime)
   const emotionRefs = refsOf(features.emotionCycle)
   const sector = sectorGate(features)
-  const gates = (markets: readonly string[], emotions: readonly string[]): readonly TacticGateResult[] => [
+  return [
     common,
-    labelGate('market_regime', market, markets, marketRefs),
-    labelGate('emotion_cycle', emotion, emotions, emotionRefs),
+    labelGate('market_regime', market, definition.eligibleMarketRegimes, marketRefs),
+    labelGate('emotion_cycle', emotion, definition.eligibleEmotionCycles, emotionRefs),
     sector,
   ]
-  switch (tacticId) {
-    case 'regime_signed_breakout_pullback':
-      return gates(['risk_on_trend', 'rotation'], ['startup', 'acceleration', 'repair'])
-    case 'openable_emotion_leader':
-      return gates(['risk_on_trend', 'rotation'], ['startup', 'acceleration'])
-    case 'industry_relative_exhaustion_repair':
-      return gates(['repair', 'rotation', 'high_volatility_divergence'], ['repair', 'ebb', 'divergence'])
-    case 'correlation_cluster_sector_rotation':
-      return gates(['rotation', 'risk_on_trend'], ['startup', 'acceleration', 'repair'])
-    case 'sector_residual_strength':
-      return gates(['risk_on_trend', 'rotation'], ['startup', 'acceleration', 'repair'])
-    case 'low_volatility_sector_leader':
-      return gates(['rotation', 'risk_contraction'], ['divergence', 'ebb', 'repair'])
-  }
 }
 
-function topSectorIds(features: StrategicFeatureRecord): readonly string[] {
-  if (features.sectorBattlefields.status === 'unavailable') return []
-  return features.sectorBattlefields.value
+function topSectorIds(sectors: readonly SectorBattlefieldFeature[]): readonly string[] {
+  return sectors
     .filter(sector => sector.compositeScore > 0)
     .slice(0, 3)
     .map(sector => sector.sectorId)
@@ -252,19 +268,12 @@ function evaluateDefinition(definition: TacticDefinition, features: StrategicFea
       evidenceRefs: [],
     }
   }
-  const gates = activeGates(definition.tacticId, features)
+  const gates = activeGates(definition as TacticDefinition & { readonly tacticId: ActiveTacticId }, features)
   const contextFit = gates.every(gate => gate.passed)
-  const status = !contextFit
-    ? 'ineligible'
-    : definition.promotionStatus === 'research'
-      ? 'research_only'
-      : definition.promotionStatus === 'paper'
-        ? 'watch_only'
-        : 'eligible'
+  const status = contextFit ? FIT_STATUS_BY_PROMOTION[definition.promotionStatus] : 'ineligible'
   const reasonCodes = [
     ...gates.filter(gate => !gate.passed).map(gate => `GATE_FAILED:${gate.gateId}`),
-    ...definition.promotionStatus === 'research' && contextFit ? ['RESEARCH_NOT_PROMOTED'] : [],
-    ...definition.promotionStatus === 'paper' && contextFit ? ['PAPER_ONLY'] : [],
+    ...contextFit ? FIT_REASONS_BY_PROMOTION[definition.promotionStatus] : [],
   ]
   return {
     tacticId: definition.tacticId,
@@ -272,7 +281,9 @@ function evaluateDefinition(definition: TacticDefinition, features: StrategicFea
     promotionStatus: definition.promotionStatus,
     status,
     contextFit,
-    eligibleSectorIds: contextFit ? topSectorIds(features) : [],
+    eligibleSectorIds: contextFit && features.sectorBattlefields.status === 'ready'
+      ? topSectorIds(features.sectorBattlefields.value)
+      : [],
     reasonCodes,
     gates,
     evidenceRefs: [...new Set(gates.flatMap(gate => gate.evidenceRefs))].sort(),

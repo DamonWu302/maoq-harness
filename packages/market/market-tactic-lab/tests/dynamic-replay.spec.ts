@@ -188,7 +188,9 @@ describe('dynamic tactic prequential replay', () => {
     const input = suite()
     const deterministic = evaluateDynamicTacticReplay(input)
     expect(deterministic.replayVersion).toBe(DYNAMIC_TACTIC_REPLAY_VERSION)
-    expect(deterministic.days.slice(0, 9).every(day => day.deterministicTacticId === 'defensive_no_trade')).toBe(true)
+    expect(deterministic.days.slice(0, 8).every(day => day.deterministicTacticId === 'defensive_no_trade')).toBe(true)
+    expect(deterministic.days.slice(0, 8).every(day => day.deterministicEvidenceScope === null)).toBe(true)
+    expect(deterministic.days.some(day => day.deterministicEvidenceScope !== null)).toBe(true)
     expect(deterministic.tracks.deterministicRoute.activeSessions).toBeGreaterThan(0)
     expect(deterministic.benchmarks['000001.SH']).toMatchObject({
       benchmarkId: '000001.SH',
@@ -283,10 +285,27 @@ describe('dynamic tactic prequential replay', () => {
     }
     expect(evaluateDynamicTacticReplay(normal).routes.some(route => route.context.executionQualityBand === 'normal')).toBe(true)
 
+    const weak = mutableSuite()
+    for (const tacticId of ACTIVE_TACTIC_IDS) {
+      const current = weak.evaluations[tacticId]
+      weak.evaluations[tacticId] = { ...current, execution: { ...current.execution, fills: [] } }
+    }
+    expect(evaluateDynamicTacticReplay(weak).routes.some(route => route.context.executionQualityBand === 'weak')).toBe(true)
+
+    const noOrders = mutableSuite()
+    for (const tacticId of ACTIVE_TACTIC_IDS) {
+      const current = noOrders.evaluations[tacticId]
+      noOrders.evaluations[tacticId] = { ...current, orders: [], execution: { ...current.execution, fills: [] } }
+    }
+    expect(evaluateDynamicTacticReplay(noOrders).routableSessions).toBeGreaterThan(0)
+
     const unavailable = mutableSuite()
-    unavailable.strategicFeatures = unavailable.strategicFeatures.map(features => ({
+    unavailable.strategicFeatures = unavailable.strategicFeatures.map((features, index) => ({
       ...features,
       eligibleForInterpretation: false,
+      marketRegime: index === 0
+        ? { status: 'unavailable', reasonCodes: ['fixture'], evidenceRefs: [] }
+        : features.marketRegime,
     }))
     expect(evaluateDynamicTacticReplay(unavailable)).toMatchObject({
       routableSessions: 0,

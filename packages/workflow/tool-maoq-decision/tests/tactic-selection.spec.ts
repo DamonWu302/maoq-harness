@@ -107,6 +107,7 @@ function candidate(tacticId: TacticRouteCandidate['tacticId']): TacticRouteCandi
     eligibilityStatus: defense ? 'eligible' : 'research_only',
     scope: defense ? 'defense' : 'research',
     routeScore: defense ? 0 : 0.3,
+    evidenceScope: defense ? null : 'exact_context',
     scoreComponents: ZERO_COMPONENTS,
     metrics: null,
     maximumPaperPositionPct: 0,
@@ -121,7 +122,7 @@ function route(active = true): TacticRoutingRecord {
     tradingDate: '2026-09-02',
     cutoffTime: '2026-09-02T19:15:00+08:00',
     currentSnapshotHash: 'a'.repeat(64),
-    eligibilityEngineVersion: 'maoq-tactic-eligibility-v2',
+    eligibilityEngineVersion: 'maoq-tactic-eligibility-v3',
     scorecardId: 'b'.repeat(64),
     context: {
       contextVersion: 'maoq-tactic-context-v1',

@@ -16,7 +16,9 @@ import {
   type MaturedTacticAttributionInput,
   type MaturedTacticOutcomeInput,
   type TacticConditionalMetrics,
+  type TacticEvidenceScope,
   type TacticRoutingContext,
+  type TacticScorecardEvidence,
   type TacticScorecardCell,
   type TacticScorecardRecord,
 } from './types.ts'
@@ -94,8 +96,16 @@ function normalizedOutcomeInput(input: MaturedTacticOutcomeInput): MaturedTactic
     throw new TypeError('sourceHashes must contain unique lowercase SHA-256 values')
   }
   return {
-    ...input,
+    tacticId: input.tacticId,
+    tacticVersion: input.tacticVersion,
+    decisionDate: input.decisionDate,
+    maturityDate: input.maturityDate,
+    availableAt: input.availableAt,
     context: { ...input.context },
+    netReturn: input.netReturn,
+    doubledCostNetReturn: input.doubledCostNetReturn,
+    maximumDrawdown: input.maximumDrawdown,
+    fillRate: input.fillRate,
     sourceHashes: [...input.sourceHashes].sort(),
   }
 }
@@ -229,31 +239,88 @@ export function advanceTacticScorecard(
   return deepFreeze({ ...body, scorecardId: scorecardIdentity(body) })
 }
 
+function metricsFromCells(cells: readonly TacticScorecardCell[]): TacticConditionalMetrics {
+  const sampleCount = cells.reduce((sum, cell) => sum + cell.sampleCount, 0)
+  const netReturnSum = cells.reduce((sum, cell) => sum + cell.netReturnSum, 0)
+  const netReturnSquaredSum = cells.reduce((sum, cell) => sum + cell.netReturnSquaredSum, 0)
+  const mean = netReturnSum / sampleCount
+  const sampleVariance = sampleCount < 2
+    ? 0
+    : Math.max(0, (netReturnSquaredSum - netReturnSum ** 2 / sampleCount) / (sampleCount - 1))
+  const lowerBound = sampleCount < 2
+    ? Math.min(0, mean)
+    : mean - Z_95 * Math.sqrt(sampleVariance / sampleCount)
+  const positiveCount = cells.reduce((sum, cell) => sum + cell.positiveCount, 0)
+  const positiveReturnSum = cells.reduce((sum, cell) => sum + cell.positiveReturnSum, 0)
+  const negativeReturnAbsSum = cells.reduce((sum, cell) => sum + cell.negativeReturnAbsSum, 0)
+  return deepFreeze({
+    sampleCount,
+    netExpectancy: rounded(mean),
+    expectancyLowerBound: rounded(lowerBound),
+    winRate: rounded(positiveCount / sampleCount),
+    payoffRatio: negativeReturnAbsSum === 0 ? null : rounded(positiveReturnSum / negativeReturnAbsSum),
+    maximumDrawdown: rounded(Math.max(...cells.map(cell => cell.maximumDrawdown))),
+    fillRate: rounded(cells.reduce((sum, cell) => sum + cell.fillRateSum, 0) / sampleCount),
+    doubledCostExpectancy: rounded(cells.reduce((sum, cell) => sum + cell.doubledCostReturnSum, 0) / sampleCount),
+    recentEffectiveness: rounded(cells.reduce((sum, cell) => (
+      sum + cell.recentEffectiveness * cell.sampleCount
+    ), 0) / sampleCount),
+    lastAvailableAt: cells.map(cell => cell.lastAvailableAt).sort().at(-1) as string,
+  })
+}
+
 /**
  * Derive router-facing metrics from one sufficient-statistics cell.
  * @param cell - One exact tactic-version and context aggregate.
  * @returns Frozen metrics including a conservative 95% expectancy lower bound.
  */
 export function tacticConditionalMetrics(cell: TacticScorecardCell): TacticConditionalMetrics {
-  const mean = cell.netReturnSum / cell.sampleCount
-  const sampleVariance = cell.sampleCount < 2
-    ? 0
-    : Math.max(0, (cell.netReturnSquaredSum - cell.netReturnSum ** 2 / cell.sampleCount) / (cell.sampleCount - 1))
-  const lowerBound = cell.sampleCount < 2
-    ? Math.min(0, mean)
-    : mean - Z_95 * Math.sqrt(sampleVariance / cell.sampleCount)
-  return deepFreeze({
-    sampleCount: cell.sampleCount,
-    netExpectancy: rounded(mean),
-    expectancyLowerBound: rounded(lowerBound),
-    winRate: rounded(cell.positiveCount / cell.sampleCount),
-    payoffRatio: cell.negativeReturnAbsSum === 0 ? null : rounded(cell.positiveReturnSum / cell.negativeReturnAbsSum),
-    maximumDrawdown: cell.maximumDrawdown,
-    fillRate: rounded(cell.fillRateSum / cell.sampleCount),
-    doubledCostExpectancy: rounded(cell.doubledCostReturnSum / cell.sampleCount),
-    recentEffectiveness: cell.recentEffectiveness,
-    lastAvailableAt: cell.lastAvailableAt,
+  return metricsFromCells([cell])
+}
+
+function matchingEvidenceCells(
+  scorecard: TacticScorecardRecord,
+  tacticId: MaturedTacticOutcome['tacticId'],
+  tacticVersion: string,
+  context: TacticRoutingContext,
+  scope: TacticEvidenceScope,
+): readonly TacticScorecardCell[] {
+  return scorecard.cells.filter((cell) => {
+    if (cell.tacticId !== tacticId
+      || cell.tacticVersion !== tacticVersion
+      || cell.context.marketRegime !== context.marketRegime) return false
+    if (scope === 'market_regime') return true
+    if (cell.context.emotionCycle !== context.emotionCycle) return false
+    return scope === 'regime_emotion' || tacticRoutingContextKey(cell.context) === tacticRoutingContextKey(context)
   })
+}
+
+/**
+ * Select the narrowest sufficiently populated evidence tier without crossing the current market regime.
+ * @param scorecard - Immutable bounded aggregate.
+ * @param tacticId - Active tactic identity.
+ * @param tacticVersion - Exact catalog version.
+ * @param context - Current routing context whose market regime is never relaxed.
+ * @param minimumSamples - Matured sample floor used to advance through the evidence ladder.
+ * @returns Selected aggregate, or `undefined` when this tactic has no same-regime evidence.
+ */
+export function selectTacticScorecardEvidence(
+  scorecard: TacticScorecardRecord,
+  tacticId: MaturedTacticOutcome['tacticId'],
+  tacticVersion: string,
+  context: TacticRoutingContext,
+  minimumSamples: number,
+): TacticScorecardEvidence | undefined {
+  const scopes: readonly TacticEvidenceScope[] = ['exact_context', 'regime_emotion', 'market_regime']
+  const candidates = scopes.map((scope): TacticScorecardEvidence | undefined => {
+    const cells = matchingEvidenceCells(scorecard, tacticId, tacticVersion, context, scope)
+    return cells.length === 0 ? undefined : {
+      scope,
+      cellCount: cells.length,
+      metrics: metricsFromCells(cells),
+    }
+  }).filter((evidence): evidence is TacticScorecardEvidence => evidence !== undefined)
+  return candidates.find(evidence => evidence.metrics.sampleCount >= minimumSamples) ?? candidates.at(-1)
 }
 
 /**

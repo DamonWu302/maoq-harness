@@ -67,6 +67,62 @@ describe('conditional tactic scorecard', () => {
       .toThrow('version does not match the tactic catalog')
   })
 
+  it('fails closed for malformed matured-outcome boundaries', () => {
+    const valid = outcomes('regime_signed_breakout_pullback', 1)[0]!
+    const input = { ...valid }
+    const invalid = [
+      { ...input, decisionDate: '02-01-2026' },
+      { ...input, maturityDate: '2026-01-01' },
+      { ...input, availableAt: 'not-a-time' },
+      { ...input, tacticId: 'defensive_no_trade' },
+      { ...input, context: { ...input.context, marketRegime: 'invented' } },
+      { ...input, netReturn: Number.NaN },
+      { ...input, netReturn: -1 },
+      { ...input, doubledCostNetReturn: -1 },
+      { ...input, maximumDrawdown: -0.01 },
+      { ...input, maximumDrawdown: 1.01 },
+      { ...input, fillRate: -0.01 },
+      { ...input, fillRate: 1.01 },
+      { ...input, sourceHashes: [] },
+      { ...input, sourceHashes: ['bad'] },
+      { ...input, sourceHashes: [input.sourceHashes[0]!, input.sourceHashes[0]!] },
+    ]
+    for (const value of invalid) {
+      expect(() => createMaturedTacticOutcome(value as never)).toThrow()
+    }
+    expect(() => attributeMaturedTacticOutcome({
+      tacticId: 'invented',
+      decisionFeatures: strategicFeatures(),
+    } as never)).toThrow(/active catalog tactic/)
+  })
+
+  it('rejects invalid scorecard progression and outcome identities', () => {
+    expect(() => createEmptyTacticScorecard('invalid')).toThrow(/valid ISO timestamp/)
+    const initial = createEmptyTacticScorecard('2026-01-01T00:00:00.000Z')
+    expect(() => advanceTacticScorecard(initial, [], initial.cutoffTime)).toThrow(/must advance/)
+    const valid = outcomes('regime_signed_breakout_pullback', 1)[0]!
+    expect(() => advanceTacticScorecard(
+      initial,
+      [{ ...valid, outcomeId: 'b'.repeat(64) }],
+      '2026-02-01T00:00:00.000Z',
+    )).toThrow(/invalid matured tactic outcome/)
+  })
+
+  it('preserves prior cells and derives conservative one-sample metrics', () => {
+    const initial = createEmptyTacticScorecard('2026-01-01T00:00:00.000Z')
+    const first = advanceTacticScorecard(
+      initial,
+      outcomes('regime_signed_breakout_pullback', 1, { netReturn: 0.02 }),
+      '2026-01-20T00:00:00.000Z',
+    )
+    const second = advanceTacticScorecard(first, [], '2026-02-01T00:00:00.000Z')
+    expect(second.cells).toEqual(first.cells)
+    expect(tacticConditionalMetrics(second.cells[0]!)).toMatchObject({
+      sampleCount: 1,
+      expectancyLowerBound: 0,
+    })
+  })
+
   it('attributes matured results to original strategic facts and the current catalog version', () => {
     const features = strategicFeatures()
     const result = attributeMaturedTacticOutcome({
