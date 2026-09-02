@@ -77,7 +77,9 @@
         maxSpecialists: 4
         maxResultChars: 32768
         stateRoot: .maoq/decisions
+        tacticStateRoot: .maoq/tactics
         maxStateFiles: 500
+        maxTacticStateFiles: 500
         maxSnapshotFiles: 500
         dailyStateMaximumAgeHours: 24
         autoDailyRefresh: true

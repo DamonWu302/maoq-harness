@@ -3,6 +3,7 @@ import { ACTIVE_TACTIC_IDS, tacticDefinitions } from '@deepseek-ai/dsh-market-ta
 import {
   generateResearchTacticSignal,
   RESEARCH_TACTIC_VERSIONS,
+  RESEARCH_TACTIC_IDS,
   type DailyHistoryFeatureRecord,
   type DailySectorResearchFeatures,
   type DailyStockResearchFeatures,
@@ -120,7 +121,8 @@ describe('deterministic P3 tactic signals', () => {
     const catalogVersions = Object.fromEntries(tacticDefinitions()
       .filter(definition => definition.tacticId !== 'defensive_no_trade')
       .map(definition => [definition.tacticId, definition.tacticVersion]))
-    expect(Object.keys(RESEARCH_TACTIC_VERSIONS)).toEqual(ACTIVE_TACTIC_IDS)
+    expect(RESEARCH_TACTIC_IDS).toBe(ACTIVE_TACTIC_IDS)
+    expect(Object.keys(RESEARCH_TACTIC_VERSIONS)).toEqual(RESEARCH_TACTIC_IDS)
     expect(RESEARCH_TACTIC_VERSIONS).toEqual(catalogVersions)
   })
 

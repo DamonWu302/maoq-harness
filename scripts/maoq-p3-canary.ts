@@ -4,6 +4,7 @@ import {
 } from '@deepseek-ai/dsh-market-snapshot-mysql'
 import {
   DEFAULT_RESEARCH_TACTIC_BACKTEST_CONFIGS,
+  evaluateDynamicTacticReplay,
   evaluateResearchTacticHistory,
   evaluateResearchTacticSuiteHistory,
   type ResearchTacticHistoryEvaluation,
@@ -16,7 +17,7 @@ import { pathToFileURL } from 'node:url'
 const TACTIC_IDS = Object.freeze(Object.keys(DEFAULT_RESEARCH_TACTIC_BACKTEST_CONFIGS) as ResearchTacticId[])
 
 export interface P3CanaryOptions {
-  readonly mode: 'probe' | 'evaluate' | 'evaluate-suite'
+  readonly mode: 'probe' | 'evaluate' | 'evaluate-suite' | 'evaluate-dynamic'
   readonly tacticId: ResearchTacticId
   readonly startDate: string
   readonly endDate: string
@@ -72,8 +73,8 @@ export function parseP3CanaryOptions(
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): P3CanaryOptions {
   const mode = argument(args, '--mode') ?? 'probe'
-  if (mode !== 'probe' && mode !== 'evaluate' && mode !== 'evaluate-suite') {
-    throw new TypeError('--mode must be probe, evaluate, or evaluate-suite')
+  if (mode !== 'probe' && mode !== 'evaluate' && mode !== 'evaluate-suite' && mode !== 'evaluate-dynamic') {
+    throw new TypeError('--mode must be probe, evaluate, evaluate-suite, or evaluate-dynamic')
   }
   const tacticId = argument(args, '--tactic') ?? 'industry_relative_exhaustion_repair'
   if (!TACTIC_IDS.includes(tacticId as ResearchTacticId)) throw new TypeError(`--tactic must be one of ${TACTIC_IDS.join(', ')}`)
@@ -82,8 +83,8 @@ export function parseP3CanaryOptions(
   if (startDate > endDate) throw new TypeError('--start must not exceed --end')
   const socketPath = argument(args, '--socket-path') ?? environment.MAOQ_MYSQL_SOCKET
   const attemptedTrials = integerArgument(args, '--attempted-trials', TACTIC_IDS.length, 10_000)
-  if (mode === 'evaluate-suite' && attemptedTrials < TACTIC_IDS.length) {
-    throw new TypeError(`--attempted-trials must be at least ${String(TACTIC_IDS.length)} for evaluate-suite`)
+  if ((mode === 'evaluate-suite' || mode === 'evaluate-dynamic') && attemptedTrials < TACTIC_IDS.length) {
+    throw new TypeError(`--attempted-trials must be at least ${String(TACTIC_IDS.length)} for suite evaluation`)
   }
   return {
     mode,
@@ -157,6 +158,38 @@ function suiteEvaluationReport(result: ResearchTacticSuiteHistoryEvaluation): ob
   }
 }
 
+function dynamicEvaluationReport(result: ResearchTacticSuiteHistoryEvaluation): object {
+  const replay = evaluateDynamicTacticReplay(result)
+  const routeSelections = Object.fromEntries([...new Set(replay.days.map(day => day.deterministicTacticId))]
+    .sort()
+    .map(tacticId => [tacticId, replay.days.filter(day => day.deterministicTacticId === tacticId).length]))
+  const rejectionReasons = replay.routes.flatMap(route => route.rejected.flatMap(item => item.reasons))
+  const rejectionCounts = Object.fromEntries([...new Set(rejectionReasons)].sort()
+    .map(reason => [reason, rejectionReasons.filter(item => item === reason).length]))
+  return {
+    status: 'passed',
+    mode: 'evaluate-dynamic',
+    adapter: result.historyAdapter,
+    sessions: replay.sessions,
+    historyChunkHashes: result.historyChunkHashes,
+    replayVersion: replay.replayVersion,
+    switchingCostBps: replay.switchingCostBps,
+    routableSessions: replay.routableSessions,
+    unroutableSessions: replay.unroutableSessions,
+    commanderDecisions: replay.commanderDecisions,
+    commanderCoverage: replay.commanderCoverage,
+    routeSelections,
+    rejectionCounts,
+    tracks: replay.tracks,
+    recentRoutes: replay.days.slice(-10),
+    limitations: [
+      'Historical strategic state reconstructs breadth and emotion from quality-gated daily facts, uses equal-weight stock return as the market-index proxy, and has no historical news catalyst.',
+      'Matured observations are overlapping forward sleeves of each fixed tactic; they are not independent trades.',
+      'No model-assisted result is imputed when a recorded commander decision is absent; commander tracks remain defensive on uncovered routes.',
+    ],
+  }
+}
+
 /**
  * Run a fail-fast production history probe or one fixed research evaluation.
  * @param options - Validated endpoint, range, tactic, and latency bounds.
@@ -176,14 +209,14 @@ export async function runP3Canary(options: P3CanaryOptions, password?: string): 
     for await (const chunk of adapter.load(request)) return probeReport(chunk)
     throw new Error('probe returned no history chunks')
   }
-  if (options.mode === 'evaluate-suite') {
+  if (options.mode === 'evaluate-suite' || options.mode === 'evaluate-dynamic') {
     const result = await evaluateResearchTacticSuiteHistory(
       adapter,
       request,
       Object.values(DEFAULT_RESEARCH_TACTIC_BACKTEST_CONFIGS),
       options.attemptedTrials,
     )
-    return suiteEvaluationReport(result)
+    return options.mode === 'evaluate-dynamic' ? dynamicEvaluationReport(result) : suiteEvaluationReport(result)
   }
   const result = await evaluateResearchTacticHistory(
     adapter,

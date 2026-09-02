@@ -25,7 +25,7 @@ The dynamic tactic commander turns the deterministic strategic state, a diverse 
 
 A full-period result for one tactic measures a weapon in isolation; it does not measure whether MAOQ identified the principal contradiction and chose the right weapon with information available at that time. The dynamic layer must therefore preserve fixed, auditable tactic implementations while evaluating and routing them conditionally by market regime, emotion cycle, sector structure, execution quality, and evidence uncertainty.
 
-The shared catalog aligns the six fixed research trials, eligibility evaluation, and the general council tactic enum. A host-owned conditional scorecard and deterministic router now turn matured comparable-state evidence into a bounded top-three slate. The remaining gap is model-assisted selection and attribution: the DSH commander does not yet consume that slate, and no prequential comparison isolates value added by synthesis and veto.
+The shared catalog aligns the six fixed research trials, eligibility evaluation, and the general council tactic enum. A host-owned conditional scorecard and deterministic router turn matured comparable-state evidence into a bounded top-three slate; `maoq_select_tactics` then runs constrained commander synthesis, host validation, and independent risk veto. Prequential replay can measure deterministic routing, but the historical range has no recorded model decisions, so it cannot yet measure value added by DSH synthesis and veto.
 
 -----
 
@@ -139,11 +139,17 @@ The replay compares `defensive_no_trade`, equal allocation, each fixed tactic, t
 
 These phases belong to P3.5 and do not replace the project-wide P0-P5 milestones in the [roadmap](maoq-roadmap.md).
 
+| Phase | Status | Main deliverable | Acceptance result |
+|---|---|---|---|
+| P0 — One tactic truth | Complete | Versioned catalog, derived research IDs, model schema, and fail-closed host validation | The catalog, lab, research tool, and council share one identity; focused tests and the real Loader composition pass |
+| P1 — Conditional record and routing | Complete | Matured outcomes, immutable conditional scorecard, deterministic top-three slate, and defensive fallback | Automated coverage proves cutoff, content identity, insufficient-evidence, and future-data rejection behavior |
+| P2 — Commander and attribution | Implemented; not promoted | `maoq_select_tactics`, commander decision records, independent veto, and prequential replay | Deterministic replay is complete but loses to no-trade after costs; historical model coverage is zero, so paper promotion is prohibited |
+
 ### P0 — One tactic truth and fail-closed use
 
-**Status: implemented.** `dsh-market-tactic-eligibility` owns the six active tactic IDs, `defensive_no_trade`, their versions, families, promotion status, context requirements, execution requirements, and risk policy. The tactic lab derives its research ID and version maps from that catalog. The general council exposes the same IDs as an enum, and host validation rejects unknown tactics, mismatched `no_trade`, unknown actions, and a research tactic presented as `paper_trade`.
+**Status: implemented.** `dsh-market-tactic-eligibility` owns the six active tactic IDs, `defensive_no_trade`, their versions, families, promotion status, context requirements, execution requirements, and risk policy. The tactic lab derives its research IDs and version map from that catalog, and the model-facing research tool consumes the derived ID list. The general council exposes the same IDs as an enum, and host validation rejects unknown tactics, mismatched `no_trade`, unknown actions, and a research tactic presented as `paper_trade`.
 
-P0 exits when catalog identity and versions cannot drift across the eligibility evaluator, research lab, and council; invalid model output fails at the host parser; and a real Loader composition preserves a registered tactic through synthesis and veto. P0 does not claim conditional performance, top-three routing, or dynamic tactic selection.
+P0 exits when catalog identity and versions cannot drift across the eligibility evaluator, research lab, research tool, and council; invalid model output fails at the host parser; and a real Loader composition preserves a registered tactic through synthesis and veto. P0 does not claim conditional performance, top-three routing, or dynamic tactic selection.
 
 ### P1 — Conditional record and deterministic routing
 
@@ -153,7 +159,11 @@ P1 exits with content identities for every outcome, scorecard, and route; open-c
 
 ### P2 — DSH commander, veto, and prequential attribution
 
-P2 gives the DSH commander only the deterministic top-three slate and the smallest sufficient specialist evidence. The commander may choose one primary and one secondary tactic, while host validation owns scope and risk limits and an independent reviewer keeps final veto authority. Daily prequential replay then attributes the incremental value and cost of deterministic routing, DSH synthesis, stock ranking, execution, and veto.
+**Status: implemented and not promoted.** `maoq_select_tactics` gives the DSH commander only the deterministic top-three slate, defensive fallback, and smallest sufficient evidence. The commander may choose one primary and one secondary tactic, while host validation owns scope and risk limits and an independent reviewer keeps final veto authority. Structured decisions, token use, route identity, and final veto are persisted for later attribution.
+
+The point-in-time replay from 2022-01-01 through 2025-12-31 covers 969 sessions, of which 964 are routable. The deterministic route selects defense on 925 sessions and breakout-pullback on 39. With 5 basis points of switching cost, it returns -2.43%, reaches 7.14% maximum drawdown, switches 68 times, and pays 3.40% in switching costs. The fixed breakout-pullback tactic returns 80.50% with 36.71% maximum drawdown, equal allocation returns -15.99%, and no-trade returns zero. The current router reduces drawdown, but excessive switching consumes its advantage and fails the paper-promotion criterion.
+
+The historical range contains no recorded DSH commander decisions, so the model-proposal and final-veto tracks both fall back to no-trade and model coverage is zero. This replay can reject the current deterministic dynamic router; it cannot show that model selection has no value, and the same 2022–2025 range cannot be tuned and then presented as a passing holdout. The next version must freeze hysteresis, a minimum holding period, or another cost-aware transition rule before evaluation on a separate development range and sealed holdout.
 
 P2 exits when every model-assisted decision is cutoff-correct and replayable, unknown or unpromoted actions fail closed, standard mode avoids full-history scans and unnecessary specialists, and the complete selector beats preregistered fixed and abstention-aware baselines net of switching costs before paper promotion.
 
@@ -162,4 +172,4 @@ P2 exits when every model-assisted decision is cutoff-correct and replayable, un
 <a id="dev-note"></a>
 ## Dev Note
 
-P0 and P1 supply the shared identity, conditional evidence, and deterministic routing foundation; P2 remains proposed. Existing fixed-tactic and route results remain research evidence and do not prove that model-assisted selection adds value. The next sealed date range, P2 prompt, model route, and attribution comparison remain preregistration decisions owned by their implementation changes and Agent Notes.
+P0 through P2 host capabilities and no-look-ahead replay are implemented, but the current historical result rejects paper promotion and model-assisted incremental value remains unmeasured. The next sealed date range, model route, and switching rule remain preregistration decisions owned by a successor trial and its Agent Note.

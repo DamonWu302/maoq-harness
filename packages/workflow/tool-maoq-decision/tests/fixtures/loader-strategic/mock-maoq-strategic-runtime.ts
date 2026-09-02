@@ -1,7 +1,18 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { LlmAdapter, ToolCallId } from '@deepseek-ai/dsh-llm'
 import type { GenerateOptions, StreamChunk } from '@deepseek-ai/dsh-llm'
+import { contentHash } from '@deepseek-ai/dsh-market-snapshot'
 import type { MarketProvenance, MarketSnapshotDraft, MarketSnapshotIdentityInput } from '@deepseek-ai/dsh-market-snapshot'
+import { computeStrategicFeatures } from '@deepseek-ai/dsh-market-strategic-state'
+import { tacticDefinitions } from '@deepseek-ai/dsh-market-tactic-eligibility'
+import type { ActiveTacticId, TacticDefinition } from '@deepseek-ai/dsh-market-tactic-eligibility'
+import {
+  advanceTacticScorecard,
+  createEmptyTacticScorecard,
+  createMaturedTacticOutcome,
+  deriveTacticRoutingContext,
+  TacticRoutingStore,
+} from '@deepseek-ai/dsh-market-tactic-routing'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { ResolvedSubagentStartRequest, SubagentProvider, SubagentRun } from '@deepseek-ai/dsh-subagent'
 
@@ -49,18 +60,36 @@ function textContent(options: GenerateOptions): string {
 }
 
 class MaoqStrategicCommanderAdapter extends LlmAdapter {
-  constructor(private readonly currentHash: string, private readonly historyHashes: readonly string[]) { super() }
+  private phase = 0
+
+  constructor(
+    private readonly currentHash: string,
+    private readonly historyHashes: readonly string[],
+    private readonly includeTacticSelection = false,
+  ) { super() }
 
   async * stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
     const result = textContent(options)
-    if (result.length === 0) {
+    if (this.phase === 0) {
+      this.phase = 1
       const args = JSON.stringify({
         objective: '识别主要矛盾和阻力最小的板块。', snapshotHash: this.currentHash, historySnapshotHashes: this.historyHashes,
-        decisionTime: '2026-08-28T16:00:00+08:00', maximumAgeHours: 24, specialists: ['market_regime', 'sector_battlefield'],
+        decisionTime: '2026-08-28T16:00:00+08:00', maximumAgeHours: this.includeTacticSelection ? 240 : 24,
+        specialists: ['market_regime', 'sector_battlefield'],
       })
       yield { type: 'block-start', index: 0, blockType: 'tool-call' }
       yield { type: 'tool-call-delta', index: 0, id: ToolCallId('maoq-strategic-loader-call'), name: 'maoq_analyze_strategy', argumentsDelta: args }
       yield { type: 'block-end', index: 0, block: { type: 'tool-call', id: ToolCallId('maoq-strategic-loader-call'), name: 'maoq_analyze_strategy', arguments: args } }
+      yield { type: 'usage', usage: { inputTokens: 8, outputTokens: 4 } }
+      yield { type: 'finish', reason: { kind: 'tool-calls' } }
+      return
+    }
+    if (this.includeTacticSelection && this.phase === 1) {
+      this.phase = 2
+      const args = '{}'
+      yield { type: 'block-start', index: 0, blockType: 'tool-call' }
+      yield { type: 'tool-call-delta', index: 0, id: ToolCallId('maoq-tactic-loader-call'), name: 'maoq_select_tactics', argumentsDelta: args }
+      yield { type: 'block-end', index: 0, block: { type: 'tool-call', id: ToolCallId('maoq-tactic-loader-call'), name: 'maoq_select_tactics', arguments: args } }
       yield { type: 'usage', usage: { inputTokens: 8, outputTokens: 4 } }
       yield { type: 'finish', reason: { kind: 'tool-calls' } }
       return
@@ -88,6 +117,23 @@ function featureRecord(prompt: string): Record<string, unknown> {
 
 function structured(request: ResolvedSubagentStartRequest): unknown {
   const prompt = request.prompt.filter(block => block.type === 'text').map(block => block.text).join('\n')
+  if (prompt.includes('independent MAOQ tactic risk reviewer')) {
+    const route = jsonAfterMarker(prompt, 'Exact route: ')
+    return {
+      routeId: route['routeId'], approved: true, verdict: 'approve', reasons: ['提案保持在确定性路由范围内。'],
+      hardLimits: ['研究战法不得创建模拟仓位。'], invalidationConditions: ['新的路由身份必须重新审查。'],
+    }
+  }
+  if (prompt.includes('You are the MAOQ tactic commander. Choose only')) {
+    const route = jsonAfterMarker(prompt, 'Exact route: ')
+    const slate = route['slate'] as Array<{ tacticId: string; evidenceRefs: string[] }>
+    const primary = slate.find(item => item.tacticId !== 'defensive_no_trade') ?? slate[0]!
+    return {
+      routeId: route['routeId'], primaryTacticId: primary.tacticId,
+      thesis: '当前获准研究战法具有最强的有界条件证据。', evidenceRefs: primary.evidenceRefs,
+      counterEvidenceRefs: [], confidence: 0.7, invalidationConditions: ['战法离开确定性路由时失效。'],
+    }
+  }
   if (prompt.includes('independent MAOQ risk reviewer')) {
     const context = jsonAfterMarker(prompt, 'Host-bound labels and the exact evidence cited by the decision: ')
     const cited = context['citedEvidence'] as Array<{ ref: string }>
@@ -133,6 +179,37 @@ class FreshStructuredProvider implements SubagentProvider {
 export const name = 'mock-maoq-strategic-runtime'
 export const inject = ['llm', 'subagents', 'marketSnapshots']
 
+async function seedTacticScorecard(features: ReturnType<typeof computeStrategicFeatures>): Promise<void> {
+  const context = deriveTacticRoutingContext(features)
+  const active = tacticDefinitions().filter(
+    (definition): definition is TacticDefinition & { readonly tacticId: ActiveTacticId } => (
+      definition.tacticId !== 'defensive_no_trade'
+    ),
+  )
+  const outcomes = active.flatMap(definition => Array.from({ length: 8 }, (_, index) => {
+    const day = String(index + 10).padStart(2, '0')
+    return createMaturedTacticOutcome({
+      tacticId: definition.tacticId,
+      tacticVersion: definition.tacticVersion,
+      decisionDate: `2026-08-${day}`,
+      maturityDate: `2026-08-${day}`,
+      availableAt: `2026-08-${day}T12:00:00+08:00`,
+      context,
+      netReturn: 0.05,
+      doubledCostNetReturn: 0.04,
+      maximumDrawdown: 0.01,
+      fillRate: 1,
+      sourceHashes: [contentHash({ tacticId: definition.tacticId, index })],
+    })
+  }))
+  const scorecard = advanceTacticScorecard(
+    createEmptyTacticScorecard('2026-08-01T00:00:00+08:00'),
+    outcomes,
+    features.cutoffTime,
+  )
+  await new TacticRoutingStore('./.tactics').publishScorecard(scorecard)
+}
+
 export async function apply(ctx: Context): Promise<void> {
   const identities = ['2026-08-26', '2026-08-27', '2026-08-28'].map(date => ({
     tradingDate: date, cutoffTime: `${date}T15:30:00+08:00`, calendarVersion: 'sse-szse-2026.08', adjustmentVersion: `qfq-${date}`,
@@ -143,6 +220,8 @@ export async function apply(ctx: Context): Promise<void> {
   ctx.effect(() => dispose)
   const snapshots = []
   for (const identity of identities) snapshots.push(await ctx.marketSnapshots.build('loader-strategic', identity))
+  await seedTacticScorecard(computeStrategicFeatures(snapshots[2]!, snapshots.slice(0, 2)))
   ctx.llm.registerAdapter(['mock-strategic'], new MaoqStrategicCommanderAdapter(snapshots[2]!.identity.contentHash, snapshots.slice(0, 2).map(item => item.identity.contentHash)))
+  ctx.llm.registerAdapter(['mock-tactic'], new MaoqStrategicCommanderAdapter(snapshots[2]!.identity.contentHash, snapshots.slice(0, 2).map(item => item.identity.contentHash), true))
   ctx.subagents.registerProvider(new FreshStructuredProvider())
 }

@@ -3,6 +3,9 @@ import type { MarketProvenance, SectorDailySnapshot, StockDailyBar } from '@deep
 import {
   buildTacticLabHistoryChunk,
   DEFAULT_A_SHARE_EXECUTION_POLICY,
+  DailyHistoryFeatureStream,
+  evaluateDynamicTacticReplay,
+  HistoricalStrategicFeatureStream,
   evaluateResearchTactic,
   TACTIC_EVALUATION_ENGINE_VERSION,
   type DailyExecutionBar,
@@ -130,6 +133,8 @@ function provenance(date: string, symbol: string): MarketProvenance {
 function historySnapshot(index: number): DailyHistorySnapshot {
   const date = dateAt(index)
   const symbols = ['TARGET', ...Array.from({ length: 9 }, (_, item) => `H${String(item).padStart(2, '0')}`)]
+  const emotionSymbols = symbols.slice(1, 5)
+  const limitUpSymbols = new Set([emotionSymbols[index % 4], emotionSymbols[(index + 1) % 4]])
   const stocks: StockDailyBar[] = symbols.map((symbol, item) => {
     const slope = item === 0 ? 0.006 : item <= 5 ? 0.003 : -0.002
     const close = 10 * (1 + slope * index)
@@ -145,7 +150,7 @@ function historySnapshot(index: number): DailyHistorySnapshot {
       turnoverRate: 0.02,
       adjustmentFactor: 1,
       tradingStatus: 'trading',
-      limitStatus: 'none',
+      limitStatus: limitUpSymbols.has(symbol) ? 'limit-up' : 'none',
       listingDays: 1_000,
       qualityFlags: [],
       provenance: provenance(date, symbol),
@@ -194,7 +199,7 @@ function historyExecution(index: number): DailyExecutionSession {
       high: item.high,
       low: item.low,
       close: item.close,
-      upLimit: item.close * 1.1,
+      upLimit: item.limitStatus === 'limit-up' ? item.close : item.close * 1.1,
       downLimit: item.close * 0.9,
       tradingStatus: item.tradingStatus,
     })),
@@ -225,6 +230,28 @@ function historyAdapter(chunks: readonly TacticLabHistoryChunk[]): TacticLabHist
 }
 
 describe('P3 tactic walk-forward evaluation', () => {
+  it('fails a missing-sector history day closed without aborting later replay', () => {
+    const featureStream = new DailyHistoryFeatureStream()
+    const strategicStream = new HistoricalStrategicFeatureStream()
+    const snapshot = { ...historySnapshot(0), sectors: [] }
+    const result = strategicStream.push(snapshot, historyExecution(0), featureStream.push(snapshot))
+    expect(result).toMatchObject({
+      eligibleForInterpretation: false,
+      sectorBattlefields: { status: 'unavailable', reasonCodes: ['HISTORICAL_SECTOR_FACTS_UNAVAILABLE'] },
+    })
+  })
+
+  it('rejects strategic proxy inputs that do not share one exact trading date', () => {
+    const snapshot = historySnapshot(0)
+    const features = new DailyHistoryFeatureStream().push(snapshot)
+    const stream = new HistoricalStrategicFeatureStream()
+    expect(() => stream.push(snapshot, historyExecution(1), features)).toThrow(/one exact trading date/)
+    expect(() => stream.push({
+      ...snapshot,
+      identity: { ...snapshot.identity, tradingDate: dateAt(1) },
+    }, historyExecution(0), features)).toThrow(/one exact trading date/)
+  })
+
   it('builds next-open round trips, chronological folds, and doubled-cost evidence', () => {
     const features = Array.from({ length: 6 }, (_, index) => feature(index)).reverse()
     const sessions = Array.from({ length: 7 }, (_, index) => session(index)).reverse()
@@ -368,10 +395,57 @@ describe('P3 tactic walk-forward evaluation', () => {
       'sector_residual_strength',
     ])
     expect(result.sourceExecutionHashes).toHaveLength(64)
+    expect(result.strategicFeatures).toHaveLength(64)
+    expect(result.strategicFeatures[2]).toMatchObject({ eligibleForInterpretation: true })
+    expect(result.evaluations.regime_signed_breakout_pullback.doubledCostEquityCurve).toHaveLength(64)
     expect(result.promotionAudit).toMatchObject({
       attemptedTrials: 6,
       backtestOverfitting: { passed: false },
     })
+  })
+
+  it('replays dynamic routes only after tactic outcomes mature', async () => {
+    const suite = await evaluateResearchTacticSuiteHistory(
+      historyAdapter(historyChunks()),
+      { startDate: dateAt(0), endDate: dateAt(63), chunkSessions: 32, minimumStocks: 1 },
+    )
+    const replay = evaluateDynamicTacticReplay(suite)
+    expect(replay).toMatchObject({
+      sessions: 64,
+      routableSessions: 62,
+      commanderDecisions: 0,
+      commanderCoverage: 0,
+    })
+    expect(replay.tracks.deterministicRoute.observations).toBe(63)
+    expect(replay.tracks.commanderFinal.totalReturn).toBe(0)
+    for (const route of replay.routes) {
+      for (const candidate of route.slate) {
+        if (candidate.metrics !== null) {
+          expect(Date.parse(candidate.metrics.lastAvailableAt)).toBeLessThanOrEqual(Date.parse(route.cutoffTime))
+        }
+      }
+    }
+
+    const mutationIndex = 50
+    const changed = {
+      ...suite,
+      evaluations: Object.fromEntries(Object.entries(suite.evaluations).map(([tacticId, evaluation]) => [
+        tacticId,
+        {
+          ...evaluation,
+          equityCurve: evaluation.equityCurve.map((point, index) => (
+            index < mutationIndex ? point : { ...point, equity: point.equity * 1.5 }
+          )),
+          doubledCostEquityCurve: evaluation.doubledCostEquityCurve.map((point, index) => (
+            index < mutationIndex ? point : { ...point, equity: point.equity * 1.5 }
+          )),
+        },
+      ])) as unknown as typeof suite.evaluations,
+    }
+    const changedReplay = evaluateDynamicTacticReplay(changed)
+    const boundary = suite.strategicFeatures[mutationIndex]?.tradingDate as string
+    expect(changedReplay.routes.filter(route => route.tradingDate < boundary).map(route => route.routeId))
+      .toEqual(replay.routes.filter(route => route.tradingDate < boundary).map(route => route.routeId))
   })
 
   it('rejects corrupted or insufficient streamed history', async () => {
@@ -393,5 +467,10 @@ describe('P3 tactic walk-forward evaluation', () => {
       { startDate: dateAt(0), endDate: dateAt(0), chunkSessions: 1, minimumStocks: 1 },
       [config()],
     )).rejects.toThrow(/every registered fixed trial/)
+
+    await expect(evaluateResearchTacticSuiteHistory(
+      historyAdapter(historyChunks(1)),
+      { startDate: dateAt(0), endDate: dateAt(0), chunkSessions: 1, minimumStocks: 1 },
+    )).rejects.toThrow(/at least two complete sessions/)
   })
 })

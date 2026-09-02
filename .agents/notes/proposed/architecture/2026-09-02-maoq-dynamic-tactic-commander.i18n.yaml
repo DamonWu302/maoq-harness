@@ -1,6 +1,0 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
-#   pnpm run verify-translation-pairing --write .agents/notes/proposed/architecture/2026-09-02-maoq-dynamic-tactic-commander.md
-2026-09-02-maoq-dynamic-tactic-commander.md: c3a209abdc19b33a80a8012c52c03761ff0dc643
-2026-09-02-maoq-dynamic-tactic-commander.zh.md: f89d26c84accaa8fe2deccf6457b092ff2f32be9

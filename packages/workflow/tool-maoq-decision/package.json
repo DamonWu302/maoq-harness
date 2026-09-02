@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-tool-maoq-decision",
-  "description": "Evidence-bound MAOQ strategic-state interpretation, dynamic specialist council, and deterministic risk veto",
+  "description": "Evidence-bound MAOQ strategic state, route-constrained tactic selection, and independent risk veto",
   "version": "0.1.2-alpha.2",
   "publishConfig": {
     "access": "public"
@@ -38,6 +38,7 @@
     "@deepseek-ai/dsh-market-snapshot": "workspace:^",
     "@deepseek-ai/dsh-market-strategic-state": "workspace:^",
     "@deepseek-ai/dsh-market-tactic-eligibility": "workspace:^",
+    "@deepseek-ai/dsh-market-tactic-routing": "workspace:^",
     "@deepseek-ai/dsh-settings": "workspace:^",
     "@deepseek-ai/dsh-subagent": "workspace:^",
     "@deepseek-ai/dsh-system-prompt": "workspace:^",
@@ -59,6 +60,7 @@
     "@deepseek-ai/dsh-market-snapshot": "workspace:^",
     "@deepseek-ai/dsh-market-strategic-state": "workspace:^",
     "@deepseek-ai/dsh-market-tactic-eligibility": "workspace:^",
+    "@deepseek-ai/dsh-market-tactic-routing": "workspace:^",
     "@deepseek-ai/dsh-settings": "workspace:^",
     "@deepseek-ai/dsh-loader-smoke": "workspace:^",
     "@deepseek-ai/dsh-session": "workspace:^",

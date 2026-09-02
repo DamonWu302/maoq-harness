@@ -105,6 +105,7 @@ function evaluation(tacticId: ResearchTacticId, tacticIndex: number): ResearchTa
       finalEquity: equityCurve.at(-1)!.equity,
     },
     equityCurve,
+    doubledCostEquityCurve: equityCurve,
     folds: foldReturns.map((totalReturn, index) => ({
       startDate: dateAt(index * 16),
       endDate: dateAt((index + 1) * 16),

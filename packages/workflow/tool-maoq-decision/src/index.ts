@@ -21,6 +21,7 @@ import type {} from '@deepseek-ai/dsh-settings'
 import { dailyRefreshStartMinutes, MaoqDailyRefreshRuntime } from './daily-runtime.ts'
 import { registerStrategicStateQueryTools } from './strategic-query.ts'
 import { refreshDailyStrategicState, registerStrategicStateTool, selectDailyStrategicInput } from './strategic.ts'
+import { registerTacticCommanderTool } from './tactic.ts'
 
 export const name = 'tool-maoq-decision'
 export const inject = ['agents', 'tools', 'workflowEngine', 'subagents', 'systemPrompt']
@@ -55,8 +56,12 @@ export interface Config {
   analysisMode?: MaoqAnalysisMode
   /** Directory containing persisted strategic decision mirrors (default `.maoq/decisions`). */
   stateRoot?: string
+  /** Directory containing tactic outcomes, scorecards, routes, and decisions (default `.maoq/tactics`). */
+  tacticStateRoot?: string
   /** Maximum decision files a latest/history query may scan (default 500). */
   maxStateFiles?: number
+  /** Maximum tactic scorecard files a latest route may scan (default 500). */
+  maxTacticStateFiles?: number
   /** Maximum snapshot files a freshness query may verify (default 500). */
   maxSnapshotFiles?: number
   /** Maximum age of the canonical daily state in hours (default 24). */
@@ -78,7 +83,9 @@ export const Config: z<Config> = z.object({
   maxResultChars: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(32_768),
   analysisMode: z.union([...MAOQ_ANALYSIS_MODES]).default('quick'),
   stateRoot: z.string().default('.maoq/decisions'),
+  tacticStateRoot: z.string().default('.maoq/tactics'),
   maxStateFiles: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(500),
+  maxTacticStateFiles: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(500),
   maxSnapshotFiles: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(500),
   dailyStateMaximumAgeHours: z.number().min(0).max(Number.MAX_SAFE_INTEGER).default(24),
   autoDailyRefresh: z.boolean().default(false),
@@ -94,7 +101,9 @@ export interface ResolvedConfig {
   readonly maxResultChars: number
   readonly analysisMode: MaoqAnalysisMode
   readonly stateRoot: string
+  readonly tacticStateRoot: string
   readonly maxStateFiles: number
+  readonly maxTacticStateFiles: number
   readonly maxSnapshotFiles: number
   readonly dailyStateMaximumAgeHours: number
   readonly autoDailyRefresh: boolean
@@ -276,7 +285,9 @@ function resolveConfig(config: Config): ResolvedConfig {
   const maxResultChars = config.maxResultChars ?? 32_768
   const analysisMode = config.analysisMode ?? 'quick'
   const stateRoot = config.stateRoot ?? '.maoq/decisions'
+  const tacticStateRoot = config.tacticStateRoot ?? '.maoq/tactics'
   const maxStateFiles = config.maxStateFiles ?? 500
+  const maxTacticStateFiles = config.maxTacticStateFiles ?? 500
   const maxSnapshotFiles = config.maxSnapshotFiles ?? 500
   const dailyStateMaximumAgeHours = config.dailyStateMaximumAgeHours ?? 24
   const autoDailyRefresh = config.autoDailyRefresh ?? false
@@ -293,8 +304,12 @@ function resolveConfig(config: Config): ResolvedConfig {
     throw new TypeError('maxResultChars must be a positive safe integer')
   }
   if (stateRoot.trim().length === 0) throw new TypeError('stateRoot must be a non-empty path')
+  if (tacticStateRoot.trim().length === 0) throw new TypeError('tacticStateRoot must be a non-empty path')
   if (!Number.isSafeInteger(maxStateFiles) || maxStateFiles < 1) {
     throw new TypeError('maxStateFiles must be a positive safe integer')
+  }
+  if (!Number.isSafeInteger(maxTacticStateFiles) || maxTacticStateFiles < 1) {
+    throw new TypeError('maxTacticStateFiles must be a positive safe integer')
   }
   if (!Number.isSafeInteger(maxSnapshotFiles) || maxSnapshotFiles < 1) {
     throw new TypeError('maxSnapshotFiles must be a positive safe integer')
@@ -318,7 +333,9 @@ function resolveConfig(config: Config): ResolvedConfig {
     maxResultChars,
     analysisMode,
     stateRoot,
+    tacticStateRoot,
     maxStateFiles,
+    maxTacticStateFiles,
     maxSnapshotFiles,
     dailyStateMaximumAgeHours,
     autoDailyRefresh,
@@ -490,10 +507,11 @@ export function apply(ctx: Context, config: Config): void {
   ctx.systemPrompt.section({
     name: 'tool:maoq-decision',
     order: ctx.systemPrompt.getSectionOrder('TOOL_WORKFLOW'),
-    text: 'For current-state questions, call maoq_state_latest first. A persisted mirror is current only when freshness.currentUseAllowed is true. If it is missing or stale and at least three trading-day snapshots exist, call maoq_state_refresh_daily; the host fixes its objective, snapshot window, specialist lenses, decision time, and age policy, and exact repeats start no agents. Use maoq_state_history for multi-day review and maoq_state_get for one exact mirror. Call maoq_analyze_strategy only for an explicitly ad-hoc question that the canonical daily state does not answer, using the smallest sufficient specialist set. Deterministic features, evidence references, Mao method attributions, and the independent risk veto are binding. Use maoq_decide only for council-runtime diagnostics. None of these tools can place a live order or rank stocks in the P2 strategic-state phase.',
+    text: 'For current-state questions, call maoq_state_latest first. A persisted mirror is current only when freshness.currentUseAllowed is true. If it is missing or stale and at least three trading-day snapshots exist, call maoq_state_refresh_daily; the host fixes its objective, snapshot window, specialist lenses, decision time, and age policy, and exact repeats start no agents. Use maoq_state_history for multi-day review and maoq_state_get for one exact mirror. Call maoq_analyze_strategy only for an explicitly ad-hoc question that the canonical daily state does not answer, using the smallest sufficient specialist set. After an approved actionable daily state, call maoq_select_tactics to consume only the host-built deterministic top-three route; its promotion scope, evidence allowlist, risk ceilings, and independent risk veto are binding. Use maoq_decide only for council-runtime diagnostics. None of these tools can place a live order.',
   })
   registerStrategicStateTool(ctx, current)
   registerStrategicStateQueryTools(ctx, current)
+  registerTacticCommanderTool(ctx, current)
   ctx.effect(() => {
     const stopCreated = ctx.on('agent/created', ({ agent }) => { dailyRuntime.adopt(agent) })
     const stopDisposed = ctx.on('agent/disposed', ({ agent }) => { dailyRuntime.depart(agent) })

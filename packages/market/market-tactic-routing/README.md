@@ -1,5 +1,5 @@
 ---
-description: "Build cutoff-correct MAOQ conditional tactic scorecards and deterministic top-three routing slates without rescanning full market history."
+description: "Build cutoff-correct MAOQ scorecards, deterministic tactic routes, and validated commander decisions without rescanning full market history."
 kind: "package-library"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-market-tactic-routing` attributes completed tactic results to the strategic facts known at their original decision cutoff, persists immutable outcomes and aggregate generations, and routes current eligible tactics from one bounded scorecard. The router emits at most three catalog tactics with score components, evidence references, rejection reasons, risk ceilings, and a cash floor. It runs without a model and keeps `defensive_no_trade` available whenever active evidence is inadequate.
+`dsh-market-tactic-routing` attributes completed tactic results to the strategic facts known at their original decision cutoff, persists immutable outcomes and aggregate generations, and routes current eligible tactics from one bounded scorecard. It also validates and persists the commander's route-bound proposal and the independent veto as one replayable decision. The deterministic router runs without a model and keeps `defensive_no_trade` available whenever active evidence is inadequate.
 
 ## Table of Contents
 
@@ -35,9 +35,10 @@ Use this library after P0 eligibility and before model-assisted P2 synthesis. A 
 const outcome = attributeMaturedTacticOutcome(completed)
 const next = advanceTacticScorecard(previous, [outcome], cutoffTime)
 const route = routeEligibleTactics(features, eligibility, next)
+const decision = createTacticCommanderDecision(route, proposal, risk)
 ```
 
-Success returns immutable content-addressed records. Future-visible outcomes, incompatible tactic versions, a non-advancing cutoff, mismatched eligibility, incomplete strategic facts, and a scorecard newer than the decision cutoff fail closed. `TacticRoutingStore` publishes outcomes by UTC availability day and scorecards by content identity; bounded range reads fetch only partitions between two scorecard cutoffs.
+Success returns immutable content-addressed records. Future-visible outcomes, incompatible tactic versions, a non-advancing cutoff, mismatched eligibility, incomplete strategic facts, a scorecard newer than the decision cutoff, a tactic outside the route, or a contradictory veto fails closed. `TacticRoutingStore` publishes outcomes by UTC availability day and publishes scorecards, routes, and commander decisions by content identity; bounded range reads fetch only partitions between two scorecard cutoffs.
 
 -----
 
@@ -50,6 +51,8 @@ Success returns immutable content-addressed records. Future-visible outcomes, in
 The v1 context uses market regime, emotion cycle, top-sector structure, a state-derived volatility band, top-sector crowding, and a caller-supplied execution-quality band. Each cell keeps sufficient statistics, a recent-effectiveness exponential average, and the latest visibility timestamp. This permits incremental updates without retaining raw daily bars in the scorecard.
 
 An active tactic needs eight matured exact-context samples, a positive 95% expectancy lower bound, positive doubled-cost expectancy, at least 50% fill rate, and a positive final score. The fixed score combines state fit, conditional expectancy, exact-context alignment, recent effectiveness, execution and doubled-cost evidence, then subtracts drawdown, crowding, transition, and sample-uncertainty penalties. Research tactics may enter a research slate but retain a zero paper-position ceiling.
+
+Commander validation derives scope and position ceilings from the selected routed candidates instead of accepting model-authored authority. `defensive_no_trade` is always selectable through the route fallback even when three active tactics fill the slate. A veto replaces the final selection with defense and cannot be represented as an approved active action.
 
 </details>
 
@@ -67,7 +70,7 @@ An active tactic needs eight matured exact-context samples, a positive 95% expec
 <a id="model-experience"></a>
 ## Model Experience
 
-Indirectly, through future P2 consumers that present the bounded route. This library registers no prompt or tool and never invokes a model.
+Indirectly, through the P2 consumer that presents the bounded route and persists the validated result. This library registers no prompt or tool and never invokes a model.
 
 #### KV Cache effect
 
@@ -79,7 +82,7 @@ None. A future consumer owns any selected route text added to model context.
 
 - **Exact context only** — v1 does not borrow evidence from adjacent or broader context cells; missing exact evidence produces uncertainty and defense.
 - **Outcome facts are supplied by execution or replay** — the library validates and attributes completed results but does not invent returns from strategic features.
-- **No model comparison yet** — P2 owns DSH-assisted selection and the incremental attribution against this deterministic route.
+- **Historical model coverage is external** — the library validates supplied proposals and vetoes but does not generate historical model decisions; replay reports missing coverage without imputation.
 - **No live order authority** — a promoted route remains a paper risk ceiling, not a broker instruction.
 
 <a id="dev-note"></a>

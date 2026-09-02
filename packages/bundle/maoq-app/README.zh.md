@@ -9,7 +9,7 @@ kind: "package-bundle"
 
 ## 概述
 
-MAOQ 应用层组合在 `dsh-base` 和 `dsh-web-app` 之上，提供统帅人格，并挂载 [`dsh-tool-maoq-decision`](../../workflow/tool-maoq-decision/README.zh.md)、不可变事实存储 [`dsh-market-snapshot`](../../market/market-snapshot/README.zh.md)、有界取得工具 [`dsh-tool-maoq-snapshot`](../../market/tool-maoq-snapshot/README.zh.md)、单试验评估器 [`dsh-tool-maoq-tactic-research`](../../market/tool-maoq-tactic-research/README.zh.md)和截止点前证据冻结器 [`dsh-market-news-web`](../../market/market-news-web/README.zh.md)。因此，随附的 `maoq` Profile 保留普通浏览器、数据、联网搜索和子 Agent 能力，同时增加一个有界决策议事组。它不授予实盘交易权限。
+MAOQ 应用层组合在 `dsh-base` 和 `dsh-web-app` 之上，提供统帅人格，并挂载包含规范化战略状态与有界战法选择的 [`dsh-tool-maoq-decision`](../../workflow/tool-maoq-decision/README.zh.md)、不可变事实存储 [`dsh-market-snapshot`](../../market/market-snapshot/README.zh.md)、快照取得、固定战法研究和截止点前联网证据。因此，随附的 `maoq` Profile 保留普通浏览器、数据、联网搜索和子 Agent 能力，同时增加经过宿主校验的战略与战法决策。它不授予实盘交易权限。
 
 ## 目录
 
@@ -31,7 +31,7 @@ Profile 还会挂载延迟连接的 `long-short-stock-mysql` 适配器。如果�
 
 进行市场任务时，在新任务发送第一条消息前，通过模式开关选择 **MAOQ 市场模式**。任务一旦开始，预设即固定。该模式保留 MAOQ 快照、决策、联网研究和用户问询能力，同时不装载 Shell、文件搜索／编辑、任务清单、目标及通用子 Agent 控制，因此快照问题会直接查询快照目录，不再绕行工作区搜索。仓库开发仍可选择**标准模式**。
 
-MAOQ Profile 还会挂载专属浏览器工具行，用“查看快照目录”“生成交易日快照”“生成每日标准战略状态”“MAOQ 战略研判”等业务名称替代通用的技术工具调用回退。已完成的战略决策会持久化到 `.maoq/decisions`；无参数的每日刷新由宿主规范化选取三个交易日窗口，重复刷新会复用同一镜像，不再启动新的议事组子 Agent。随附策略层把上游 19:00 日线更新视为数据就绪边界，在上海时区工作日 19:15 启动自动维护，此后两小时内每 15 分钟低成本检查一次快照；只有新的当日内容哈希才会启动分析。
+MAOQ Profile 还会挂载专属浏览器工具行，用“查看快照目录”“生成交易日快照”“生成每日标准战略状态”“MAOQ 战略研判”和“选择路由后的 MAOQ 战法”等业务名称替代不透明函数名。已完成的战略决策持久化到 `.maoq/decisions`；战绩、名单与经过校验的统帅决策持久化到 `.maoq/tactics`。无参数的每日刷新由宿主规范化选取三个交易日窗口，重复刷新会复用同一镜像，不再启动新的议事组子 Agent。随附策略层把上游 19:00 日线更新视为数据就绪边界，在上海时区工作日 19:15 启动自动维护，此后两小时内每 15 分钟低成本检查一次快照；只有新的当日内容哈希才会启动分析。
 
 <a id="operate-and-recover"></a>
 ## 运行与恢复
@@ -73,6 +73,7 @@ You are the MAOQ commander. Seek truth from current evidence, identify the princ
 - **日线数据库由部署配置**——适配器采用延迟连接，但在配置的 MySQL 端点和密码凭据可用前，生成会失败。
 - **没有组合执行器** — 决策止于研究和模拟交易输出。
 - **目前只有通用风险审查** — 敞口、流动性和回撤的数值引擎仍是未来的独立服务。
+- **动态路由尚未晋级** — 2022—2025 回放扣除切换成本后未优于空仓，因此主动名单保持研究范围，历史模型价值仍未测量。
 
 <a id="dev-note"></a>
 ### 开发备注
@@ -80,6 +81,6 @@ You are the MAOQ commander. Seek truth from current evidence, identify the princ
 <details>
 <summary>维护者工作上下文——点击展开</summary>
 
-P1 先建立不可变市场事实，P2 再增加战略解释或战术广度。
+Profile 已公开 P2 运行能力，但模拟晋级仍由分离的历史证据门槛控制。
 
 </details>

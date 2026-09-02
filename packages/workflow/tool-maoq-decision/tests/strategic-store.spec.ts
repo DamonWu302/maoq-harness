@@ -2,6 +2,10 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import type { Context } from '@deepseek-ai/cordis'
+import { STRATEGIC_ENGINE_VERSION } from '@deepseek-ai/dsh-market-strategic-state'
+import type { ResolvedConfig } from '../src/index.ts'
+import { currentStrategicStateFreshness } from '../src/strategic-query.ts'
 import {
   StrategicDecisionStore,
   STRATEGIC_WORKFLOW_VERSION,
@@ -168,5 +172,56 @@ describe('StrategicDecisionStore', () => {
       currentUseAllowed: false,
       reasons: ['current_snapshot_unverified'],
     })
+  })
+
+  it('derives freshness from optional snapshot and provider settings services', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'maoq-decision-freshness-services-'))
+    roots.push(root)
+    const decisionInput = {
+      ...input('a'.repeat(64), '2026-08-28T16:00:00+08:00'),
+      maximumAgeHours: 10_000,
+      featureEngineVersion: STRATEGIC_ENGINE_VERSION,
+    }
+    const record = await new StrategicDecisionStore(root).put(
+      decisionInput,
+      result('run-services'),
+      '2026-08-28',
+      '2026-08-28T15:30:00+08:00',
+    )
+    const config = {
+      maxSnapshotFiles: 10,
+      analysisMode: 'quick',
+      subagentProvider: 'codex',
+    } as ResolvedConfig
+    const absent = { get: () => undefined } as unknown as Context
+    await expect(currentStrategicStateFreshness(absent, config, record, 'invalid')).rejects.toThrow(/valid ISO/)
+    const noSnapshot = await currentStrategicStateFreshness(
+      absent,
+      config,
+      record,
+      '2026-08-29T00:00:00+08:00',
+    )
+    expect(noSnapshot.currentUseAllowed).toBe(false)
+    expect(noSnapshot.reasons).toContain('current_snapshot_unverified')
+
+    const context = (items: readonly { ns: string; value: unknown }[]): Context => ({
+      get(name: string) {
+        if (name === 'marketSnapshots') return {
+          listSummaries: () => Promise.resolve([
+            { cutoffTime: '2026-08-28T15:30:00+08:00', contentHash: decisionInput.snapshotHash },
+          ]),
+        }
+        if (name === 'settings') return { describe: () => items }
+        return undefined
+      },
+    }) as unknown as Context
+    await currentStrategicStateFreshness(context([]), config, record, '2026-08-29T00:00:00+08:00')
+    const configured = await currentStrategicStateFreshness(
+      context([{ ns: 'subagent-codex-codex', value: { model: 'fixture' } }]),
+      config,
+      record,
+      '2026-08-29T00:00:00+08:00',
+    )
+    expect(configured.reasons).toContain('provider_settings_changed')
   })
 })

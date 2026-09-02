@@ -1390,6 +1390,9 @@ importers:
       '@deepseek-ai/dsh-market-tactic-lab':
         specifier: workspace:^
         version: link:../../market/market-tactic-lab
+      '@deepseek-ai/dsh-market-tactic-routing':
+        specifier: workspace:^
+        version: link:../../market/market-tactic-routing
       '@deepseek-ai/dsh-subagent-codex':
         specifier: workspace:^
         version: link:../../subagent/subagent-codex
@@ -7103,9 +7106,15 @@ importers:
       '@deepseek-ai/dsh-market-snapshot':
         specifier: workspace:^
         version: link:../market-snapshot
+      '@deepseek-ai/dsh-market-strategic-state':
+        specifier: workspace:^
+        version: link:../market-strategic-state
       '@deepseek-ai/dsh-market-tactic-eligibility':
         specifier: workspace:^
         version: link:../market-tactic-eligibility
+      '@deepseek-ai/dsh-market-tactic-routing':
+        specifier: workspace:^
+        version: link:../market-tactic-routing
 
   packages/market/market-tactic-routing:
     dependencies:
@@ -10632,6 +10641,9 @@ importers:
       '@deepseek-ai/dsh-market-tactic-eligibility':
         specifier: workspace:^
         version: link:../../market/market-tactic-eligibility
+      '@deepseek-ai/dsh-market-tactic-routing':
+        specifier: workspace:^
+        version: link:../../market/market-tactic-routing
       '@deepseek-ai/dsh-session':
         specifier: workspace:^
         version: link:../../core/session

@@ -2951,8 +2951,12 @@ export interface Config {
   analysisMode?: MaoqAnalysisMode
   /** Directory containing persisted strategic decision mirrors (default `.maoq/decisions`). */
   stateRoot?: string
+  /** Directory containing tactic outcomes, scorecards, routes, and decisions (default `.maoq/tactics`). */
+  tacticStateRoot?: string
   /** Maximum decision files a latest/history query may scan (default 500). */
   maxStateFiles?: number
+  /** Maximum tactic scorecard files a latest route may scan (default 500). */
+  maxTacticStateFiles?: number
   /** Maximum snapshot files a freshness query may verify (default 500). */
   maxSnapshotFiles?: number
   /** Maximum age of the canonical daily state in hours (default 24). */
@@ -2971,7 +2975,7 @@ export interface Config {
 export type MaoqAnalysisMode = typeof MAOQ_ANALYSIS_MODES[number]
 ```
 
-来源：[`packages/workflow/tool-maoq-decision/src/index.ts:47`](../packages/workflow/tool-maoq-decision/src/index.ts)
+来源：[`packages/workflow/tool-maoq-decision/src/index.ts:48`](../packages/workflow/tool-maoq-decision/src/index.ts)
 
 <a id="deepseek-aidsh-tool-maoq-snapshot"></a>
 
@@ -3021,7 +3025,7 @@ export interface Config {
 }
 ```
 
-来源：[`packages/market/tool-maoq-tactic-research/src/index.ts:37`](../packages/market/tool-maoq-tactic-research/src/index.ts)
+来源：[`packages/market/tool-maoq-tactic-research/src/index.ts:27`](../packages/market/tool-maoq-tactic-research/src/index.ts)
 
 <a id="deepseek-aidsh-tool-pwsh"></a>
 

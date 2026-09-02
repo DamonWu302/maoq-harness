@@ -6,9 +6,9 @@ import {
   DEFAULT_RESEARCH_TACTIC_BACKTEST_CONFIGS,
   evaluateResearchTacticHistory,
   PUBLIC_TACTIC_EVIDENCE,
+  RESEARCH_TACTIC_IDS,
   RESEARCH_TACTIC_VERSIONS,
   type ResearchTacticHistoryEvaluation,
-  type ResearchTacticId,
   type TacticLabHistoryAdapter,
 } from '@deepseek-ai/dsh-market-tactic-lab'
 import { defineTool, type ToolCallView, type ToolResultView } from '@deepseek-ai/dsh-tools'
@@ -18,16 +18,6 @@ import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 export const name = 'tool-maoq-tactic-research'
 /** Required registries for model tools, history providers, and prompt guidance. */
 export const inject = ['tools', 'marketTacticHistory', 'systemPrompt']
-
-/** Fixed P3 tactic ids accepted by the research evaluator. */
-export const RESEARCH_TACTIC_IDS = [
-  'regime_signed_breakout_pullback',
-  'openable_emotion_leader',
-  'industry_relative_exhaustion_repair',
-  'correlation_cluster_sector_rotation',
-  'sector_residual_strength',
-  'low_volatility_sector_leader',
-] as const satisfies readonly ResearchTacticId[]
 
 /** Model guidance that prevents history evaluation from becoming live-trading authority. */
 export const MAOQ_TACTIC_RESEARCH_PROMPT_TEXT =

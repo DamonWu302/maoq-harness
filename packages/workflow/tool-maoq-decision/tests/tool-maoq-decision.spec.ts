@@ -244,8 +244,10 @@ describe('maoq_decide', () => {
     expect(section?.text).toContain('smallest sufficient specialist set')
     expect(section?.text).toContain('risk veto')
     expect(ctx.tools.get('maoq_decide')).toBeDefined()
+    expect(ctx.tools.get('maoq_select_tactics')).toBeDefined()
     await fiber.dispose()
     expect(ctx.tools.get('maoq_decide')).toBeUndefined()
+    expect(ctx.tools.get('maoq_select_tactics')).toBeUndefined()
   })
 
   it('validates direct configuration defaults and invalid values', async () => {

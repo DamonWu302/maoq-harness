@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The MAOQ application layer composes over `dsh-base` and `dsh-web-app`. It supplies the commander persona and mounts [`dsh-tool-maoq-decision`](../../workflow/tool-maoq-decision/README.md), the immutable [`dsh-market-snapshot`](../../market/market-snapshot/README.md) fact store, the bounded [`dsh-tool-maoq-snapshot`](../../market/tool-maoq-snapshot/README.md) acquisition tools, the single-trial [`dsh-tool-maoq-tactic-research`](../../market/tool-maoq-tactic-research/README.md) evaluator, and the pre-cutoff [`dsh-market-news-web`](../../market/market-news-web/README.md) evidence freezer. The shipped `maoq` profile therefore retains the ordinary browser, data, web-search, and subagent capabilities while adding one bounded decision council. It grants no live-trading authority.
+The MAOQ application layer composes over `dsh-base` and `dsh-web-app`. It supplies the commander persona and mounts [`dsh-tool-maoq-decision`](../../workflow/tool-maoq-decision/README.md), including canonical strategic state and bounded tactic selection, the immutable [`dsh-market-snapshot`](../../market/market-snapshot/README.md) fact store, snapshot acquisition, fixed-tactic research, and pre-cutoff web evidence. The shipped `maoq` profile retains ordinary browser, data, web-search, and subagent capabilities while adding host-validated strategy and tactic decisions. It grants no live-trading authority.
 
 ## Table of Contents
 
@@ -31,7 +31,7 @@ The profile also mounts the lazy `long-short-stock-mysql` adapter. Configure `MA
 
 For market work, choose **MAOQ Market mode** in the new-task preset switch before sending the first message. The preset is fixed after a task starts. This mode keeps the MAOQ snapshot and decision tools plus web research and user questions, while omitting shell, filesystem search/editing, todo, goal, and generic delegation controls. Snapshot questions therefore go directly to the snapshot catalog instead of searching the workspace. **Standard mode** remains available for repository development.
 
-The MAOQ profile also mounts dedicated browser rows that show business names such as “Browse snapshot catalog”, “Generate trading-day snapshots”, “Generate canonical daily strategy state”, and “MAOQ strategic analysis” instead of the generic tool-call fallback. Completed strategic decisions are persisted under `.maoq/decisions`. The no-argument daily refresh selects a host-canonical three-day window, and repeated refreshes reuse the same mirror without starting new council children. The shipped layer treats the upstream 19:00 daily-bar update as a data-readiness boundary: automatic weekday maintenance starts at 19:15 Asia/Shanghai, then performs cheap 15-minute snapshot checks for two hours; only a new same-day content hash starts analysis.
+The MAOQ profile also mounts dedicated browser rows that show business names such as “Browse snapshot catalog”, “Generate trading-day snapshots”, “Generate canonical daily strategy state”, “MAOQ strategic analysis”, and “Select routed MAOQ tactics” instead of opaque function names. Completed strategic decisions persist under `.maoq/decisions`; tactic scorecards, routes, and validated commander decisions persist under `.maoq/tactics`. The no-argument daily refresh selects a host-canonical three-day window, and repeated refreshes reuse the same mirror without starting new council children. The shipped layer treats the upstream 19:00 daily-bar update as a data-readiness boundary: automatic weekday maintenance starts at 19:15 Asia/Shanghai, then performs cheap 15-minute snapshot checks for two hours; only a new same-day content hash starts analysis.
 
 <a id="operate-and-recover"></a>
 ## Operate and recover
@@ -71,6 +71,7 @@ Stable while the profile, plugin roster, and live patch text are unchanged. A pr
 - **Daily database is deployment-configured** — the adapter is lazy, but generation fails until the configured MySQL endpoint and password credential are available.
 - **No portfolio executor** — decisions stop at research and paper-trading output.
 - **One generic risk reviewer** — numeric exposure, liquidity, and drawdown engines remain future independent services.
+- **Dynamic router is not promoted** — the 2022–2025 replay loses to no-trade after switching costs, so active routes remain research-only and historical model value is unmeasured.
 
 <a id="dev-note"></a>
 ### Dev Note
@@ -78,6 +79,6 @@ Stable while the profile, plugin roster, and live patch text are unchanged. A pr
 <details>
 <summary>Working context for maintainers — click to expand</summary>
 
-P1 establishes immutable market facts before P2 adds strategic interpretation or tactical breadth.
+The profile exposes the P2 runtime, but paper promotion remains controlled by the separate historical evidence gate.
 
 </details>

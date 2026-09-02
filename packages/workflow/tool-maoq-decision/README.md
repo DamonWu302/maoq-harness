@@ -1,5 +1,5 @@
 ---
-description: "The bounded MAOQ decision council for dynamic specialist selection, structured synthesis, and independent risk veto."
+description: "Build evidence-bound MAOQ strategic states and route-constrained tactic decisions under an independent risk veto."
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-tool-maoq-decision` gives the commander a host-canonical `maoq_state_refresh_daily` path, an evidence-bound ad-hoc `maoq_analyze_strategy` tool, persisted strategic decision mirrors, and a lower-level `maoq_decide` council diagnostic. The daily path selects the newest three distinct trading-day snapshots and fixes the objective, specialist lenses, decision time, and age policy outside model control. Exact repeats return the same mirror with zero new children. `maoq_state_latest`, `maoq_state_history`, and `maoq_state_get` read mirrors without recomputing market data. Quick analysis uses one synthesis child and one independent risk child; deep analysis first runs the selected specialists in parallel. Model context contains all market/emotion facts plus the deterministic top five sector battlefields and one bottom counterexample; the immutable result retains all sectors. The host trims presentational whitespace, then still rejects blank text, unknown evidence, or fabricated Mao method attribution. The package cannot rank stocks in P2 or place live orders.
+`dsh-tool-maoq-decision` gives the commander canonical daily strategic-state tools and `maoq_select_tactics`, which turns the latest approved state plus one bounded conditional scorecard into a route-constrained tactic decision. Strategic quick analysis uses one synthesis child and one independent risk child; deep analysis first runs selected specialists. Tactic selection starts exactly two fresh children only when an active tactic qualifies, while a defense-only route starts none. The host rejects stale state, unknown evidence, route expansion, fabricated promotion, inconsistent vetoes, and paper exposure for research tactics. The package cannot rank stocks or place live orders.
 
 ## Table of Contents
 
@@ -33,6 +33,8 @@ With `autoDailyRefresh` enabled, the first future live root Agent owns a disposa
 
 The strategic result stores deterministic features separately from interpretation. Reports and synthesis must cite exact snapshot evidence refs, include counter-evidence and falsifiable transition conditions, and explain each selected Mao method with its application and limitation. The host supplies the work title and paraphrased principle from an allowlist. Stale or incomplete features may produce only `no_trade`, and the independent risk verdict determines final actionability. Current-state reads additionally return `freshness`; callers must treat the immutable decision as historical whenever `currentUseAllowed` is false.
 
+After an approved actionable state exists, call `maoq_select_tactics` with no arguments. The host rechecks freshness, derives hard eligibility, loads only the latest scorecard visible at the state cutoff, and constructs the deterministic top-three route. The commander may choose one primary and one optional secondary tactic from that route; `defensive_no_trade` remains available as a fallback. The independent reviewer has final veto authority. Routes and validated decisions persist under `tacticStateRoot`; research tactics retain zero paper exposure regardless of model wording.
+
 | Field | Default | Meaning |
 |---|---|---|
 | `subagentProvider` | `spawn` | Fresh structured-output provider for every child. |
@@ -40,7 +42,9 @@ The strategic result stores deterministic features separately from interpretatio
 | `maxResultChars` | `32768` | Parent-facing rendered-result ceiling. |
 | `analysisMode` | `quick` | `quick` runs synthesis plus independent risk; `deep` adds selected specialist reports. |
 | `stateRoot` | `.maoq/decisions` | Directory containing immutable strategic decision mirrors. |
+| `tacticStateRoot` | `.maoq/tactics` | Directory containing immutable tactic scorecards, routes, and commander decisions. |
 | `maxStateFiles` | `500` | Maximum files scanned by latest and history queries. |
+| `maxTacticStateFiles` | `500` | Maximum scorecard files inspected to resolve the newest cutoff-visible generation. |
 | `maxSnapshotFiles` | `500` | Maximum immutable snapshots scanned to verify the newest usable market input. |
 | `dailyStateMaximumAgeHours` | `24` | Host-owned maximum age of a canonical daily state. |
 | `autoDailyRefresh` | `false` | Let a future live root Agent maintain the canonical state after close. |
@@ -55,7 +59,9 @@ The orchestration script, schemas, provider route, and child cap are deployment-
 
 The latest and by-ID query tools evaluate current use without mutating the mirror. They resolve the newest cutoff-safe snapshot from the host catalog rather than trusting a model-supplied hash. Maximum age, an unverifiable or changed snapshot, feature/workflow version drift, analysis-mode drift, provider-route drift, or provider-settings drift produces `freshness.status: stale` and `currentUseAllowed: false`, with explicit reasons. The record remains available for replay, but cannot silently become a current recommendation.
 
-The Loader composition fixture proves both tools load with the profile services. Focused workflow fixtures prove that selected roles remain bounded, evidence references close over the deterministic catalog, resolved answers name the Mao source work, and an independent veto remains final. The lower-level `maoq_decide` diagnostic uses the shared tactic catalog as its structured enum; host parsing rejects unknown tactic or action values, requires `defensive_no_trade` and `no_trade` together, and prevents a research tactic from producing `paper_trade`.
+Tactic selection publishes the deterministic route before invoking the workflow. A defense-only slate creates and persists a host decision directly. An active slate exposes only its candidates, defensive fallback, scores, evidence refs, scope, and risk ceilings to a fixed two-agent workflow. The optional secondary field is normalized to `null` after structured output because the worker schema subset uses an optional string rather than a nullable type union. The routing library then derives final scope, cash floor, and maximum paper position and publishes the decision only after host validation.
+
+Loader compositions prove the strategic tools and tactic selector load with the profile services. The tactic composition creates a fresh strategic mirror, routes qualified active research tactics, starts exactly two children, and persists a research-scoped decision. Focused fixtures prove evidence closure, stale-state refusal, defensive fallback, host-derived scope, token accounting, and final veto. The lower-level `maoq_decide` diagnostic retains the shared tactic catalog as its structured enum.
 
 -----
 
@@ -72,17 +78,17 @@ The Loader composition fixture proves both tools load with the profile services.
 
 #### What the model sees
 
-The parent sees short guidance to read persisted state tools first, use `maoq_analyze_strategy` only when no matching state exists, preserve deterministic features and Mao method attribution, and treat the risk veto as final. It also sees the generated [tool schemas](../../../docs/tool-catalog.md#deepseek-aidsh-tool-maoq-decision). Fixed scripts and child schemas are not model-selectable.
+The parent sees short guidance to read persisted state tools first, use `maoq_analyze_strategy` only when no matching state exists, call `maoq_select_tactics` only after an approved actionable state, preserve deterministic evidence, and treat the risk veto as final. It also sees the generated [tool schemas](../../../docs/tool-catalog.md#deepseek-aidsh-tool-maoq-decision). Fixed scripts and child schemas are not model-selectable.
 
 ##### MAOQ decision guidance
 
 ```markdown
-For current-state questions, call maoq_state_latest first. A persisted mirror is current only when freshness.currentUseAllowed is true. If it is missing or stale and at least three trading-day snapshots exist, call maoq_state_refresh_daily; the host fixes its objective, snapshot window, specialist lenses, decision time, and age policy, and exact repeats start no agents. Use maoq_state_history for multi-day review and maoq_state_get for one exact mirror. Call maoq_analyze_strategy only for an explicitly ad-hoc question that the canonical daily state does not answer, using the smallest sufficient specialist set. Deterministic features, evidence references, Mao method attributions, and the independent risk veto are binding. Use maoq_decide only for council-runtime diagnostics. None of these tools can place a live order or rank stocks in the P2 strategic-state phase.
+For current-state questions, call maoq_state_latest first. A persisted mirror is current only when freshness.currentUseAllowed is true. If it is missing or stale and at least three trading-day snapshots exist, call maoq_state_refresh_daily; the host fixes its objective, snapshot window, specialist lenses, decision time, and age policy, and exact repeats start no agents. Use maoq_state_history for multi-day review and maoq_state_get for one exact mirror. Call maoq_analyze_strategy only for an explicitly ad-hoc question that the canonical daily state does not answer, using the smallest sufficient specialist set. After an approved actionable daily state, call maoq_select_tactics to consume only the host-built deterministic top-three route; its promotion scope, evidence allowlist, risk ceilings, and independent risk veto are binding. Use maoq_decide only for council-runtime diagnostics. None of these tools can place a live order.
 ```
 
 #### Token effect
 
-Small fixed parent guidance and five schemas add prefix cost. A cache miss presents the selected deterministic feature record to the strategic workflow. An exact cache hit and all three state queries start no children and add no child-model token usage. Quick misses pay for two child contexts; deep misses add one context per selected specialist.
+Small fixed parent guidance and six schemas add prefix cost. A strategic cache miss presents the selected deterministic feature record to its workflow. An exact cache hit and all three state queries start no children. Quick strategic misses pay for two child contexts; deep misses add one per selected specialist. Active tactic selection pays for two more fresh contexts, while deterministic defense starts none. Missing provider usage increments `unavailableCalls` instead of being estimated.
 
 #### KV Cache effect
 
@@ -95,6 +101,7 @@ The parent prefix is stable while plugin visibility is unchanged. Every council 
 - **Sector persistence needs history** — fewer than two prior compatible snapshots forces `no_trade`.
 - **No stock ranking in P2** — `maoq_analyze_strategy` ends at sector battlefield and strategic posture; candidate selection belongs to P3.
 - **Risk review is model-authored** — the host enforces veto consistency, but deterministic portfolio limits need a future numeric risk engine.
+- **Historical model value is not imputed** — deterministic routes replay without model calls; commander and veto performance require matching recorded decisions and otherwise remain no-trade.
 - **No exchange holiday calendar or snapshot event** — the weekday timer relies on the snapshot trading date to avoid holiday model work and discovers revisions at the next configured check rather than from a push event.
 
 <a id="dev-note"></a>

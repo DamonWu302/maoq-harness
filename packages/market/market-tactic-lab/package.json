@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-market-tactic-lab",
-  "description": "Point-in-time daily features and realistic A-share execution primitives for MAOQ tactic research",
+  "description": "Point-in-time MAOQ tactic research, A-share execution, and dynamic routing replay",
   "version": "0.1.2-alpha.2",
   "publishConfig": { "access": "public" },
   "repository": {
@@ -23,14 +23,18 @@
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/dsh-market-snapshot": "workspace:^",
-    "@deepseek-ai/dsh-market-tactic-eligibility": "workspace:^"
+    "@deepseek-ai/dsh-market-strategic-state": "workspace:^",
+    "@deepseek-ai/dsh-market-tactic-eligibility": "workspace:^",
+    "@deepseek-ai/dsh-market-tactic-routing": "workspace:^"
   },
   "dependencies": { "@deepseek-ai/dsh-util-values": "workspace:^" },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/dsh-market-snapshot": "workspace:^",
+    "@deepseek-ai/dsh-market-strategic-state": "workspace:^",
     "@deepseek-ai/dsh-market-tactic-eligibility": "workspace:^",
+    "@deepseek-ai/dsh-market-tactic-routing": "workspace:^",
     "@deepseek-ai/dsh-util-values": "workspace:^"
   }
 }

@@ -12,13 +12,13 @@ Status: implemented
 
 `@deepseek-ai/dsh-market-tactic-eligibility` 拥有六项主动研究战法与 `defensive_no_trade` 的规范目录。每项定义拥有自身的战法版本、家族、晋级状态、环境门禁、执行要求和风险策略。该包导出完整及主动 ID 集，并为模型与 worker 边界提供运行时 ID 守卫。
 
-`@deepseek-ai/dsh-market-tactic-lab` 从该目录派生研究战法联合类型和版本映射。`@deepseek-ai/dsh-tool-maoq-decision` 把同一组 ID 嵌入通用议事组 schema，并在 worker 结果返回宿主后校验战法与行动。宿主拒绝未知战法和行动，要求 `defensive_no_trade` 与 `no_trade` 同时出现，并且当目录中的战法晋级状态不是 `eligible` 时拒绝 `paper_trade`。
+`@deepseek-ai/dsh-market-tactic-lab` 从该目录派生研究战法联合类型、有序 ID 列表和版本映射。`@deepseek-ai/dsh-tool-maoq-tactic-research` 使用该派生列表完成发现与工具校验。`@deepseek-ai/dsh-tool-maoq-decision` 把同一组目录 ID 嵌入通用议事组 schema，并在 worker 结果返回宿主后校验战法与行动。宿主拒绝未知战法和行动，要求 `defensive_no_trade` 与 `no_trade` 同时出现，并且当目录中的战法晋级状态不是 `eligible` 时拒绝 `paper_trade`。
 
 该目录不负责选择战法。条件战绩、确定性前三路由和 DSH 辅助动态选择仍属于[动态战术统帅层](../../../../docs/maoq-dynamic-tactic-commander.zh.md)中分离的 P3.5 阶段。
 
 ## 验证
 
-目录测试证明 ID 稳定、版本唯一、定义不可变且资格失败关闭。研究信号测试证明其 ID 与版本映射等于主动目录。议事组测试拒绝虚构战法和与晋级状态不一致的行动；Loader 组合则让一个已注册战法完整经过综合与独立否决。
+目录测试证明 ID 稳定、版本唯一、定义不可变且资格失败关闭。研究信号测试证明其导出 ID 列表就是主动目录列表，且版本映射具有相同的有序键。议事组测试拒绝虚构战法和与晋级状态不一致的行动；Loader 组合则让一个已注册战法完整经过综合与独立否决。
 
 ## 备选方案
 

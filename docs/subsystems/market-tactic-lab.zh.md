@@ -2,7 +2,7 @@
 
 [English](market-tactic-lab.md) | 中文
 
-市场战法实验室子系统提供比较 P3 战法所需的时点正确测量和统一模拟执行真源。它位于不可变日线取得之后、walk-forward 绩效评估之前。实现位于 [`@deepseek-ai/dsh-market-tactic-lab`](../../packages/market/market-tactic-lab/README.zh.md)。
+市场战法实验室子系统提供比较固定 P3 战法与动态路由所需的时点正确测量和统一模拟执行真源。它位于不可变日线取得之后，并拥有 walk-forward 与逐日推进绩效评估。实现位于 [`@deepseek-ai/dsh-market-tactic-lab`](../../packages/market/market-tactic-lab/README.zh.md)。
 
 `TacticLabHistoryService` 拥有 `ctx.marketTacticHistory`，这是一个使用准确历史适配器名称的内存注册表。提供方注册项会随其 Cordis 贡献方一起释放。研究消费方无需依赖生产数据库代码，即可列出、解析或流式读取某个提供方。
 
@@ -32,6 +32,12 @@
 
 `evaluateResearchTactic()` 只用信号日未复权收盘价，把排名信号转成声明的最大持仓数，应用固定持有期和共享次日开盘引擎。它记录每日标记权益曲线、按时间折、净收益与年化收益、夏普、最大回撤、换手、成交率、正收益折比例，以及完整的交易成本翻倍回放。这些都是研究测量：结果仍保持 `research`，并把缺失的 Deflated Sharpe、PBO 和市场状态集中度证据列为阻断项。
 
+## 动态路由回放
+
+`HistoricalStrategicFeatureStream` 根据个股宽度、等权收益、原始涨跌停价、连板梯队结构和时点正确板块重建规范战略特征类型。它标记代理版本，不生成虚构新闻，并在板块交易时段缺失时让该截止点不可用。因此，路由获得环境输入，同时不会假装生产历史包含完整归档市场快照。
+
+`evaluateDynamicTacticReplay()` 在每个日级截止点只使用观察窗口已经成熟的战法结果推进一份条件战绩。它先派生名单，再安排未来结果。固定与翻倍成本权益曲线提供与各固定试验相同的执行证据。报告在固定切换成本下比较每项固定战法、平均分配、空仓、确定性路由、可选统帅建议和可选最终否决决策。缺失统帅决策保持为明确的零覆盖。
+
 ## 模型可见研究消费方
 
 [`@deepseek-ai/dsh-tool-maoq-tactic-research`](../../packages/market/tool-maoq-tactic-research/README.zh.md) 无需扫描历史，即可列出已注册提供方和六项固定战法版本。每次 `maoq_tactic_backtest` 调用只在一个有界日期区间评估一项战法。来源允许名单、股票数量下限、分块大小、最大日历跨度、超时和紧凑近期信号上限均由部署配置拥有；模型无法削弱这些值。
@@ -40,7 +46,7 @@
 
 ## 研究边界
 
-本子系统生成带版本的确定性研究信号和可比较的初步夏普证据。它不声称晋级，不调参，也不选择战法。运行时消费方把生产适配器接入评估器，而剩余评估层负责真实容量、Deflated Sharpe、PBO、状态利润集中度和最终晋级产物。
+本子系统生成带版本的确定性研究信号、可比较的固定战法证据和符合截止点的动态路由证据。它不声称晋级，也不在已经查看的区间调参。历史战略输入保持为有文档说明的代理值，模型辅助轨道需要与名单匹配的已记录决策。最终晋级仍要求真实容量、Deflated Sharpe、PBO、状态利润集中度和封存留出集。
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 

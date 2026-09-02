@@ -58,9 +58,21 @@ describe('MAOQ P3 production canary CLI', () => {
     })
   })
 
+  it('accepts the cutoff-correct dynamic routing replay', () => {
+    expect(parseP3CanaryOptions([
+      '--mode', 'evaluate-dynamic',
+      '--start', '2022-01-01',
+      '--end', '2025-12-31',
+    ], {})).toMatchObject({
+      mode: 'evaluate-dynamic',
+      chunkSessions: 10,
+      attemptedTrials: 6,
+    })
+  })
+
   it.each([
     [['--start', '2026-09-02', '--end', '2026-09-01'], /must not exceed/],
-    [['--start', '2026-09-01', '--end', '2026-09-01', '--mode', 'all'], /probe, evaluate, or evaluate-suite/],
+    [['--start', '2026-09-01', '--end', '2026-09-01', '--mode', 'all'], /probe, evaluate, evaluate-suite, or evaluate-dynamic/],
     [['--start', '2026-09-01', '--end', '2026-09-01', '--tactic', 'unknown'], /must be one of/],
     [['--start', '2026-02-30', '--end', '2026-09-01'], /ISO calendar date/],
     [['--start', '2026-09-01', '--end', '2026-09-01', '--attempted-trials', '0'], /from 1 through/],

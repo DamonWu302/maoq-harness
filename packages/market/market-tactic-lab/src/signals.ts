@@ -9,6 +9,9 @@ import type { DailyHistoryFeatureRecord, DailyStockResearchFeatures } from './ty
 /** Implemented deterministic MAOQ stock-selection tactics compared by P3. */
 export type ResearchTacticId = ActiveTacticId
 
+/** Canonical research-tactic order derived from the host-owned tactic catalog. */
+export const RESEARCH_TACTIC_IDS: readonly ResearchTacticId[] = ACTIVE_TACTIC_IDS
+
 const catalogVersions = new Map(tacticDefinitions().map(definition => [definition.tacticId, definition.tacticVersion]))
 
 function tacticVersion(tacticId: ResearchTacticId): string {
@@ -19,7 +22,7 @@ function tacticVersion(tacticId: ResearchTacticId): string {
 
 /** Stable implementation identities. Parameter changes require a new version. */
 export const RESEARCH_TACTIC_VERSIONS: Readonly<Record<ResearchTacticId, string>> = deepFreeze(Object.fromEntries(
-  ACTIVE_TACTIC_IDS.map(tacticId => [tacticId, tacticVersion(tacticId)]),
+  RESEARCH_TACTIC_IDS.map(tacticId => [tacticId, tacticVersion(tacticId)]),
 ) as Record<ResearchTacticId, string>)
 
 /** One ranked stock whose complete deterministic gates passed at the close. */

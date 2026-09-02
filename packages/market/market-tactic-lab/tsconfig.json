@@ -8,7 +8,9 @@
   "references": [
     { "path": "../../../vendor/cordis" },
     { "path": "../../market/market-snapshot" },
+    { "path": "../../market/market-strategic-state" },
     { "path": "../../market/market-tactic-eligibility" },
+    { "path": "../../market/market-tactic-routing" },
     { "path": "../../util/values" },
     { "path": "../../runtime-diagnostics/invariants" }
   ]

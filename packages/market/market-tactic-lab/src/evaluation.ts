@@ -1,5 +1,6 @@
 import { deepFreeze } from '@deepseek-ai/dsh-util-values'
 import { contentHash } from '@deepseek-ai/dsh-market-snapshot'
+import type { StrategicFeatureRecord } from '@deepseek-ai/dsh-market-strategic-state'
 import {
   DEFAULT_A_SHARE_EXECUTION_POLICY,
   simulateNextOpenExecution,
@@ -10,6 +11,7 @@ import {
   type ResearchTacticSignal,
 } from './signals.ts'
 import { DailyHistoryFeatureStream } from './stream.ts'
+import { HistoricalStrategicFeatureStream } from './historical-strategic.ts'
 import { verifyTacticLabHistoryChunk } from './chunk.ts'
 import {
   auditResearchTacticSuite,
@@ -130,6 +132,7 @@ export interface ResearchTacticEvaluation {
   readonly orders: readonly DailyExecutionOrder[]
   readonly execution: DailyExecutionResult
   readonly equityCurve: readonly ResearchEquityPoint[]
+  readonly doubledCostEquityCurve: readonly ResearchEquityPoint[]
   readonly folds: readonly ResearchWalkForwardFold[]
   readonly metrics: ResearchTacticMetrics
   readonly doubledCostMetrics: ResearchTacticMetrics
@@ -150,6 +153,7 @@ export interface ResearchTacticSuiteHistoryEvaluation {
   readonly historyAdapter: string
   readonly historyChunkHashes: readonly string[]
   readonly sourceExecutionHashes: readonly string[]
+  readonly strategicFeatures: readonly StrategicFeatureRecord[]
   readonly evaluations: Readonly<Record<ResearchTacticId, ResearchTacticEvaluation>>
   readonly promotionAudit: ResearchTacticSuiteAudit
 }
@@ -414,6 +418,7 @@ function evaluationResult(
     orders,
     execution,
     equityCurve: curve,
+    doubledCostEquityCurve: stressedCurve,
     folds,
     metrics: baseMetrics,
     doubledCostMetrics: stressedMetrics,
@@ -520,21 +525,18 @@ export async function evaluateResearchTacticSuiteHistory(
     throw new Error('tactic suite must include every registered fixed trial exactly once')
   }
   for (const config of configs) validateConfig(config)
-  if (new Set(configs.map(config => config.tacticId)).size !== configs.length) {
-    throw new Error('tactic suite contains duplicate tactic ids')
-  }
   const featureStream = new DailyHistoryFeatureStream()
+  const strategicStream = new HistoricalStrategicFeatureStream()
   const planners = new Map(configs.map(config => [config.tacticId, new ResearchOrderPlanner(config, policy)]))
   const signals = new Map(configs.map(config => [config.tacticId, [] as ResearchTacticSignal[]]))
   const orders = new Map(configs.map(config => [config.tacticId, [] as DailyExecutionOrder[]]))
   const sessions: DailyExecutionSession[] = []
   const historyChunkHashes: string[] = []
   const sourceExecutionHashes: string[] = []
-  const required = <Value>(map: ReadonlyMap<ResearchTacticId, Value>, tacticId: ResearchTacticId): Value => {
-    const value = map.get(tacticId)
-    if (value === undefined) throw new Error(`missing suite state for ${tacticId}`)
-    return value
-  }
+  const strategicFeatures: StrategicFeatureRecord[] = []
+  const required = <Value>(map: ReadonlyMap<ResearchTacticId, Value>, tacticId: ResearchTacticId): Value => (
+    map.get(tacticId) as Value
+  )
   for await (const chunk of adapter.load(request)) {
     verifyTacticLabHistoryChunk(chunk)
     historyChunkHashes.push(chunk.contentHash)
@@ -542,6 +544,7 @@ export async function evaluateResearchTacticSuiteHistory(
       const featureSession = chunk.featureSessions[index] as NonNullable<typeof chunk.featureSessions[number]>
       const executionSession = chunk.executionSessions[index] as NonNullable<typeof chunk.executionSessions[number]>
       const record = featureStream.push(featureSession)
+      strategicFeatures.push(strategicStream.push(featureSession, executionSession, record))
       const relevantSymbols = new Set<string>()
       for (const config of configs) {
         const signal = generateResearchTacticSignal(config.tacticId, record)
@@ -574,6 +577,7 @@ export async function evaluateResearchTacticSuiteHistory(
     historyAdapter: adapter.name,
     historyChunkHashes,
     sourceExecutionHashes,
+    strategicFeatures,
     evaluations,
     promotionAudit: auditResearchTacticSuite(results, attemptedTrials),
   })

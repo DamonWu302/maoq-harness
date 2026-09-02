@@ -14,6 +14,7 @@
     { "path": "../../market/market-snapshot" },
     { "path": "../../market/market-strategic-state" },
     { "path": "../../market/market-tactic-eligibility" },
+    { "path": "../../market/market-tactic-routing" },
     { "path": "../../settings/settings" },
     { "path": "../../subagent/subagent" },
     { "path": "../../core/system-prompt" },

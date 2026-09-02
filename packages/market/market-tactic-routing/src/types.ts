@@ -17,6 +17,10 @@ export const TACTIC_SCORECARD_SCHEMA_VERSION = 1 as const
 export const TACTIC_ROUTER_VERSION = 'maoq-deterministic-tactic-router-v1' as const
 /** Current context bucketing identity. */
 export const TACTIC_CONTEXT_VERSION = 'maoq-tactic-context-v1' as const
+/** Current host-owned bounded commander decision format. */
+export const TACTIC_COMMANDER_SCHEMA_VERSION = 1 as const
+/** Current commander scope, validation, and final-veto policy. */
+export const TACTIC_COMMANDER_POLICY_VERSION = 'maoq-bounded-tactic-commander-v1' as const
 
 /** Bounded top-sector participation condition. */
 export type SectorStructureBand = 'broad' | 'balanced' | 'narrow'
@@ -175,5 +179,48 @@ export interface TacticRoutingRecord {
   readonly slate: readonly TacticRouteCandidate[]
   readonly defensiveFallback: TacticRouteCandidate
   readonly rejected: readonly RejectedTacticRoute[]
+  readonly cashFloorPct: number
+}
+
+/** Model proposal constrained to one exact deterministic route. */
+export interface TacticCommanderProposalInput {
+  readonly routeId: string
+  readonly primaryTacticId: TacticId
+  readonly secondaryTacticId: TacticId | null
+  readonly thesis: string
+  readonly evidenceRefs: readonly string[]
+  readonly counterEvidenceRefs: readonly string[]
+  readonly confidence: number
+  readonly invalidationConditions: readonly string[]
+}
+
+/** Independent review of the exact route and proposal. */
+export interface TacticCommanderRiskInput {
+  readonly routeId: string
+  readonly approved: boolean
+  readonly verdict: 'approve' | 'veto'
+  readonly reasons: readonly string[]
+  readonly hardLimits: readonly string[]
+  readonly invalidationConditions: readonly string[]
+}
+
+/** Host-derived scope that a model cannot promote through prose. */
+export type TacticCommanderScope = 'defense' | 'research' | 'watch' | 'paper'
+
+/** Replayable P2 decision after route membership, promotion, and veto validation. */
+export interface TacticCommanderDecisionRecord {
+  readonly schemaVersion: typeof TACTIC_COMMANDER_SCHEMA_VERSION
+  readonly policyVersion: typeof TACTIC_COMMANDER_POLICY_VERSION
+  readonly decisionId: string
+  readonly routeId: string
+  readonly tradingDate: string
+  readonly cutoffTime: string
+  readonly status: 'approved' | 'vetoed'
+  readonly scope: TacticCommanderScope
+  readonly proposal: TacticCommanderProposalInput
+  readonly risk: TacticCommanderRiskInput
+  readonly finalPrimaryTacticId: TacticId
+  readonly finalSecondaryTacticId: TacticId | null
+  readonly maximumPaperPositionPct: number
   readonly cashFloorPct: number
 }

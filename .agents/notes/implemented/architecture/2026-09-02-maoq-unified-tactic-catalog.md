@@ -12,13 +12,13 @@ The fixed-tactic lab, strategic eligibility evaluator, and general DSH council n
 
 `@deepseek-ai/dsh-market-tactic-eligibility` owns the canonical catalog for six active research tactics and `defensive_no_trade`. Each definition owns its tactic version, family, promotion status, context gates, execution requirements, and risk policy. It exports the complete and active ID sets plus a runtime ID guard for model and worker boundaries.
 
-`@deepseek-ai/dsh-market-tactic-lab` derives its research tactic union and version map from that catalog. `@deepseek-ai/dsh-tool-maoq-decision` embeds the same IDs in the general council schema and validates the returned tactic and action after the worker result crosses back to the host. The host rejects unknown tactics and actions, requires `defensive_no_trade` and `no_trade` together, and rejects `paper_trade` for a tactic whose catalog promotion status is not `eligible`.
+`@deepseek-ai/dsh-market-tactic-lab` derives its research tactic union, ordered ID list, and version map from that catalog. `@deepseek-ai/dsh-tool-maoq-tactic-research` consumes the derived list for discovery and tool validation. `@deepseek-ai/dsh-tool-maoq-decision` embeds the same catalog IDs in the general council schema and validates the returned tactic and action after the worker result crosses back to the host. The host rejects unknown tactics and actions, requires `defensive_no_trade` and `no_trade` together, and rejects `paper_trade` for a tactic whose catalog promotion status is not `eligible`.
 
 The catalog does not select a tactic. Conditional performance, deterministic top-three routing, and DSH-assisted dynamic selection remain separate P3.5 phases in the [dynamic tactic commander](../../../../docs/maoq-dynamic-tactic-commander.md).
 
 ## Verification
 
-Catalog tests prove stable IDs, unique versions, immutable definitions, and fail-closed eligibility. Research-signal tests prove their ID and version map equals the active catalog. Council tests reject invented tactics and promotion-inconsistent actions, while the Loader composition preserves a registered tactic through synthesis and independent veto.
+Catalog tests prove stable IDs, unique versions, immutable definitions, and fail-closed eligibility. Research-signal tests prove their exported ID list is the active catalog list and their version map has the same ordered keys. Council tests reject invented tactics and promotion-inconsistent actions, while the Loader composition preserves a registered tactic through synthesis and independent veto.
 
 ## Alternatives considered
 

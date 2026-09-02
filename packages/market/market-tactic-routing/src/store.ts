@@ -10,9 +10,13 @@ import {
   contentHash,
 } from '@deepseek-ai/dsh-market-snapshot'
 import { createMaturedTacticOutcome } from './scorecard.ts'
+import { verifyTacticCommanderDecisionRecord } from './commander.ts'
+import { verifyTacticRoutingRecord } from './router.ts'
 import {
   TACTIC_SCORECARD_SCHEMA_VERSION,
   type MaturedTacticOutcome,
+  type TacticCommanderDecisionRecord,
+  type TacticRoutingRecord,
   type TacticScorecardRecord,
 } from './types.ts'
 
@@ -178,6 +182,89 @@ export class TacticRoutingStore {
     if (!HASH_PATTERN.test(scorecardId)) throw new TypeError('scorecard id must be lowercase SHA-256')
     try {
       return verifyScorecard(JSON.parse(await readFile(join(this.root, 'scorecards', `${scorecardId}.json`), 'utf8')), scorecardId)
+    } catch (error) {
+      if (isNotFound(error)) return undefined
+      throw error
+    }
+  }
+
+  /**
+   * Return the newest scorecard whose cutoff is visible at a decision cutoff.
+   * @param cutoffTime - Inclusive decision evidence boundary.
+   * @param maximumFiles - Fail-closed bound on scorecard catalog inspection.
+   * @returns Newest verified cutoff-visible scorecard, or `undefined` when none exists.
+   */
+  async latestScorecardAt(cutoffTime: string, maximumFiles: number): Promise<TacticScorecardRecord | undefined> {
+    const cutoff = parseTimestamp(cutoffTime, 'scorecard decision cutoff')
+    if (!Number.isSafeInteger(maximumFiles) || maximumFiles < 1) {
+      throw new TypeError('maximumFiles must be a positive safe integer')
+    }
+    let files: string[]
+    try {
+      files = (await readdir(join(this.root, 'scorecards')))
+        .filter(file => /^[a-f0-9]{64}\.json$/u.test(file))
+    } catch (error) {
+      if (isNotFound(error)) return undefined
+      throw error
+    }
+    if (files.length > maximumFiles) throw new Error('scorecard catalog exceeds maximumFiles')
+    const records = await Promise.all(files.map(async file => this.getScorecard(file.slice(0, -5))))
+    return records
+      .filter((record): record is TacticScorecardRecord => record !== undefined
+        && Date.parse(record.cutoffTime) <= cutoff)
+      .sort((left, right) => right.cutoffTime.localeCompare(left.cutoffTime)
+        || right.scorecardId.localeCompare(left.scorecardId))[0]
+  }
+
+  /**
+   * Publish one deterministic route idempotently.
+   * @param route - Verified content-addressed route to publish.
+   */
+  async publishRoute(route: TacticRoutingRecord): Promise<void> {
+    const verified = verifyTacticRoutingRecord(route)
+    await publishImmutable(join(this.root, 'routes', `${verified.routeId}.json`), verified)
+  }
+
+  /**
+   * Read one verified deterministic route by exact identity.
+   * @param routeId - Lowercase SHA-256 route identity.
+   * @returns Verified route, or `undefined` when absent.
+   */
+  async getRoute(routeId: string): Promise<TacticRoutingRecord | undefined> {
+    if (!HASH_PATTERN.test(routeId)) throw new TypeError('route id must be lowercase SHA-256')
+    try {
+      return verifyTacticRoutingRecord(JSON.parse(await readFile(join(this.root, 'routes', `${routeId}.json`), 'utf8')))
+    } catch (error) {
+      if (isNotFound(error)) return undefined
+      throw error
+    }
+  }
+
+  /**
+   * Publish one host-validated commander decision idempotently.
+   * @param decision - Decision whose referenced route already exists.
+   */
+  async publishDecision(decision: TacticCommanderDecisionRecord): Promise<void> {
+    const route = await this.getRoute(decision.routeId)
+    if (route === undefined) throw new Error(`commander decision route ${decision.routeId} is not persisted`)
+    const verified = verifyTacticCommanderDecisionRecord(decision, route)
+    await publishImmutable(join(this.root, 'decisions', `${verified.decisionId}.json`), verified)
+  }
+
+  /**
+   * Read one commander decision and verify it against its persisted route.
+   * @param decisionId - Lowercase SHA-256 decision identity.
+   * @returns Verified decision, or `undefined` when absent.
+   */
+  async getDecision(decisionId: string): Promise<TacticCommanderDecisionRecord | undefined> {
+    if (!HASH_PATTERN.test(decisionId)) throw new TypeError('commander decision id must be lowercase SHA-256')
+    try {
+      const value = JSON.parse(await readFile(join(this.root, 'decisions', `${decisionId}.json`), 'utf8')) as unknown
+      const routeId = recordOf(value)['routeId']
+      if (typeof routeId !== 'string') throw new Error(`invalid tactic commander decision ${decisionId}`)
+      const route = await this.getRoute(routeId)
+      if (route === undefined) throw new Error(`missing tactic route ${routeId}`)
+      return verifyTacticCommanderDecisionRecord(value, route)
     } catch (error) {
       if (isNotFound(error)) return undefined
       throw error

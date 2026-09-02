@@ -2,6 +2,7 @@ import { contentHash } from '@deepseek-ai/dsh-market-snapshot'
 import type { StrategicFeatureRecord } from '@deepseek-ai/dsh-market-strategic-state'
 import {
   tacticDefinitions,
+  isTacticId,
   type ActiveTacticId,
   type TacticDefinition,
   type TacticEligibilityRecord,
@@ -106,6 +107,65 @@ function defensiveCandidate(eligibility: TacticEligibilityResult, snapshotHash: 
 
 function routeIdentity(record: Omit<TacticRoutingRecord, 'routeId'>): string {
   return contentHash(record)
+}
+
+function recordOf(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {}
+}
+
+function validCandidate(value: unknown): value is TacticRouteCandidate {
+  const record = recordOf(value)
+  const evidenceRefs = record['evidenceRefs']
+  return isTacticId(record['tacticId'])
+    && typeof record['tacticVersion'] === 'string'
+    && typeof record['routeScore'] === 'number'
+    && Number.isFinite(record['routeScore'])
+    && typeof record['maximumPaperPositionPct'] === 'number'
+    && Number.isFinite(record['maximumPaperPositionPct'])
+    && record['maximumPaperPositionPct'] >= 0
+    && record['maximumPaperPositionPct'] <= 100
+    && Array.isArray(evidenceRefs)
+    && evidenceRefs.every(ref => typeof ref === 'string' && ref.length > 0)
+}
+
+/**
+ * Verify a serialized deterministic route before it crosses into the model-facing commander.
+ * @param value - Untrusted parsed route value.
+ * @returns The exact route when its identity and critical bounded fields are valid.
+ */
+export function verifyTacticRoutingRecord(value: unknown): TacticRoutingRecord {
+  const record = recordOf(value)
+  const routeId = record['routeId']
+  const slate = record['slate']
+  const defense = record['defensiveFallback']
+  if (record['routerVersion'] !== TACTIC_ROUTER_VERSION
+    || typeof routeId !== 'string'
+    || !/^[a-f0-9]{64}$/u.test(routeId)
+    || typeof record['tradingDate'] !== 'string'
+    || typeof record['cutoffTime'] !== 'string'
+    || !Number.isFinite(Date.parse(record['cutoffTime']))
+    || typeof record['currentSnapshotHash'] !== 'string'
+    || !/^[a-f0-9]{64}$/u.test(record['currentSnapshotHash'])
+    || typeof record['scorecardId'] !== 'string'
+    || !/^[a-f0-9]{64}$/u.test(record['scorecardId'])
+    || !Array.isArray(slate)
+    || slate.length < 1
+    || slate.length > 3
+    || !slate.every(validCandidate)
+    || new Set(slate.map(item => item.tacticId)).size !== slate.length
+    || !validCandidate(defense)
+    || defense.tacticId !== 'defensive_no_trade'
+    || typeof record['cashFloorPct'] !== 'number'
+    || !Number.isFinite(record['cashFloorPct'])
+    || record['cashFloorPct'] < 0
+    || record['cashFloorPct'] > 100) {
+    throw new TypeError('invalid deterministic tactic routing record')
+  }
+  const { routeId: _routeId, ...body } = value as TacticRoutingRecord
+  if (routeIdentity(body) !== routeId) throw new Error('deterministic tactic routing record identity mismatch')
+  return value as TacticRoutingRecord
 }
 
 function reject(

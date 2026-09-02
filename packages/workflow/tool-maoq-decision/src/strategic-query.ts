@@ -12,6 +12,7 @@ import {
   STRATEGIC_WORKFLOW_VERSION,
   summarizeStrategicDecision,
   type StrategicDecisionRecord,
+  type StrategicStateFreshness,
 } from './strategic-store.ts'
 
 interface FreshnessArgs {
@@ -23,6 +24,39 @@ function providerSettingsFingerprint(ctx: Context, providerName: string): string
   if (settings === undefined) return 'unavailable'
   const value = settings.describe().find(item => item.ns === `subagent-codex-${providerName}`)?.value
   return value === undefined ? 'unavailable' : contentHash(value)
+}
+
+/**
+ * Evaluate one persisted strategic mirror against the current snapshot and deployment route.
+ * @param ctx - Context containing optional snapshot and settings services.
+ * @param config - Current MAOQ deployment policy.
+ * @param record - Persisted strategic decision to validate for current use.
+ * @param evaluatedAt - Explicit replayable evaluation time.
+ * @returns Current-use verdict with every stale reason.
+ */
+export async function currentStrategicStateFreshness(
+  ctx: Context,
+  config: ResolvedConfig,
+  record: StrategicDecisionRecord,
+  evaluatedAt: string,
+): Promise<StrategicStateFreshness> {
+  const evaluatedAtMs = Date.parse(evaluatedAt)
+  if (!Number.isFinite(evaluatedAtMs)) throw new TypeError('strategic state evaluation time must be a valid ISO timestamp')
+  const snapshots = ctx.get('marketSnapshots')
+  const currentSnapshot = snapshots === undefined
+    ? undefined
+    : (await snapshots.listSummaries(config.maxSnapshotFiles))
+      .find(summary => Date.parse(summary.cutoffTime) <= evaluatedAtMs)
+  return evaluateStrategicStateFreshness(record, {
+    evaluatedAt,
+    currentSnapshotVerified: currentSnapshot !== undefined,
+    ...(currentSnapshot === undefined ? {} : { currentSnapshotHash: currentSnapshot.contentHash }),
+    featureEngineVersion: STRATEGIC_ENGINE_VERSION,
+    workflowVersion: STRATEGIC_WORKFLOW_VERSION,
+    analysisMode: config.analysisMode,
+    subagentProvider: config.subagentProvider,
+    providerSettingsFingerprint: providerSettingsFingerprint(ctx, config.subagentProvider),
+  })
 }
 
 function render(value: unknown, maxChars: number): string {
@@ -45,23 +79,7 @@ export function registerStrategicStateQueryTools(ctx: Context, getConfig: () => 
   const store = (): StrategicDecisionStore => new StrategicDecisionStore(getConfig().stateRoot)
   const freshness = async (record: StrategicDecisionRecord, args: FreshnessArgs) => {
     const evaluatedAt = args.asOfTime ?? new Date().toISOString()
-    const evaluatedAtMs = Date.parse(evaluatedAt)
-    if (!Number.isFinite(evaluatedAtMs)) throw new TypeError('strategic state evaluation time must be a valid ISO timestamp')
-    const snapshots = ctx.get('marketSnapshots')
-    const currentSnapshot = snapshots === undefined
-      ? undefined
-      : (await snapshots.listSummaries(getConfig().maxSnapshotFiles))
-        .find(summary => Date.parse(summary.cutoffTime) <= evaluatedAtMs)
-    return evaluateStrategicStateFreshness(record, {
-      evaluatedAt,
-      currentSnapshotVerified: currentSnapshot !== undefined,
-      ...(currentSnapshot === undefined ? {} : { currentSnapshotHash: currentSnapshot.contentHash }),
-      featureEngineVersion: STRATEGIC_ENGINE_VERSION,
-      workflowVersion: STRATEGIC_WORKFLOW_VERSION,
-      analysisMode: getConfig().analysisMode,
-      subagentProvider: getConfig().subagentProvider,
-      providerSettingsFingerprint: providerSettingsFingerprint(ctx, getConfig().subagentProvider),
-    })
+    return currentStrategicStateFreshness(ctx, getConfig(), record, evaluatedAt)
   }
   const freshnessParameters = {
     asOfTime: { type: 'string' as const, description: 'Optional ISO time for replayable freshness evaluation; defaults to the current host time.' },

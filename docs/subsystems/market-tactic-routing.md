@@ -2,7 +2,7 @@
 
 English | [中文](market-tactic-routing.zh.md)
 
-The market tactic routing subsystem turns completed, cutoff-correct tactic observations into immutable conditional aggregates and a deterministic top-three slate. It sits after [tactic eligibility](market-tactic-eligibility.md) and before model-assisted synthesis. The implementation lives in [`@deepseek-ai/dsh-market-tactic-routing`](../../packages/market/market-tactic-routing/README.md).
+The market tactic routing subsystem turns completed, cutoff-correct tactic observations into immutable conditional aggregates and a deterministic top-three slate, then validates the model proposal and independent veto against that exact route. It sits after [tactic eligibility](market-tactic-eligibility.md) and before stock ranking. The implementation lives in [`@deepseek-ai/dsh-market-tactic-routing`](../../packages/market/market-tactic-routing/README.md).
 
 ## Outcome visibility
 
@@ -20,6 +20,12 @@ The v1 router first applies P0 eligibility and exact catalog-version checks. An 
 
 Qualified tactics compete with `defensive_no_trade` in stable score and tactic-ID order. The slate contains at most three entries, while the defensive candidate remains separately addressable even when it falls below three positive active scores. Research and paper promotion remain explicit: research candidates have a zero paper-position ceiling. The record preserves current snapshot, eligibility engine, scorecard, router, context, score components, evidence references, rejected tactics, risk ceilings, and cash floor as replay identities.
 
+## Commander decision
+
+The commander may select one primary route member and one distinct optional secondary member. Defense can be the primary only and cannot have a secondary. Proposal evidence must belong to selected candidates; counter-evidence must belong to the route or its defensive fallback. The host derives scope, maximum paper position, and cash floor from catalog and route facts rather than model text. An independent veto replaces the final selection with defense.
+
+Routes and decisions have content identities. `TacticRoutingStore` publishes a decision only after its referenced route exists and the complete record verifies against that route. A replay can therefore distinguish deterministic availability, model proposal, and final risk action without trusting serialized derived fields.
+
 ## Failure semantics
 
-The subsystem rejects future-visible outcomes, catalog-version drift, duplicate outcomes in one update, non-advancing cutoffs, scorecards newer than the strategic cutoff, eligibility from another snapshot, unavailable strategic components, and missing defense. Missing or weak conditional evidence is not an exception: the active tactic receives explicit rejection reasons and defense wins.
+The subsystem rejects future-visible outcomes, catalog-version drift, duplicate outcomes in one update, non-advancing cutoffs, scorecards newer than the strategic cutoff, eligibility from another snapshot, unavailable strategic components, missing defense, route identity drift, route-external tactics or evidence, promotion-inconsistent scope, and contradictory veto fields. Missing or weak conditional evidence is not an exception: the active tactic receives explicit rejection reasons and defense wins.

@@ -45,6 +45,7 @@
     "@deepseek-ai/dsh-market-snapshot-json": "workspace:^",
     "@deepseek-ai/dsh-market-snapshot-mysql": "workspace:^",
     "@deepseek-ai/dsh-market-tactic-lab": "workspace:^",
+    "@deepseek-ai/dsh-market-tactic-routing": "workspace:^",
     "@deepseek-ai/dsh-subagent-codex": "workspace:^",
     "@deepseek-ai/dsh-tool-maoq-decision": "workspace:^",
     "@deepseek-ai/dsh-tool-maoq-snapshot": "workspace:^",

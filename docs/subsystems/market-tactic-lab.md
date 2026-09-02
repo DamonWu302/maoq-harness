@@ -2,7 +2,7 @@
 
 English | [中文](market-tactic-lab.zh.md)
 
-The market tactic lab subsystem supplies the point-in-time measurements and one shared paper-execution truth needed to compare P3 tactics. It sits after immutable daily acquisition and before walk-forward performance evaluation. The implementation lives in [`@deepseek-ai/dsh-market-tactic-lab`](../../packages/market/market-tactic-lab/README.md).
+The market tactic lab subsystem supplies the point-in-time measurements and one shared paper-execution truth needed to compare fixed P3 tactics and dynamic routing. It sits after immutable daily acquisition and owns walk-forward and prequential performance evaluation. The implementation lives in [`@deepseek-ai/dsh-market-tactic-lab`](../../packages/market/market-tactic-lab/README.md).
 
 `TacticLabHistoryService` owns `ctx.marketTacticHistory`, an in-memory registry of exact history adapter names. Provider registrations dispose with their Cordis contributor. Research consumers can list, resolve, or stream one provider without depending on production database code.
 
@@ -32,6 +32,12 @@ The fill price applies side-aware slippage and remains inside the observed daily
 
 `evaluateResearchTactic()` converts ranked signals into a declared maximum number of positions using only the signal-date raw close, fixed holding periods, and the shared next-open engine. It records a daily marked equity curve, chronological folds, net and annualized return, Sharpe, maximum drawdown, turnover, fill rate, positive-fold ratio, and a complete replay with doubled trading costs. These are research measurements: the result remains `research` and names missing Deflated Sharpe, PBO, and market-regime concentration evidence as blockers.
 
+## Dynamic routing replay
+
+`HistoricalStrategicFeatureStream` reconstructs the canonical strategic feature type from stock breadth, equal-weight return, raw limit prices, board-streak structure, and point-in-time sectors. It labels the proxy version, emits no invented news, and makes a cutoff unavailable when its sector session is absent. This supplies context for routing without pretending that the production history contains a full archived market snapshot.
+
+`evaluateDynamicTacticReplay()` advances one conditional scorecard at each daily cutoff using only tactic results whose observation windows have matured. It derives the route before scheduling future outcomes. Fixed and doubled-cost equity curves provide the same execution evidence used by each fixed trial. The report compares every fixed tactic, equal allocation, no-trade, deterministic routing, optional commander proposals, and optional final-veto decisions under a fixed switching cost. Missing commander decisions remain explicit zero coverage.
+
 ## Model-facing research consumer
 
 [`@deepseek-ai/dsh-tool-maoq-tactic-research`](../../packages/market/tool-maoq-tactic-research/README.md) lists the registered providers and six fixed tactic versions without scanning history. One `maoq_tactic_backtest` call evaluates exactly one tactic over one bounded date range. Deployment configuration owns the source allowlist, stock-count floor, chunk size, maximum calendar span, timeout, and compact recent-signal limit; the model cannot weaken those values.
@@ -40,7 +46,7 @@ The report contains source hashes, fixed trial identity, execution counts, base 
 
 ## Research boundary
 
-The subsystem generates versioned deterministic research signals and comparable preliminary Sharpe evidence. It does not claim promotion, tune parameters, or select tactics. The runtime consumer connects the production adapter to the evaluator, while the remaining evaluation layer owns realistic capacity, Deflated Sharpe, PBO, regime-profit concentration, and final promotion artifacts.
+The subsystem generates versioned deterministic research signals, comparable fixed-tactic evidence, and cutoff-correct dynamic routing evidence. It does not claim promotion or tune parameters on an inspected period. Historical strategic inputs remain documented proxies, and model-assisted tracks require recorded route-matched decisions. Final promotion still requires realistic capacity, Deflated Sharpe, PBO, regime-profit concentration, and a sealed holdout.
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
