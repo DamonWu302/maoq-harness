@@ -31,7 +31,7 @@ Call `evaluateTacticEligibility(features)` after `dsh-market-strategic-state` ha
 const eligibility = evaluateTacticEligibility(features)
 ```
 
-The catalog contains six active research tactics—regime-signed breakout/pullback, openable emotion leader, industry-relative exhaustion repair, correlation-cluster sector rotation, sector-residual strength, and low-volatility sector leadership—plus defensive no-trade. Every definition owns its tactic family and explicit preferred market-regime and emotion-cycle coverage. Every hard-feasible active tactic is intentionally `research_only`; a preferred-state mismatch is preserved as soft context evidence and never promotes it to `eligible`.
+The catalog contains ten active research tactics: regime-signed breakout/pullback, platform consolidation and second advance, AH52 resistance path, openable emotion leader, first-divergence core repair, first-limit delayed price discovery, industry-relative exhaustion repair, correlation-cluster sector rotation, sector-residual strength, and low-volatility sector leadership, plus defensive no-trade. Every definition owns its tactic family and explicit preferred market-regime and emotion-cycle coverage. Every hard-feasible active tactic is intentionally `research_only`; a preferred-state mismatch is preserved as soft context evidence and never promotes it to `eligible`.
 
 -----
 

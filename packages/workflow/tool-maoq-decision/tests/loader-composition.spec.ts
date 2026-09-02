@@ -48,7 +48,7 @@ describe('MAOQ decision through a real Loader composition', () => {
     expect(normalized).not.toContain('"candidates"')
   }, LOADER_SMOKE_TEST_TIMEOUT_MS)
 
-  it('routes one qualified tactic through bounded synthesis and independent review', async () => {
+  it('routes the complete hard-feasible catalog through a dynamic expert council and independent review', async () => {
     const { stdout, stderr } = await runLoaderSmoke({
       label: 'MAOQ tactic selection composition smoke',
       tempDirPrefix: 'maoq-tactic-e2e-',
@@ -60,11 +60,11 @@ describe('MAOQ decision through a real Loader composition', () => {
     expect(stderr).not.toContain('UNHANDLED')
     const recorded = JSON.parse(stdout) as { output: string }
     const normalized = recorded.output.replace(/[0-9a-f]{64}/g, '<content-hash>').replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, '<run-id>')
-    expect(normalized).toContain('"agentsStarted": 2')
+    expect(normalized).toContain('"agentsStarted": 5')
     expect(normalized).toContain('"status": "approved"')
     expect(normalized).toContain('"scope": "research"')
     expect(normalized).toContain('"finalPrimaryTacticId": "correlation_cluster_sector_rotation"')
-    expect(normalized).toContain('"unavailableCalls": 2')
+    expect(normalized).toContain('"unavailableCalls": 5')
     expect(normalized).not.toContain('"scope": "paper"')
   }, LOADER_SMOKE_TEST_TIMEOUT_MS)
 })

@@ -112,6 +112,21 @@ function repairUniverse(candidateOverrides: Partial<DailyStockResearchFeatures> 
   }), ...backgrounds])
 }
 
+function firstLimitUniverse(candidateOverrides: Partial<DailyStockResearchFeatures> = {}): DailyHistoryFeatureRecord {
+  const backgrounds = Array.from({ length: 99 }, (_, index) => stock(`F${String(index).padStart(2, '0')}`, {
+    adjustedReturn1: index < 59 ? 0.01 : -0.01,
+    adjustedReturn20: 0.01,
+    amountMean20: 1,
+  }))
+  return record([stock('TARGET', {
+    limitStatus: 'limit-up',
+    consecutiveLimitUpSessions: 1,
+    limitUpSessions20: 1,
+    adjustedReturn20: 0.12,
+    ...candidateOverrides,
+  }), ...backgrounds])
+}
+
 function signal(tacticId: ResearchTacticId, input: DailyHistoryFeatureRecord) {
   return generateResearchTacticSignal(tacticId, input)
 }
@@ -164,6 +179,17 @@ describe('deterministic P3 tactic signals', () => {
     ['low_volatility_sector_leader', 'rotation_defensive_low_volatility'],
   ] as const)('ranks the fixed second-wave %s candidate', (tacticId, gateReason) => {
     const result = signal(tacticId, breakoutUniverse())
+    expect(result).toMatchObject({ gatePassed: true, gateReason, tacticVersion: RESEARCH_TACTIC_VERSIONS[tacticId] })
+    expect(result.candidates.map(item => item.symbol)).toEqual(['TARGET'])
+  })
+
+  it.each([
+    ['platform_consolidation_second_advance', breakoutUniverse({ turnover5To20Ratio: 0.9 }), 'intact_platform_second_advance'],
+    ['ah52_resistance_path', breakoutUniverse(), 'shrinking_ah52_resistance_path'],
+    ['first_divergence_core_repair', breakoutUniverse({ limitUpSessions20: 1, turnover5To20Ratio: 1.2 }), 'first_divergence_core_repair'],
+    ['first_limit_delayed_price_discovery', firstLimitUniverse(), 'broad_first_limit_delayed_discovery'],
+  ] as const)('ranks the preregistered full-catalog %s candidate', (tacticId, input, gateReason) => {
+    const result = signal(tacticId, input)
     expect(result).toMatchObject({ gatePassed: true, gateReason, tacticVersion: RESEARCH_TACTIC_VERSIONS[tacticId] })
     expect(result.candidates.map(item => item.symbol)).toEqual(['TARGET'])
   })

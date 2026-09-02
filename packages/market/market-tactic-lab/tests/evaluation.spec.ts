@@ -395,10 +395,14 @@ describe('P3 tactic walk-forward evaluation', () => {
     )
     expect(loads).toBe(1)
     expect(Object.keys(result.evaluations).sort()).toEqual([
+      'ah52_resistance_path',
       'correlation_cluster_sector_rotation',
+      'first_divergence_core_repair',
+      'first_limit_delayed_price_discovery',
       'industry_relative_exhaustion_repair',
       'low_volatility_sector_leader',
       'openable_emotion_leader',
+      'platform_consolidation_second_advance',
       'regime_signed_breakout_pullback',
       'sector_residual_strength',
     ])
@@ -407,7 +411,7 @@ describe('P3 tactic walk-forward evaluation', () => {
     expect(result.strategicFeatures[2]).toMatchObject({ eligibleForInterpretation: true })
     expect(result.evaluations.regime_signed_breakout_pullback.doubledCostEquityCurve).toHaveLength(64)
     expect(result.promotionAudit).toMatchObject({
-      attemptedTrials: 6,
+      attemptedTrials: 10,
       backtestOverfitting: { passed: false },
     })
   })

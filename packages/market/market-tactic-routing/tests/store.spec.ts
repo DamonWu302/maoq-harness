@@ -31,11 +31,31 @@ function qualifiedRoute(): TacticRoutingRecord {
 function commanderDecision(route: TacticRoutingRecord) {
   return createTacticCommanderDecision(route, {
     routeId: route.routeId,
+    selectedSpecialists: ['big_bull_trend', 'short_sentiment'],
+    specialistReports: ['big_bull_trend', 'short_sentiment'].map(role => ({
+      role: role as 'big_bull_trend' | 'short_sentiment',
+      verdict: 'oppose' as const,
+      preferredTacticIds: ['defensive_no_trade' as const],
+      analysis: 'Current resistance favors preserving optionality.',
+      supportingEvidenceRefs: route.defensiveFallback.evidenceRefs,
+      counterEvidenceRefs: route.slate.flatMap(item => item.evidenceRefs),
+      confidence: 0.7,
+      invalidationConditions: ['A routed tactic gains a stronger evidence margin.'],
+    })),
+    marketPhase: 'Qualified but high-resistance attack state',
+    principalContradiction: 'Nominal qualification versus weak payoff asymmetry.',
+    rewardedStyle: 'Cash and optionality',
+    posture: 'no_trade',
+    quantRouteDisposition: route.slate.some(item => item.tacticId === 'defensive_no_trade') ? 'follow' : 'override',
+    quantRouteAssessment: 'The routed evidence is qualified but insufficiently asymmetric.',
     primaryTacticId: 'defensive_no_trade',
     secondaryTacticId: null,
+    stockMissions: ['Wait for stronger evidence.'],
     thesis: 'Preserve capital while the routed attack evidence remains insufficient.',
     evidenceRefs: route.defensiveFallback.evidenceRefs,
-    counterEvidenceRefs: route.slate.flatMap(item => item.evidenceRefs),
+    counterEvidenceRefs: route.slate.some(item => item.tacticId === 'defensive_no_trade')
+      ? []
+      : route.slate.flatMap(item => item.evidenceRefs),
     confidence: 0.8,
     invalidationConditions: ['A routed tactic gains a stronger evidence margin.'],
   }, {

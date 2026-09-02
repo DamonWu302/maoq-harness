@@ -144,6 +144,99 @@ function emotion(
   }
 }
 
+function platformSecondAdvance(
+  record: DailyHistoryFeatureRecord,
+  market: MarketCrossSection,
+): Pick<ResearchTacticSignal, 'gatePassed' | 'gateReason' | 'candidates'> {
+  const gatePassed = market.breadth20 >= 0.5 && market.breadth1 >= 0.45
+  const candidates = gatePassed ? record.stocks.flatMap((stock) => {
+    const { adjustedReturn5: return5, adjustedReturn20: return20, adjustedReturn60: return60,
+      distanceFromHigh20: distance20, sectorRelativeReturn5: relative5,
+      turnover5To20Ratio: turnoverRatio, amountMean20: amount20 } = stock
+    if (stock.tradingStatus !== 'trading' || stock.limitStatus !== 'none' || stock.sectorId === null
+      || stock.listingDays < 120 || stock.historySessions < 61 || !finite(return5) || !finite(return20)
+      || !finite(return60) || !finite(distance20) || !finite(relative5) || !finite(turnoverRatio) || !finite(amount20)) return []
+    if (return60 <= 0.08 || return20 < -0.03 || return20 > 0.15 || return5 <= 0 || return5 > 0.08
+      || distance20 < -0.12 || relative5 <= 0.01 || turnoverRatio < 0.55 || turnoverRatio > 1.05
+      || amount20 < 50_000_000) return []
+    return [candidate(stock, return60 + return5 * 2 + relative5 * 3 + (distance20 + 0.12) - turnoverRatio * 0.05)]
+  }) : []
+  return {
+    gatePassed,
+    gateReason: gatePassed ? 'intact_platform_second_advance' : 'platform_market_support_absent',
+    candidates: ranked(candidates),
+  }
+}
+
+function ah52ResistancePath(
+  record: DailyHistoryFeatureRecord,
+  market: MarketCrossSection,
+): Pick<ResearchTacticSignal, 'gatePassed' | 'gateReason' | 'candidates'> {
+  const gatePassed = market.breadth20 >= 0.55 && market.breadth1 >= 0.48
+  const candidates = gatePassed ? record.stocks.flatMap((stock) => {
+    const { adjustedReturn20: return20, adjustedReturn60: return60, distanceFromHigh252: distance252,
+      sectorRelativeReturn20: relative20, turnover5To20Ratio: turnoverRatio, amountMean20: amount20 } = stock
+    if (stock.tradingStatus !== 'trading' || stock.limitStatus !== 'none' || stock.sectorId === null
+      || stock.listingDays < 300 || stock.historySessions < 252 || !finite(return20) || !finite(return60)
+      || !finite(distance252) || !finite(relative20) || !finite(turnoverRatio) || !finite(amount20)) return []
+    if (return20 <= 0.04 || return60 <= 0.1 || distance252 < -0.12 || distance252 > 0
+      || relative20 <= 0.02 || turnoverRatio < 0.65 || turnoverRatio > 1.35 || amount20 < 100_000_000) return []
+    return [candidate(stock, return20 + return60 * 0.5 + relative20 * 2 + (distance252 + 0.12) - Math.abs(turnoverRatio - 1) * 0.05)]
+  }) : []
+  return {
+    gatePassed,
+    gateReason: gatePassed ? 'shrinking_ah52_resistance_path' : 'ah52_market_support_absent',
+    candidates: ranked(candidates),
+  }
+}
+
+function firstDivergenceCoreRepair(
+  record: DailyHistoryFeatureRecord,
+  market: MarketCrossSection,
+): Pick<ResearchTacticSignal, 'gatePassed' | 'gateReason' | 'candidates'> {
+  const gatePassed = market.breadth1 >= 0.48 && market.limitUpRatio <= 0.025
+  const candidates = gatePassed ? record.stocks.flatMap((stock) => {
+    const { adjustedReturn1: return1, adjustedReturn5: return5, adjustedReturn20: return20,
+      sectorRelativeReturn20: relative20, turnover5To20Ratio: turnoverRatio, amountMean20: amount20 } = stock
+    if (stock.tradingStatus !== 'trading' || stock.limitStatus !== 'none' || stock.sectorId === null
+      || stock.listingDays < 60 || stock.historySessions < 21 || !finite(return1) || !finite(return5)
+      || !finite(return20) || !finite(relative20) || !finite(turnoverRatio) || !finite(amount20)) return []
+    const sectorBreadth = market.sectorBreadth1.get(stock.sectorId) ?? 0
+    if (stock.limitUpSessions20 < 1 || stock.limitUpSessions20 > 4 || return20 <= 0.08
+      || return5 < -0.08 || return5 > 0.04 || return1 <= 0 || relative20 <= 0.03
+      || turnoverRatio < 1 || turnoverRatio > 2.5 || amount20 < 100_000_000 || sectorBreadth < 0.5) return []
+    return [candidate(stock, return20 + relative20 * 2 + return1 * 2 - Math.abs(return5) + sectorBreadth * 0.1)]
+  }) : []
+  return {
+    gatePassed,
+    gateReason: gatePassed ? 'first_divergence_core_repair' : 'divergence_repair_breadth_absent',
+    candidates: ranked(candidates),
+  }
+}
+
+function firstLimitDelayedDiscovery(
+  record: DailyHistoryFeatureRecord,
+  market: MarketCrossSection,
+): Pick<ResearchTacticSignal, 'gatePassed' | 'gateReason' | 'candidates'> {
+  const gatePassed = market.limitUpRatio >= 0.002 && market.limitUpRatio <= 0.02 && market.breadth1 >= 0.5
+  const candidates = gatePassed ? record.stocks.flatMap((stock) => {
+    const { adjustedReturn20: return20, sectorRelativeReturn20: relative20,
+      turnover5To20Ratio: turnoverRatio, amountMean20: amount20 } = stock
+    if (stock.tradingStatus !== 'trading' || stock.limitStatus !== 'limit-up' || stock.sectorId === null
+      || stock.listingDays < 60 || stock.historySessions < 21 || !finite(return20) || !finite(relative20)
+      || !finite(turnoverRatio) || !finite(amount20)) return []
+    const sectorBreadth = market.sectorBreadth1.get(stock.sectorId) ?? 0
+    if (stock.consecutiveLimitUpSessions !== 1 || stock.limitUpSessions20 > 2 || return20 > 0.35
+      || relative20 < 0 || turnoverRatio < 0.9 || amount20 < 100_000_000 || sectorBreadth < 0.6) return []
+    return [candidate(stock, sectorBreadth + relative20 * 2 + Math.max(return20, 0) + Math.log10(amount20) * 0.01)]
+  }) : []
+  return {
+    gatePassed,
+    gateReason: gatePassed ? 'broad_first_limit_delayed_discovery' : 'first_limit_breadth_absent',
+    candidates: ranked(candidates),
+  }
+}
+
 function repair(
   record: DailyHistoryFeatureRecord,
   market: MarketCrossSection,
@@ -296,7 +389,11 @@ export function generateResearchTacticSignal(
   let result: Pick<ResearchTacticSignal, 'gatePassed' | 'gateReason' | 'candidates'>
   switch (tacticId) {
     case 'regime_signed_breakout_pullback': result = breakout(record, market); break
+    case 'platform_consolidation_second_advance': result = platformSecondAdvance(record, market); break
+    case 'ah52_resistance_path': result = ah52ResistancePath(record, market); break
     case 'openable_emotion_leader': result = emotion(record, market); break
+    case 'first_divergence_core_repair': result = firstDivergenceCoreRepair(record, market); break
+    case 'first_limit_delayed_price_discovery': result = firstLimitDelayedDiscovery(record, market); break
     case 'industry_relative_exhaustion_repair': result = repair(record, market); break
     case 'correlation_cluster_sector_rotation': result = correlationClusterRotation(record, market); break
     case 'sector_residual_strength': result = residualStrength(record, market); break

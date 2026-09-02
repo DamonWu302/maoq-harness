@@ -117,6 +117,62 @@ function featureRecord(prompt: string): Record<string, unknown> {
 
 function structured(request: ResolvedSubagentStartRequest): unknown {
   const prompt = request.prompt.filter(block => block.type === 'text').map(block => block.text).join('\n')
+  if (prompt.includes('统帅侦察官')) {
+    return {
+      selectedSpecialists: ['sector_rotation', 'big_bull_trend'],
+      principalContradiction: '板块轮动速度与趋势延续质量之间的矛盾',
+      rationale: '轮动与趋势专家最能检验当前阻力最小方向。',
+    }
+  }
+  if (prompt.includes('role 必须严格等于 ')) {
+    const route = jsonAfterMarker(prompt, '市场与战法参谋简报：')
+    const universe = route['advisoryUniverse'] as Array<{ tacticId: string; evidenceRefs: string[] }>
+    const preferred = universe.find(item => item.tacticId === 'correlation_cluster_sector_rotation')
+      ?? universe.find(item => item.tacticId !== 'defensive_no_trade')!
+    const role = prompt.includes('role 必须严格等于 sector_rotation') ? 'sector_rotation' : 'big_bull_trend'
+    return {
+      role,
+      verdict: 'support',
+      preferredTacticIds: [preferred.tacticId],
+      analysis: role === 'sector_rotation' ? '板块共振轮动是当前阻力最小方向。' : '趋势结构支持在轮动中寻找主升延续。',
+      supportingEvidenceRefs: preferred.evidenceRefs,
+      counterEvidenceRefs: [],
+      confidence: 0.7,
+      invalidationConditions: ['板块宽度或趋势持续性失效。'],
+    }
+  }
+  if (prompt.includes('MAOQ 投资决策负责人')) {
+    const route = jsonAfterMarker(prompt, '完整市场与战法参谋简报：')
+    const universe = route['advisoryUniverse'] as Array<{ tacticId: string; evidenceRefs: string[] }>
+    const primary = universe.find(item => item.tacticId === 'correlation_cluster_sector_rotation')
+      ?? universe.find(item => item.tacticId !== 'defensive_no_trade')!
+    const slate = route['slate'] as Array<{ tacticId: string; evidenceRefs: string[] }>
+    const follows = slate.some(item => item.tacticId === primary.tacticId)
+    return {
+      routeId: route['routeId'],
+      selectedSpecialists: ['sector_rotation', 'big_bull_trend'],
+      marketPhase: '风险偏好趋势中的板块轮动',
+      principalContradiction: '板块轮动速度与趋势延续质量之间的矛盾',
+      rewardedStyle: '有容量的板块共振与趋势延续',
+      posture: 'probe',
+      quantRouteDisposition: follows ? 'follow' : 'override',
+      quantRouteAssessment: follows ? '专家判断与量化参谋建议一致。' : '新鲜板块证据优先于滞后的量化短名单。',
+      primaryTacticId: primary.tacticId,
+      stockMissions: ['寻找板块共振、流动性合格且次日可执行的领涨候选。'],
+      thesis: '板块共振轮动是当前有证据支持的阻力最小方向。',
+      evidenceRefs: primary.evidenceRefs,
+      counterEvidenceRefs: follows ? [] : slate.flatMap(item => item.evidenceRefs),
+      confidence: 0.72,
+      invalidationConditions: ['板块宽度或相关性集群失效。'],
+    }
+  }
+  if (prompt.includes('独立 MAOQ 风控负责人')) {
+    const route = jsonAfterMarker(prompt, '市场与战法参谋简报：')
+    return {
+      routeId: route['routeId'], approved: true, verdict: 'approve', reasons: ['提案保持在硬可行战法全集内。'],
+      hardLimits: ['研究战法不得创建模拟仓位。'], invalidationConditions: ['新的路由身份必须重新审查。'],
+    }
+  }
   if (prompt.includes('independent MAOQ tactic risk reviewer')) {
     const route = jsonAfterMarker(prompt, 'Exact route: ')
     return {

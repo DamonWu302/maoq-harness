@@ -1353,7 +1353,7 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
 
 ### `maoq_select_tactics`
 
-读取最新已批准战略状态与有界条件战绩，构建一份确定性前三名单，然后在宿主校验与独立风险否决下选择最多一个主战法和一个辅助战法。它不会扫描完整市场历史，也不会发出订单。
+读取最新已批准战略状态与条件战绩，把确定性前三视为量化建议，动态会诊两名专家，再从完整硬可行十战法目录中选择一个主战法和可选辅助战法，并接受宿主校验与独立风险否决。它不会扫描完整市场历史，也不会发出订单。
 
 ```json
 {
@@ -1565,7 +1565,11 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
       "description": "One fixed versioned research tactic.",
       "enum": [
         "regime_signed_breakout_pullback",
+        "platform_consolidation_second_advance",
+        "ah52_resistance_path",
         "openable_emotion_leader",
+        "first_divergence_core_repair",
+        "first_limit_delayed_price_discovery",
         "industry_relative_exhaustion_repair",
         "correlation_cluster_sector_rotation",
         "sector_residual_strength",

@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-market-tactic-routing` attributes completed tactic results to the strategic facts known at their original decision cutoff, persists immutable outcomes and aggregate generations, and routes current eligible tactics from one bounded scorecard. It also validates and persists the commander's route-bound proposal and the independent veto as one replayable decision. The deterministic router runs without a model and keeps `defensive_no_trade` available whenever active evidence is inadequate.
+`dsh-market-tactic-routing` attributes completed tactic results to the strategic facts known at their original decision cutoff, persists immutable outcomes and aggregate generations, and routes current eligible tactics from one bounded scorecard. It retains the top three as quantitative advice, exposes every hard-feasible catalog tactic as a bounded advisory universe, and validates the commander's full-catalog proposal plus independent veto as one replayable decision. The deterministic router runs without a model and keeps `defensive_no_trade` available whenever active evidence is inadequate.
 
 ## Table of Contents
 
@@ -39,7 +39,7 @@ const transition = selectTacticTransition(route, previousTransitionState)
 const decision = createTacticCommanderDecision(route, proposal, risk)
 ```
 
-Success returns immutable content-addressed records. Future-visible outcomes, incompatible tactic versions, a non-advancing cutoff, mismatched eligibility, incomplete strategic facts, a scorecard newer than the decision cutoff, a tactic outside the route, or a contradictory veto fails closed. `TacticRoutingStore` publishes outcomes by UTC availability day and publishes scorecards, routes, and commander decisions by content identity; bounded range reads fetch only partitions between two scorecard cutoffs.
+Success returns immutable content-addressed records. Future-visible outcomes, incompatible tactic versions, a non-advancing cutoff, mismatched eligibility, incomplete strategic facts, a scorecard newer than the decision cutoff, a tactic outside the hard-feasible advisory universe, an override without counter-evidence, or a contradictory veto fails closed. A tactic outside the quantitative top three remains research-only with zero paper authority. `TacticRoutingStore` publishes outcomes by UTC availability day and publishes scorecards, routes, and commander decisions by content identity; bounded range reads fetch only partitions between two scorecard cutoffs.
 
 -----
 

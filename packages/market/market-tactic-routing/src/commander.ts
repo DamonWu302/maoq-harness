@@ -12,11 +12,22 @@ import {
   type TacticCommanderProposalInput,
   type TacticCommanderRiskInput,
   type TacticCommanderScope,
+  type TacticSpecialistReportInput,
+  type TacticSpecialistRole,
   type TacticRouteCandidate,
   type TacticRoutingRecord,
 } from './types.ts'
 
 const HASH_PATTERN = /^[a-f0-9]{64}$/u
+
+/** Fixed expert registry available to the model-led tactic planner. */
+export const TACTIC_SPECIALIST_ROLES: readonly TacticSpecialistRole[] = deepFreeze([
+  'short_sentiment',
+  'big_bull_trend',
+  'short_fast',
+  'oversold_reversal',
+  'sector_rotation',
+])
 
 function normalizedStrings(values: readonly string[], field: string, allowEmpty: boolean): readonly string[] {
   const untrusted: unknown = values
@@ -37,25 +48,79 @@ function normalizedStrings(values: readonly string[], field: string, allowEmpty:
   return result
 }
 
-function candidate(route: TacticRoutingRecord, tacticId: TacticId): TacticRouteCandidate {
+function routedCandidate(route: TacticRoutingRecord, tacticId: TacticId): TacticRouteCandidate | undefined {
   const found = tacticId === 'defensive_no_trade'
     ? route.defensiveFallback
     : route.slate.find(item => item.tacticId === tacticId)
-  if (found === undefined) throw new Error(`commander tactic ${tacticId} is outside deterministic route ${route.routeId}`)
   return found
 }
 
-function scopeOf(selected: readonly TacticRouteCandidate[]): TacticCommanderScope {
-  if (selected[0]?.tacticId === 'defensive_no_trade') return 'defense'
-  if (selected.some(item => item.scope === 'research')) return 'research'
-  if (selected.some(item => item.scope === 'watch')) return 'watch'
+function advisoryCandidate(route: TacticRoutingRecord, tacticId: TacticId) {
+  const found = route.advisoryUniverse.find(item => item.tacticId === tacticId)
+  if (found === undefined) throw new Error(`commander tactic ${tacticId} is outside the hard-feasible advisory universe`)
+  return found
+}
+
+function scopeOf(selected: readonly (TacticRouteCandidate | undefined)[]): TacticCommanderScope {
+  if (selected.some(item => item === undefined)) return 'research'
+  const routed = selected.filter((item): item is TacticRouteCandidate => item !== undefined)
+  if (routed[0]?.tacticId === 'defensive_no_trade') return 'defense'
+  if (routed.some(item => item.scope === 'research')) return 'research'
+  if (routed.some(item => item.scope === 'watch')) return 'watch'
   return 'paper'
+}
+
+function normalizedText(value: unknown, field: string): string {
+  if (typeof value !== 'string' || value.trim().length === 0 || value !== value.trim()) {
+    throw new TypeError(`${field} must be a normalized non-empty string`)
+  }
+  return value
+}
+
+function normalizeSpecialistReports(
+  route: TacticRoutingRecord,
+  selectedRoles: readonly TacticSpecialistRole[],
+  value: readonly TacticSpecialistReportInput[],
+): readonly TacticSpecialistReportInput[] {
+  const untrusted: unknown = value
+  if (!Array.isArray(untrusted) || untrusted.length !== selectedRoles.length) {
+    throw new TypeError('specialist reports must exactly match the selected specialist set')
+  }
+  const reports: readonly TacticSpecialistReportInput[] = value
+  const allowedEvidence = new Set(route.advisoryUniverse.flatMap(item => item.evidenceRefs))
+  const allowedTactics = new Set(route.advisoryUniverse.map(item => item.tacticId))
+  return reports.map((report, index) => {
+    if (report.role !== selectedRoles[index]
+      || !['support', 'oppose', 'conditional'].includes(report.verdict)
+      || !Array.isArray(report.preferredTacticIds)
+      || report.preferredTacticIds.some(tacticId => !isTacticId(tacticId) || !allowedTactics.has(tacticId))) {
+      throw new TypeError('specialist report is outside the selected role or advisory universe')
+    }
+    const supportingEvidenceRefs = normalizedStrings(report.supportingEvidenceRefs, 'specialist supportingEvidenceRefs', true)
+    const counterEvidenceRefs = normalizedStrings(report.counterEvidenceRefs, 'specialist counterEvidenceRefs', true)
+    if ([...supportingEvidenceRefs, ...counterEvidenceRefs].some(ref => !allowedEvidence.has(ref))) {
+      throw new Error('specialist report cites evidence outside the advisory universe')
+    }
+    if (!Number.isFinite(report.confidence) || report.confidence < 0 || report.confidence > 1) {
+      throw new TypeError('specialist confidence must be between zero and one')
+    }
+    return {
+      role: report.role,
+      verdict: report.verdict,
+      preferredTacticIds: report.preferredTacticIds,
+      analysis: normalizedText(report.analysis, 'specialist analysis'),
+      supportingEvidenceRefs,
+      counterEvidenceRefs,
+      confidence: report.confidence,
+      invalidationConditions: normalizedStrings(report.invalidationConditions, 'specialist invalidationConditions', false),
+    }
+  })
 }
 
 function normalizeProposal(
   route: TacticRoutingRecord,
   input: TacticCommanderProposalInput,
-): { readonly proposal: TacticCommanderProposalInput; readonly selected: readonly TacticRouteCandidate[] } {
+): { readonly proposal: TacticCommanderProposalInput; readonly selected: readonly (TacticRouteCandidate | undefined)[] } {
   if (input.routeId !== route.routeId || !HASH_PATTERN.test(input.routeId)) {
     throw new Error('commander proposal does not target the deterministic route')
   }
@@ -74,25 +139,42 @@ function normalizeProposal(
   if (input.secondaryTacticId === 'defensive_no_trade') {
     throw new TypeError('defensive no-trade cannot be a secondary tactic')
   }
-  const selected = [
-    candidate(route, input.primaryTacticId),
-    ...input.secondaryTacticId === null ? [] : [candidate(route, input.secondaryTacticId)],
+  const selectedAdvisory = [
+    advisoryCandidate(route, input.primaryTacticId),
+    ...input.secondaryTacticId === null ? [] : [advisoryCandidate(route, input.secondaryTacticId)],
   ]
+  const selected = [
+    routedCandidate(route, input.primaryTacticId),
+    ...input.secondaryTacticId === null ? [] : [routedCandidate(route, input.secondaryTacticId)],
+  ]
+  const activeAdvisory = route.advisoryUniverse.some(item => item.tacticId !== 'defensive_no_trade')
+  const selectedSpecialists = normalizedStrings(input.selectedSpecialists, 'commander selectedSpecialists', !activeAdvisory)
+  if (selectedSpecialists.length !== (activeAdvisory ? 2 : 0)
+    || selectedSpecialists.some(role => !TACTIC_SPECIALIST_ROLES.includes(role as TacticSpecialistRole))) {
+    throw new TypeError('commander specialist selection does not match the advisory universe')
+  }
+  const roles = selectedSpecialists as readonly TacticSpecialistRole[]
+  const specialistReports = normalizeSpecialistReports(route, roles, input.specialistReports)
   const evidenceRefs = normalizedStrings(input.evidenceRefs, 'commander evidenceRefs', false)
-  const allowedEvidence = new Set(selected.flatMap(item => item.evidenceRefs))
+  const allowedEvidence = new Set(selectedAdvisory.flatMap(item => item.evidenceRefs))
   if (evidenceRefs.some(ref => !allowedEvidence.has(ref))) {
-    throw new Error('commander proposal cites evidence outside its selected routed tactics')
+    throw new Error('commander proposal cites evidence outside its selected advisory tactics')
   }
   const counterEvidenceRefs = normalizedStrings(input.counterEvidenceRefs, 'commander counterEvidenceRefs', true)
-  const routeEvidence = new Set([
-    ...route.slate.flatMap(item => item.evidenceRefs),
-    ...route.defensiveFallback.evidenceRefs,
-  ])
+  const routeEvidence = new Set(route.advisoryUniverse.flatMap(item => item.evidenceRefs))
   if (counterEvidenceRefs.some(ref => !routeEvidence.has(ref))) {
     throw new Error('commander proposal cites counter-evidence outside the deterministic route')
   }
-  if (typeof input.thesis !== 'string' || input.thesis.trim().length === 0 || input.thesis !== input.thesis.trim()) {
-    throw new TypeError('commander thesis must be a normalized non-empty string')
+  const routeRecommendation = new Set(route.slate.map(item => item.tacticId))
+  const followsRoute = selectedAdvisory.every(item => routeRecommendation.has(item.tacticId))
+  if (input.quantRouteDisposition !== (followsRoute ? 'follow' : 'override')) {
+    throw new Error('commander quant route disposition does not match the selected tactics')
+  }
+  if (!followsRoute && counterEvidenceRefs.length === 0) {
+    throw new Error('commander override requires counter-evidence against the quantitative route')
+  }
+  if (!['no_trade', 'observe', 'probe', 'attack'].includes(input.posture)) {
+    throw new TypeError('commander posture is not registered')
   }
   if (!Number.isFinite(input.confidence) || input.confidence < 0 || input.confidence > 1) {
     throw new TypeError('commander confidence must be between zero and one')
@@ -105,9 +187,18 @@ function normalizeProposal(
   return {
     proposal: {
       routeId: route.routeId,
+      selectedSpecialists: roles,
+      specialistReports,
+      marketPhase: normalizedText(input.marketPhase, 'commander marketPhase'),
+      principalContradiction: normalizedText(input.principalContradiction, 'commander principalContradiction'),
+      rewardedStyle: normalizedText(input.rewardedStyle, 'commander rewardedStyle'),
+      posture: input.posture,
+      quantRouteDisposition: input.quantRouteDisposition,
+      quantRouteAssessment: normalizedText(input.quantRouteAssessment, 'commander quantRouteAssessment'),
       primaryTacticId: input.primaryTacticId,
       secondaryTacticId: input.secondaryTacticId,
-      thesis: input.thesis,
+      stockMissions: normalizedStrings(input.stockMissions, 'commander stockMissions', false),
+      thesis: normalizedText(input.thesis, 'commander thesis'),
       evidenceRefs,
       counterEvidenceRefs,
       confidence: input.confidence,
@@ -139,8 +230,8 @@ function normalizeRisk(route: TacticRoutingRecord, input: TacticCommanderRiskInp
 }
 
 /**
- * Apply host-owned route membership, promotion scope, and final risk veto to one model proposal.
- * @param routeInput - Exact content-addressed deterministic top-three route.
+ * Apply host-owned advisory membership, promotion scope, and final risk veto to one model proposal.
+ * @param routeInput - Exact content-addressed quantitative route and hard-feasible advisory universe.
  * @param proposalInput - Model proposal limited to at most one primary and one secondary tactic.
  * @param riskInput - Independent review whose veto replaces the final action with defense.
  * @returns Immutable P2 decision record suitable for replay and attribution.
@@ -158,7 +249,7 @@ export function createTacticCommanderDecision(
   const finalSecondaryTacticId = risk.approved ? proposal.secondaryTacticId : null
   const finalSelected = risk.approved ? selected : [route.defensiveFallback]
   const scope = risk.approved ? scopeOf(selected) : 'defense'
-  const maximumPaperPositionPct = finalSelected.reduce((sum, item) => sum + item.maximumPaperPositionPct, 0)
+  const maximumPaperPositionPct = finalSelected.reduce((sum, item) => sum + (item?.maximumPaperPositionPct ?? 0), 0)
   const body: Omit<TacticCommanderDecisionRecord, 'decisionId'> = {
     schemaVersion: TACTIC_COMMANDER_SCHEMA_VERSION,
     policyVersion: TACTIC_COMMANDER_POLICY_VERSION,

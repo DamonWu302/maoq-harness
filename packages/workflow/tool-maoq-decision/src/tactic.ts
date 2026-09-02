@@ -40,25 +40,84 @@ interface TacticToolResult {
 }
 
 const TACTIC_WORKFLOW_SCRIPT = String.raw`
-const tacticIds = [...new Set([...args.route.slate.map(item => item.tacticId), args.route.defensiveFallback.tacticId])]
-const evidenceRefs = [...new Set([
-  ...args.route.slate.flatMap(item => item.evidenceRefs),
-  ...args.route.defensiveFallback.evidenceRefs,
-])]
+const tacticIds = args.route.advisoryUniverse.map(item => item.tacticId)
+const evidenceRefs = [...new Set(args.route.advisoryUniverse.flatMap(item => item.evidenceRefs))]
+const tacticEvidence = new Set(args.route.advisoryUniverse.flatMap(item => item.evidenceRefs.filter(ref => ref.includes(item.tacticId))))
+const briefing = {
+  routeId: args.route.routeId,
+  tradingDate: args.route.tradingDate,
+  cutoffTime: args.route.cutoffTime,
+  context: args.route.context,
+  cashFloorPct: args.route.cashFloorPct,
+  slate: args.route.slate.map(item => ({
+    tacticId: item.tacticId,
+    routeScore: item.routeScore,
+    scope: item.scope,
+    scoreComponents: item.scoreComponents,
+    metrics: item.metrics,
+    evidenceRefs: item.evidenceRefs,
+  })),
+  advisoryUniverse: args.route.advisoryUniverse.map(item => ({
+    ...item,
+    evidenceRefs: item.evidenceRefs.filter(ref => ref.includes(item.tacticId)),
+  })),
+  sharedEvidenceRefs: evidenceRefs.filter(ref => !tacticEvidence.has(ref)),
+}
+const specialistRoles = ['short_sentiment', 'big_bull_trend', 'short_fast', 'oversold_reversal', 'sector_rotation']
+const specialistLabels = {
+  short_sentiment: '短线情绪专家',
+  big_bull_trend: '大牛股与主升趋势专家',
+  short_fast: '短线快打与执行专家',
+  oversold_reversal: '超跌修复专家',
+  sector_rotation: '板块轮动专家',
+}
+const plannerSchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    selectedSpecialists: { type: 'array', items: { type: 'string', enum: specialistRoles } },
+    principalContradiction: { type: 'string' },
+    rationale: { type: 'string' },
+  },
+  required: ['selectedSpecialists', 'principalContradiction', 'rationale'],
+}
+const reportSchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    role: { type: 'string', enum: specialistRoles },
+    verdict: { type: 'string', enum: ['support', 'oppose', 'conditional'] },
+    preferredTacticIds: { type: 'array', items: { type: 'string', enum: tacticIds } },
+    analysis: { type: 'string' },
+    supportingEvidenceRefs: { type: 'array', items: { type: 'string', enum: evidenceRefs } },
+    counterEvidenceRefs: { type: 'array', items: { type: 'string', enum: evidenceRefs } },
+    confidence: { type: 'number' },
+    invalidationConditions: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['role', 'verdict', 'preferredTacticIds', 'analysis', 'supportingEvidenceRefs', 'counterEvidenceRefs', 'confidence', 'invalidationConditions'],
+}
 const proposalSchema = {
   type: 'object',
   additionalProperties: false,
   properties: {
     routeId: { type: 'string' },
+    selectedSpecialists: { type: 'array', items: { type: 'string', enum: specialistRoles } },
+    marketPhase: { type: 'string' },
+    principalContradiction: { type: 'string' },
+    rewardedStyle: { type: 'string' },
+    posture: { type: 'string', enum: ['no_trade', 'observe', 'probe', 'attack'] },
+    quantRouteDisposition: { type: 'string', enum: ['follow', 'override'] },
+    quantRouteAssessment: { type: 'string' },
     primaryTacticId: { type: 'string', enum: tacticIds },
     secondaryTacticId: { type: 'string', enum: tacticIds },
+    stockMissions: { type: 'array', items: { type: 'string' } },
     thesis: { type: 'string' },
     evidenceRefs: { type: 'array', items: { type: 'string', enum: evidenceRefs } },
     counterEvidenceRefs: { type: 'array', items: { type: 'string', enum: evidenceRefs } },
     confidence: { type: 'number' },
     invalidationConditions: { type: 'array', items: { type: 'string' } },
   },
-  required: ['routeId', 'primaryTacticId', 'thesis', 'evidenceRefs', 'counterEvidenceRefs', 'confidence', 'invalidationConditions'],
+  required: ['routeId', 'selectedSpecialists', 'marketPhase', 'principalContradiction', 'rewardedStyle', 'posture', 'quantRouteDisposition', 'quantRouteAssessment', 'primaryTacticId', 'stockMissions', 'thesis', 'evidenceRefs', 'counterEvidenceRefs', 'confidence', 'invalidationConditions'],
 }
 const riskSchema = {
   type: 'object',
@@ -74,42 +133,85 @@ const riskSchema = {
   required: ['routeId', 'approved', 'verdict', 'reasons', 'hardLimits', 'invalidationConditions'],
 }
 
-phase('Bounded tactic synthesis')
-const proposalResult = await agent([
-  'You are the MAOQ tactic commander. Choose only from the exact deterministic route below.',
-  'Choose one primary tactic and at most one distinct secondary tactic. defensive_no_trade must be primary alone.',
-  'Do not alter tactic rules, scores, promotion scope, evidence, risk ceilings, or the market-data cutoff.',
-  'Cite only supplied evidenceRefs and state a falsifiable thesis and invalidation conditions.',
-  'Exact route: ' + JSON.stringify(args.route),
+phase('识别主要矛盾并调度专家')
+const plannerResult = await agent([
+  '你是 MAOQ 战术议会的统帅侦察官。量化 Top 3 只是参谋建议，不是世界边界。',
+  '从固定专家表中恰好选择两名最能解释当前主要矛盾的专家；不得重复，不得选择风控，风控将在末尾独立运行。',
+  '市场与战法参谋简报：' + JSON.stringify(briefing),
 ].join('\n\n'), {
-  label: 'MAOQ bounded tactic synthesis',
-  phase: 'Bounded tactic synthesis',
+  label: '统帅侦察·动态调度专家',
+  phase: '识别主要矛盾并调度专家',
+  schema: plannerSchema,
+  includeUsage: true,
+})
+if (plannerResult === null) throw new Error('tactic council planner returned no plan')
+const selectedSpecialists = plannerResult.value.selectedSpecialists
+if (selectedSpecialists.length !== 2 || new Set(selectedSpecialists).size !== 2
+  || selectedSpecialists.some(role => !specialistRoles.includes(role))) {
+  throw new Error('tactic council planner must select exactly two unique registered specialists')
+}
+
+phase('独立战术专家会诊')
+const reportRuns = await Promise.all(selectedSpecialists.map(async role => {
+  const result = await agent([
+    '你是 MAOQ 的' + specialistLabels[role] + '。只从自己的专业视角独立判断，不迎合量化 Top 3 或其他专家。',
+    '完整战法注册表是研究边界；量化 slate 是参谋建议。可以支持、反对或有条件支持任何通过硬门槛的战法。',
+    '只引用简报中的 evidenceRefs，明确反证、置信度和可证伪失效条件。role 必须严格等于 ' + role + '。',
+    '规划者识别的主要矛盾：' + plannerResult.value.principalContradiction,
+    '市场与战法参谋简报：' + JSON.stringify(briefing),
+  ].join('\n\n'), {
+    label: '战术专家·' + specialistLabels[role],
+    phase: '独立战术专家会诊',
+    schema: reportSchema,
+    includeUsage: true,
+  })
+  if (result === null || result.value.role !== role) throw new Error('selected tactic specialist returned an invalid report: ' + role)
+  return { report: result.value, usage: { label: '战术专家·' + specialistLabels[role], phase: '独立战术专家会诊', usage: result.usage } }
+}))
+const reports = reportRuns.map(run => run.report)
+
+phase('统帅形成全局作战计划')
+const proposalResult = await agent([
+  '你是统帅全局的 MAOQ 投资决策负责人。综合市场状态、完整十战法注册表、量化参谋建议和两个独立专家报告。',
+  '识别市场阶段、主要矛盾、当前被奖赏的风格和阻力最小方向；选择一个主战法和最多一个不同的辅战法。防守空仓只能单独作为主战法。',
+  'slate 是量化参谋意见，不是硬白名单。若选择 slate 外战法，quantRouteDisposition 必须为 override，并给出针对量化建议的反证和明确评估。',
+  '不得修改战法规则、评分、晋级范围、证据、风险上限或数据截止点。stockMissions 只描述下一层应寻找的股票任务，不得输出股票或订单。',
+  '只引用简报 evidenceRefs，给出可证伪论点与失效条件。selectedSpecialists 必须严格保持：' + JSON.stringify(selectedSpecialists),
+  '规划者结论：' + JSON.stringify(plannerResult.value),
+  '完整市场与战法参谋简报：' + JSON.stringify(briefing),
+  '独立专家报告：' + JSON.stringify(reports),
+].join('\n\n'), {
+  label: 'MAOQ 统帅·全局战术决策',
+  phase: '统帅形成全局作战计划',
   schema: proposalSchema,
   includeUsage: true,
 })
-if (proposalResult === null) throw new Error('tactic commander returned no proposal')
+if (proposalResult === null || JSON.stringify(proposalResult.value.selectedSpecialists) !== JSON.stringify(selectedSpecialists)) throw new Error('tactic commander returned no valid proposal')
 const proposal = {
   ...proposalResult.value,
   secondaryTacticId: proposalResult.value.secondaryTacticId || null,
+  specialistReports: reports,
 }
 
-phase('Independent tactic risk review')
+phase('独立风控最终否决')
 const riskResult = await agent([
-  'You are the independent MAOQ tactic risk reviewer. You did not author this proposal and your veto is final.',
-  'Approve only if the proposal stays inside the exact route, cites routed evidence, preserves promotion scope, and states usable invalidation.',
-  'Exact route: ' + JSON.stringify(args.route),
-  'Proposal: ' + JSON.stringify(proposal),
+  '你是独立 MAOQ 风控负责人。你没有参与提案，否决权是最终的。',
+  '审查完整战法全集边界、量化偏离理由、专家分歧、证据、晋级权限和失效条件。模型不能通过文字提升任何战法权限。',
+  '市场与战法参谋简报：' + JSON.stringify(briefing),
+  '完整作战提案：' + JSON.stringify(proposal),
 ].join('\n\n'), {
-  label: 'Independent tactic risk review',
-  phase: 'Independent tactic risk review',
+  label: '独立风控·最终否决审查',
+  phase: '独立风控最终否决',
   schema: riskSchema,
   includeUsage: true,
 })
 if (riskResult === null) throw new Error('tactic risk reviewer returned no verdict')
 
 const calls = [
-  { label: 'MAOQ bounded tactic synthesis', phase: 'Bounded tactic synthesis', usage: proposalResult.usage },
-  { label: 'Independent tactic risk review', phase: 'Independent tactic risk review', usage: riskResult.usage },
+  { label: '统帅侦察·动态调度专家', phase: '识别主要矛盾并调度专家', usage: plannerResult.usage },
+  ...reportRuns.map(run => run.usage),
+  { label: 'MAOQ 统帅·全局战术决策', phase: '统帅形成全局作战计划', usage: proposalResult.usage },
+  { label: '独立风控·最终否决审查', phase: '独立风控最终否决', usage: riskResult.usage },
 ]
 const fields = ['inputTokens', 'outputTokens', 'totalTokens', 'cacheReadTokens', 'cacheWriteTokens', 'reasoningTokens']
 const total = {}
@@ -122,11 +224,13 @@ return {
 `
 
 const TACTIC_WORKFLOW_META = {
-  name: 'maoq-bounded-tactic-commander',
-  description: 'Choose from one deterministic top-three tactic route and require independent risk review.',
+  name: 'maoq-model-led-tactic-council',
+  description: 'Dynamically select specialists, command the complete hard-feasible tactic catalog, and require independent risk veto.',
   phases: [
-    { title: 'Bounded tactic synthesis', detail: 'The commander sees only the exact deterministic route.' },
-    { title: 'Independent tactic risk review', detail: 'A fresh reviewer may veto but cannot expand the route.' },
+    { title: '识别主要矛盾并调度专家', detail: '统帅侦察官从固定专家池动态选择两名专家。' },
+    { title: '独立战术专家会诊', detail: '被选专家并行、独立评估完整硬可行战法池。' },
+    { title: '统帅形成全局作战计划', detail: '统帅综合量化参谋意见、分歧和全局状态。' },
+    { title: '独立风控最终否决', detail: '独立风控可否决，但不能扩大战法权限。' },
   ],
 }
 
@@ -152,8 +256,17 @@ function defensiveDecision(route: TacticRoutingRecord): TacticCommanderDecisionR
   const evidenceRefs = route.defensiveFallback.evidenceRefs
   return createTacticCommanderDecision(route, {
     routeId: route.routeId,
+    selectedSpecialists: [],
+    specialistReports: [],
+    marketPhase: 'Hard feasibility unavailable',
+    principalContradiction: 'Insufficient hard-feasible evidence versus the need to preserve capital.',
+    rewardedStyle: 'Cash and optionality',
+    posture: 'no_trade',
+    quantRouteDisposition: 'follow',
+    quantRouteAssessment: 'The host advisory universe contains defense only.',
     primaryTacticId: 'defensive_no_trade',
     secondaryTacticId: null,
+    stockMissions: ['Wait for a new snapshot that restores hard-feasible tactic evidence.'],
     thesis: 'No active tactic has sufficient routed evidence; preserve capital and wait.',
     evidenceRefs,
     counterEvidenceRefs: [],
@@ -173,7 +286,7 @@ function defensiveDecision(route: TacticRoutingRecord): TacticCommanderDecisionR
  * Run bounded synthesis and host validation for one already-built route.
  * @param ctx - Context owning workflow, provider, and persistence services.
  * @param config - Current validated MAOQ deployment policy.
- * @param route - Exact deterministic route exposed to the bounded workflow.
+ * @param route - Exact deterministic advice and hard-feasible universe exposed through a compact briefing.
  * @param parent - Calling Agent that parents both fresh children.
  * @param signal - Parent tool cancellation signal.
  * @returns Persisted route, host-validated decision, and exact child usage report.
@@ -187,7 +300,7 @@ export async function executeTacticSelection(
 ): Promise<TacticToolResult> {
   const store = new TacticRoutingStore(config.tacticStateRoot)
   await store.publishRoute(route)
-  if (route.slate.every(item => item.tacticId === 'defensive_no_trade')) {
+  if (route.advisoryUniverse.every(item => item.tacticId === 'defensive_no_trade')) {
     const decision = defensiveDecision(route)
     await store.publishDecision(decision)
     return {
@@ -204,7 +317,7 @@ export async function executeTacticSelection(
     meta: TACTIC_WORKFLOW_META,
     args: { route },
     subagentProvider: config.subagentProvider,
-    maxTotalAgents: 2,
+    maxTotalAgents: 5,
     parent,
     signal,
   })
@@ -254,15 +367,45 @@ function render(value: unknown, maxChars: number): string {
   return maxChars <= suffix.length ? suffix.slice(0, maxChars) : `${text.slice(0, maxChars - suffix.length)}${suffix}`
 }
 
+function renderTacticResult(value: unknown, maxChars: number): string {
+  const record = recordOf(value)
+  const route = recordOf(record['route'])
+  const slate = Array.isArray(route['slate']) ? route['slate'].map((item) => {
+    const candidate = recordOf(item)
+    return {
+      tacticId: candidate['tacticId'],
+      routeScore: candidate['routeScore'],
+      scope: candidate['scope'],
+    }
+  }) : []
+  const advisoryUniverse = Array.isArray(route['advisoryUniverse'])
+    ? route['advisoryUniverse'].map(item => recordOf(item)['tacticId'])
+    : []
+  return render({
+    runId: record['runId'],
+    agentsStarted: record['agentsStarted'],
+    decision: record['decision'],
+    tokenUsage: record['tokenUsage'],
+    routeSummary: {
+      routeId: route['routeId'],
+      tradingDate: route['tradingDate'],
+      cutoffTime: route['cutoffTime'],
+      context: route['context'],
+      quantitativeSlate: slate,
+      advisoryTacticIds: advisoryUniverse,
+    },
+  }, maxChars)
+}
+
 /**
- * Register the P2 top-three tactic selection tool.
+ * Register the P2 model-led full-catalog tactic council tool.
  * @param ctx - Context owning the tool registry and tactic workflow services.
  * @param getConfig - Live reader for the current validated deployment policy.
  */
 export function registerTacticCommanderTool(ctx: Context, getConfig: () => ResolvedConfig): void {
   ctx.tools.register(defineTool({
     name: 'maoq_select_tactics',
-    description: 'Read the latest approved strategic state and bounded conditional scorecard, build a deterministic top-three route, then choose at most one primary and one secondary tactic under host validation and independent risk veto. It never scans full market history or places an order.',
+    description: 'Read the latest approved strategic state and conditional scorecard, treat the deterministic top three as quantitative advice, dynamically consult two experts, then choose one primary and optional secondary from the complete hard-feasible ten-tactic catalog under host validation and independent risk veto. It never scans full market history or places an order.',
     parameters: {},
     output: {
       schema: {
@@ -276,7 +419,7 @@ export function registerTacticCommanderTool(ctx: Context, getConfig: () => Resol
           tokenUsage: { type: 'json', required: true },
         },
       },
-      render: (_args, value) => [{ type: 'text', text: render(value, getConfig().maxResultChars) }],
+      render: (_args, value) => [{ type: 'text', text: renderTacticResult(value, getConfig().maxResultChars) }],
     },
     async execute(_args, exec) {
       if (exec.agent === undefined) throw new Error('MAOQ tactic selection requires a calling agent')
@@ -288,7 +431,7 @@ export function registerTacticCommanderTool(ctx: Context, getConfig: () => Resol
         decision: result.decision as unknown as JsonValue,
       }
     },
-    presentCall: (): ToolCallView => ({ card: 'generic', title: 'Select routed MAOQ tactics' }),
+    presentCall: (): ToolCallView => ({ card: 'generic', title: '动态研判完整 MAOQ 战法池' }),
     presentResult: (_args, _result: { content: ContentBlock[]; isError: boolean }): ToolResultView => ({ card: 'generic' }),
   }))
 }

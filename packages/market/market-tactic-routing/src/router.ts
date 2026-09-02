@@ -18,6 +18,7 @@ import {
   type ExecutionQualityBand,
   type RejectedTacticRoute,
   type TacticConditionalMetrics,
+  type TacticAdvisoryCandidate,
   type TacticRouteCandidate,
   type TacticRouteRejectionReason,
   type TacticRouteScoreComponents,
@@ -151,6 +152,20 @@ function validCandidate(value: unknown): value is TacticRouteCandidate {
     && evidenceRefs.every(ref => typeof ref === 'string' && ref.length > 0)
 }
 
+function validAdvisoryCandidate(value: unknown): value is TacticAdvisoryCandidate {
+  const record = recordOf(value)
+  return isTacticId(record['tacticId'])
+    && typeof record['tacticVersion'] === 'string'
+    && typeof record['family'] === 'string'
+    && typeof record['contextFit'] === 'boolean'
+    && ['top_three', 'qualified_outside_top_three', 'rejected', 'defense'].includes(record['quantDisposition'] as string)
+    && (record['routeScore'] === null || (typeof record['routeScore'] === 'number' && Number.isFinite(record['routeScore'])))
+    && ['eligible', 'watch_only', 'research_only'].includes(record['eligibilityStatus'] as string)
+    && ['research', 'paper', 'eligible'].includes(record['promotionStatus'] as string)
+    && ['eligibleSectorIds', 'quantReasons', 'entryPolicy', 'exitPolicy', 'invalidationPolicy', 'executionRequirements', 'evidenceRefs']
+      .every(field => Array.isArray(record[field]) && (record[field] as unknown[]).every(item => typeof item === 'string'))
+}
+
 /**
  * Verify a serialized deterministic route before it crosses into the model-facing commander.
  * @param value - Untrusted parsed route value.
@@ -161,6 +176,7 @@ export function verifyTacticRoutingRecord(value: unknown): TacticRoutingRecord {
   const routeId = record['routeId']
   const slate = record['slate']
   const defense = record['defensiveFallback']
+  const advisoryUniverse = record['advisoryUniverse']
   if (record['routerVersion'] !== TACTIC_ROUTER_VERSION
     || typeof routeId !== 'string'
     || !/^[a-f0-9]{64}$/u.test(routeId)
@@ -178,6 +194,13 @@ export function verifyTacticRoutingRecord(value: unknown): TacticRoutingRecord {
     || new Set(slate.map(item => item.tacticId)).size !== slate.length
     || !validCandidate(defense)
     || defense.tacticId !== 'defensive_no_trade'
+    || !Array.isArray(advisoryUniverse)
+    || advisoryUniverse.length < 1
+    || advisoryUniverse.length > DEFINITIONS.length
+    || !advisoryUniverse.every(validAdvisoryCandidate)
+    || new Set(advisoryUniverse.map(item => item.tacticId)).size !== advisoryUniverse.length
+    || !advisoryUniverse.some(item => item.tacticId === 'defensive_no_trade' && item.quantDisposition === 'defense')
+    || !slate.every(item => advisoryUniverse.some(advisory => advisory.tacticId === item.tacticId))
     || typeof record['cashFloorPct'] !== 'number'
     || !Number.isFinite(record['cashFloorPct'])
     || record['cashFloorPct'] < 0
@@ -302,6 +325,42 @@ export function routeEligibleTactics(
     })
   }
   rejected.sort((left, right) => left.tacticId.localeCompare(right.tacticId))
+  const slateById = new Map(slate.map(item => [item.tacticId, item]))
+  const rejectedById = new Map(rejected.map(item => [item.tacticId, item]))
+  const advisoryUniverse: TacticAdvisoryCandidate[] = DEFINITIONS.flatMap((definition) => {
+    const gate = eligibilityById.get(definition.tacticId)
+    if (gate === undefined || gate.status === 'ineligible') return []
+    const routed = slateById.get(definition.tacticId)
+    const rejectedRoute = rejectedById.get(definition.tacticId as ActiveTacticId)
+    const quantDisposition = definition.tacticId === 'defensive_no_trade'
+      ? 'defense' as const
+      : routed !== undefined
+        ? 'top_three' as const
+        : rejectedRoute?.reasons.includes('outside_top_three') === true
+          ? 'qualified_outside_top_three' as const
+          : 'rejected' as const
+    return [{
+      tacticId: definition.tacticId,
+      tacticVersion: definition.tacticVersion,
+      family: definition.family,
+      promotionStatus: definition.promotionStatus,
+      eligibilityStatus: gate.status,
+      contextFit: gate.contextFit,
+      eligibleSectorIds: gate.eligibleSectorIds,
+      quantDisposition,
+      quantReasons: rejectedRoute?.reasons ?? [],
+      routeScore: routed?.routeScore ?? rejectedRoute?.routeScore ?? null,
+      entryPolicy: definition.entryPolicy,
+      exitPolicy: definition.exitPolicy,
+      invalidationPolicy: definition.invalidationPolicy,
+      executionRequirements: definition.executionRequirements,
+      evidenceRefs: [...new Set([
+        ...gate.evidenceRefs,
+        ...routed?.evidenceRefs ?? [],
+        `snapshot:${features.currentSnapshotHash}#tactic-eligibility/${definition.tacticId}`,
+      ])].sort(),
+    }]
+  })
   const body: Omit<TacticRoutingRecord, 'routeId'> = {
     routerVersion: TACTIC_ROUTER_VERSION,
     tradingDate: features.tradingDate,
@@ -311,6 +370,7 @@ export function routeEligibleTactics(
     scorecardId: scorecard.scorecardId,
     context,
     slate,
+    advisoryUniverse,
     defensiveFallback: defense,
     rejected,
     cashFloorPct: rounded(Math.max(0, 100 - slate.reduce((sum, item) => sum + item.maximumPaperPositionPct, 0))),

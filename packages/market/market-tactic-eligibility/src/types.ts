@@ -12,7 +12,11 @@ export const TACTIC_ELIGIBILITY_ENGINE_VERSION = 'maoq-tactic-eligibility-v4' as
 /** Stable IDs for every implemented tactic and the defensive fallback. */
 export type TacticId =
   | 'regime_signed_breakout_pullback'
+  | 'platform_consolidation_second_advance'
+  | 'ah52_resistance_path'
   | 'openable_emotion_leader'
+  | 'first_divergence_core_repair'
+  | 'first_limit_delayed_price_discovery'
   | 'industry_relative_exhaustion_repair'
   | 'correlation_cluster_sector_rotation'
   | 'sector_residual_strength'

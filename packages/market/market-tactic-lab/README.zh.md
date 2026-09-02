@@ -43,7 +43,7 @@ const features = computeDailyHistoryFeatures(snapshots)
 const result = simulateNextOpenExecution(snapshots, orders)
 ```
 
-`generateResearchTacticSignal()` 实现六项固定试验：首批突破／回踩、情绪龙头和行业相对修复信号，以及相关性聚类板块轮动、板块残差强势和低波板块领涨。它从共享的 `dsh-market-tactic-eligibility` 目录派生这些战法的 ID 与版本，因此研究信号不能创建第二份战法身份映射。`evaluateResearchTactic()` 把排名候选转成有界仓位，应用固定入场间隔与持有期，产生按时间排列的 126 个交易时段折，并用翻倍成本重复回放。`evaluateResearchTacticSuiteHistory()` 只读取一次生产历史并并行评估全部预登记战法；`auditResearchTacticSuite()` 计算 Deflated Sharpe、组合对称交叉验证 PBO、市场状态利润集中度和容量。最终封存留出集完成前，所有结果都保持 `research`。
+`generateResearchTacticSignal()` 实现十项固定试验：突破／回踩、平台二次上攻、AH52 阻力路径、情绪龙头、核心首次分歧修复、首板延迟价格发现、行业相对修复、相关性聚类板块轮动、板块残差强势和低波板块领涨。它从共享的 `dsh-market-tactic-eligibility` 目录派生这些战法的 ID 与版本，因此研究信号不能创建第二份战法身份映射。`evaluateResearchTactic()` 把排名候选转成有界仓位，应用固定入场间隔与持有期，产生按时间排列的 126 个交易时段折，并用翻倍成本重复回放。`evaluateResearchTacticSuiteHistory()` 只读取一次生产历史并并行评估全部预登记战法；`auditResearchTacticSuite()` 计算 Deflated Sharpe、组合对称交叉验证 PBO、市场状态利润集中度和容量。最终封存留出集完成前，所有结果都保持 `research`。
 
 `evaluateDynamicTacticReplay()` 消费这份单次读取的试验组结果。它根据同一截止点可见的战略代理与战绩派生每份名单，然后才安排固定战法结果在未来成熟。报告使用一项显式切换成本策略，比较固定战法、平均分配、空仓、确定性路由、可选的已记录统帅建议，以及可选的最终否决决策。每条轨道还会相对全部对齐基准计算几何超额收益、信息比率、Beta、上涨／下跌捕获率、现金机会成本、规避损失和市场状态切片。
 

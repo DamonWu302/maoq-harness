@@ -5,6 +5,7 @@ import type {
 } from '@deepseek-ai/dsh-market-strategic-state'
 import type {
   TacticEligibilityStatus,
+  TacticFamily,
   TacticId,
   TacticPromotionStatus,
 } from '@deepseek-ai/dsh-market-tactic-eligibility'
@@ -14,13 +15,13 @@ export const TACTIC_OUTCOME_SCHEMA_VERSION = 1 as const
 /** Current incremental conditional-scorecard format. */
 export const TACTIC_SCORECARD_SCHEMA_VERSION = 1 as const
 /** Current fixed transforms, thresholds, and route-score identity. */
-export const TACTIC_ROUTER_VERSION = 'maoq-deterministic-tactic-router-v3' as const
+export const TACTIC_ROUTER_VERSION = 'maoq-deterministic-tactic-router-v4' as const
 /** Current context bucketing identity. */
 export const TACTIC_CONTEXT_VERSION = 'maoq-tactic-context-v1' as const
 /** Current host-owned bounded commander decision format. */
-export const TACTIC_COMMANDER_SCHEMA_VERSION = 1 as const
+export const TACTIC_COMMANDER_SCHEMA_VERSION = 2 as const
 /** Current commander scope, validation, and final-veto policy. */
-export const TACTIC_COMMANDER_POLICY_VERSION = 'maoq-bounded-tactic-commander-v1' as const
+export const TACTIC_COMMANDER_POLICY_VERSION = 'maoq-model-led-tactic-council-v2' as const
 /** Current deterministic post-route holding and switching policy. */
 export const TACTIC_TRANSITION_POLICY_VERSION = 'maoq-tactic-transition-v1' as const
 
@@ -179,6 +180,25 @@ export interface RejectedTacticRoute {
   readonly evidenceScope: TacticEvidenceScope | null
 }
 
+/** Hard-feasible tactic exposed to the model as bounded research advice. */
+export interface TacticAdvisoryCandidate {
+  readonly tacticId: TacticId
+  readonly tacticVersion: string
+  readonly family: TacticFamily
+  readonly promotionStatus: TacticPromotionStatus
+  readonly eligibilityStatus: TacticEligibilityStatus
+  readonly contextFit: boolean
+  readonly eligibleSectorIds: readonly string[]
+  readonly quantDisposition: 'top_three' | 'qualified_outside_top_three' | 'rejected' | 'defense'
+  readonly quantReasons: readonly string[]
+  readonly routeScore: number | null
+  readonly entryPolicy: readonly string[]
+  readonly exitPolicy: readonly string[]
+  readonly invalidationPolicy: readonly string[]
+  readonly executionRequirements: readonly string[]
+  readonly evidenceRefs: readonly string[]
+}
+
 /** Replayable deterministic top-three tactic slate for one strategic cutoff. */
 export interface TacticRoutingRecord {
   readonly routerVersion: typeof TACTIC_ROUTER_VERSION
@@ -190,6 +210,7 @@ export interface TacticRoutingRecord {
   readonly scorecardId: string
   readonly context: TacticRoutingContext
   readonly slate: readonly TacticRouteCandidate[]
+  readonly advisoryUniverse: readonly TacticAdvisoryCandidate[]
   readonly defensiveFallback: TacticRouteCandidate
   readonly rejected: readonly RejectedTacticRoute[]
   readonly cashFloorPct: number
@@ -224,11 +245,40 @@ export interface TacticTransitionDecision {
   readonly reason: TacticTransitionReason
 }
 
-/** Model proposal constrained to one exact deterministic route. */
+/** Fixed specialist lenses that the model planner may dynamically select. */
+export type TacticSpecialistRole =
+  | 'short_sentiment'
+  | 'big_bull_trend'
+  | 'short_fast'
+  | 'oversold_reversal'
+  | 'sector_rotation'
+
+/** One independently produced specialist opinion retained for attribution. */
+export interface TacticSpecialistReportInput {
+  readonly role: TacticSpecialistRole
+  readonly verdict: 'support' | 'oppose' | 'conditional'
+  readonly preferredTacticIds: readonly TacticId[]
+  readonly analysis: string
+  readonly supportingEvidenceRefs: readonly string[]
+  readonly counterEvidenceRefs: readonly string[]
+  readonly confidence: number
+  readonly invalidationConditions: readonly string[]
+}
+
+/** Model-led battle plan bounded by one exact host-owned advisory universe. */
 export interface TacticCommanderProposalInput {
   readonly routeId: string
+  readonly selectedSpecialists: readonly TacticSpecialistRole[]
+  readonly specialistReports: readonly TacticSpecialistReportInput[]
+  readonly marketPhase: string
+  readonly principalContradiction: string
+  readonly rewardedStyle: string
+  readonly posture: 'no_trade' | 'observe' | 'probe' | 'attack'
+  readonly quantRouteDisposition: 'follow' | 'override'
+  readonly quantRouteAssessment: string
   readonly primaryTacticId: TacticId
   readonly secondaryTacticId: TacticId | null
+  readonly stockMissions: readonly string[]
   readonly thesis: string
   readonly evidenceRefs: readonly string[]
   readonly counterEvidenceRefs: readonly string[]

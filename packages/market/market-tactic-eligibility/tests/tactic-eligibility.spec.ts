@@ -78,7 +78,11 @@ describe('P3 tactic eligibility', () => {
     const result = evaluateTacticEligibility(features())
     expect(result.researchCandidateIds).toEqual([
       'regime_signed_breakout_pullback',
+      'platform_consolidation_second_advance',
+      'ah52_resistance_path',
       'openable_emotion_leader',
+      'first_divergence_core_repair',
+      'first_limit_delayed_price_discovery',
       'industry_relative_exhaustion_repair',
       'correlation_cluster_sector_rotation',
       'sector_residual_strength',
@@ -140,7 +144,11 @@ describe('P3 tactic eligibility', () => {
     const definitions = tacticDefinitions()
     expect(definitions.map(definition => [definition.tacticId, definition.promotionStatus])).toEqual([
       ['regime_signed_breakout_pullback', 'research'],
+      ['platform_consolidation_second_advance', 'research'],
+      ['ah52_resistance_path', 'research'],
       ['openable_emotion_leader', 'research'],
+      ['first_divergence_core_repair', 'research'],
+      ['first_limit_delayed_price_discovery', 'research'],
       ['industry_relative_exhaustion_repair', 'research'],
       ['correlation_cluster_sector_rotation', 'research'],
       ['sector_residual_strength', 'research'],

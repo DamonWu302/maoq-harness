@@ -19,6 +19,7 @@ import {
   TACTIC_ROUTER_VERSION,
   TacticRoutingStore,
   type TacticRouteCandidate,
+  type TacticAdvisoryCandidate,
   type TacticRoutingRecord,
 } from '@deepseek-ai/dsh-market-tactic-routing'
 import { SessionId } from '@deepseek-ai/dsh-session'
@@ -115,8 +116,29 @@ function candidate(tacticId: TacticRouteCandidate['tacticId']): TacticRouteCandi
   }
 }
 
+function advisory(item: TacticRouteCandidate): TacticAdvisoryCandidate {
+  return {
+    tacticId: item.tacticId,
+    tacticVersion: item.tacticVersion,
+    family: item.tacticId === 'defensive_no_trade' ? 'defense' : 'trend',
+    promotionStatus: item.promotionStatus,
+    eligibilityStatus: item.eligibilityStatus,
+    contextFit: true,
+    eligibleSectorIds: item.tacticId === 'defensive_no_trade' ? [] : ['sector-a'],
+    quantDisposition: item.tacticId === 'defensive_no_trade' ? 'defense' : 'top_three',
+    quantReasons: [],
+    routeScore: item.routeScore,
+    entryPolicy: item.tacticId === 'defensive_no_trade' ? ['no order'] : ['sector-confirmed entry'],
+    exitPolicy: item.tacticId === 'defensive_no_trade' ? ['wait'] : ['exit on failure'],
+    invalidationPolicy: ['new route identity'],
+    executionRequirements: item.tacticId === 'defensive_no_trade' ? ['no order'] : ['T+1'],
+    evidenceRefs: item.evidenceRefs,
+  }
+}
+
 function route(active = true): TacticRoutingRecord {
   const defense = candidate('defensive_no_trade')
+  const activeCandidate = candidate('regime_signed_breakout_pullback')
   const body: Omit<TacticRoutingRecord, 'routeId'> = {
     routerVersion: TACTIC_ROUTER_VERSION,
     tradingDate: '2026-09-02',
@@ -133,7 +155,8 @@ function route(active = true): TacticRoutingRecord {
       crowdingBand: 'low',
       executionQualityBand: 'normal',
     },
-    slate: active ? [candidate('regime_signed_breakout_pullback'), defense] : [defense],
+    slate: active ? [activeCandidate, defense] : [defense],
+    advisoryUniverse: active ? [advisory(activeCandidate), advisory(defense)] : [advisory(defense)],
     defensiveFallback: defense,
     rejected: [],
     cashFloorPct: 100,
@@ -246,7 +269,7 @@ async function setupToolState(options: {
     }
     const result: StrategicDecisionResult = {
       runId: 'strategic-fixture',
-      agentsStarted: 2,
+      agentsStarted: 5,
       analysisMode: input.analysisMode,
       status: state === 'vetoed' ? 'vetoed' : 'approved',
       actionable: state !== 'vetoed',
@@ -282,8 +305,70 @@ function executeTool(fixture: Awaited<ReturnType<typeof setup>>, agent: Agent | 
   })
 }
 
+function councilProposal(routed: TacticRoutingRecord, primaryTacticId: TacticRouteCandidate['tacticId']) {
+  const selectedSpecialists = ['big_bull_trend', 'short_sentiment'] as const
+  const selected = routed.advisoryUniverse.find(item => item.tacticId === primaryTacticId)!
+  const follows = routed.slate.some(item => item.tacticId === primaryTacticId)
+  return {
+    routeId: routed.routeId,
+    selectedSpecialists,
+    specialistReports: selectedSpecialists.map(role => ({
+      role,
+      verdict: 'support' as const,
+      preferredTacticIds: [primaryTacticId],
+      analysis: `${role} supports the bounded selection.`,
+      supportingEvidenceRefs: selected.evidenceRefs,
+      counterEvidenceRefs: [],
+      confidence: 0.65,
+      invalidationConditions: ['The cited evidence reverses.'],
+    })),
+    marketPhase: 'Bounded fixture market phase',
+    principalContradiction: 'Opportunity versus execution resistance.',
+    rewardedStyle: primaryTacticId === 'defensive_no_trade' ? 'Cash and optionality' : 'Liquid sector-confirmed leaders',
+    posture: primaryTacticId === 'defensive_no_trade' ? 'no_trade' as const : 'probe' as const,
+    quantRouteDisposition: follows ? 'follow' as const : 'override' as const,
+    quantRouteAssessment: follows ? 'The experts follow the quantitative advice.' : 'The experts override lagging quantitative advice.',
+    primaryTacticId,
+    secondaryTacticId: null,
+    stockMissions: ['Find candidates that satisfy the selected tactic without creating orders.'],
+    thesis: 'The selected tactic has the best bounded evidence for this fixture.',
+    evidenceRefs: selected.evidenceRefs,
+    counterEvidenceRefs: follows ? [] : routed.slate.flatMap(item => item.evidenceRefs),
+    confidence: 0.7,
+    invalidationConditions: ['The selected tactic leaves the advisory universe.'],
+  }
+}
+
+function councilRisk(routed: TacticRoutingRecord) {
+  return {
+    routeId: routed.routeId,
+    approved: true,
+    verdict: 'approve' as const,
+    reasons: ['The proposal stays inside the hard-feasible advisory universe.'],
+    hardLimits: ['Research scope creates no paper position.'],
+    invalidationConditions: ['A new route requires a new review.'],
+  }
+}
+
+async function executeAndSettleTool(fixture: Awaited<ReturnType<typeof setup>>) {
+  const pending = executeTool(fixture)
+  await vi.waitFor(() => { expect(fixture.engine.requests).toHaveLength(1) })
+  const routed = (fixture.engine.requests[0]!.args as { readonly route: TacticRoutingRecord }).route
+  const primary = routed.advisoryUniverse.find(item => item.tacticId !== 'defensive_no_trade')!.tacticId
+  fixture.engine.settle({
+    stopReason: 'completed',
+    agentsStarted: 5,
+    value: {
+      proposal: councilProposal(routed, primary),
+      risk: councilRisk(routed),
+      tokenUsage: { calls: [], total: {}, unavailableCalls: 0 },
+    },
+  })
+  return pending
+}
+
 describe('P2 routed tactic workflow', () => {
-  it('shows only the deterministic route to two fresh agents and persists the host decision', async () => {
+  it('shows the full advisory universe to a dynamically selected council and persists the host decision', async () => {
     const fixture = await setup()
     const routed = route()
     const pending = executeTacticSelection(
@@ -294,37 +379,21 @@ describe('P2 routed tactic workflow', () => {
       new AbortController().signal,
     )
     await vi.waitFor(() => { expect(fixture.engine.requests).toHaveLength(1) })
-    expect(fixture.engine.requests[0]).toMatchObject({ maxTotalAgents: 2, args: { route: routed } })
-    expect(fixture.engine.requests[0]!.script).toContain('Choose only from the exact deterministic route')
+    expect(fixture.engine.requests[0]).toMatchObject({ maxTotalAgents: 5, args: { route: routed } })
+    expect(fixture.engine.requests[0]!.script).toContain('args.route.advisoryUniverse')
+    expect(fixture.engine.requests[0]!.script).toContain('selectedSpecialists.length !== 2')
     expect(fixture.engine.requests[0]!.script).toContain('secondaryTacticId: proposalResult.value.secondaryTacticId || null')
-    const evidenceRefs = routed.slate[0]!.evidenceRefs
     fixture.engine.settle({
       stopReason: 'completed',
-      agentsStarted: 2,
+      agentsStarted: 5,
       value: {
-        proposal: {
-          routeId: routed.routeId,
-          primaryTacticId: 'regime_signed_breakout_pullback',
-          secondaryTacticId: null,
-          thesis: 'The qualified trend route has the strongest bounded evidence.',
-          evidenceRefs,
-          counterEvidenceRefs: [],
-          confidence: 0.7,
-          invalidationConditions: ['The tactic leaves the deterministic route.'],
-        },
-        risk: {
-          routeId: routed.routeId,
-          approved: true,
-          verdict: 'approve',
-          reasons: ['The proposal stays inside the route.'],
-          hardLimits: ['Research scope creates no paper position.'],
-          invalidationConditions: ['A new route requires a new review.'],
-        },
+        proposal: councilProposal(routed, 'regime_signed_breakout_pullback'),
+        risk: councilRisk(routed),
         tokenUsage: { calls: [], total: {}, unavailableCalls: 0 },
       },
     })
     const result = await pending
-    expect(result).toMatchObject({ agentsStarted: 2, decision: { scope: 'research', status: 'approved' } })
+    expect(result).toMatchObject({ agentsStarted: 5, decision: { scope: 'research', status: 'approved' } })
     const persisted = await new TacticRoutingStore(fixture.config.tacticStateRoot)
       .getDecision(result.decision.decisionId)
     expect(persisted).toEqual(result.decision)
@@ -361,29 +430,13 @@ describe('P2 routed tactic workflow', () => {
       new AbortController().signal,
     )
     await vi.waitFor(() => { expect(fixture.engine.requests).toHaveLength(1) })
-    expect(fixture.engine.requests[0]!.script).toContain('args.route.defensiveFallback.tacticId')
+    expect(fixture.engine.requests[0]!.script).toContain('args.route.advisoryUniverse')
     fixture.engine.settle({
       stopReason: 'completed',
       agentsStarted: 2,
       value: {
-        proposal: {
-          routeId: routed.routeId,
-          primaryTacticId: 'defensive_no_trade',
-          secondaryTacticId: null,
-          thesis: 'The routed active tactic does not justify attack under current resistance.',
-          evidenceRefs: routed.defensiveFallback.evidenceRefs,
-          counterEvidenceRefs: routed.slate.flatMap(item => item.evidenceRefs),
-          confidence: 0.6,
-          invalidationConditions: ['The active route gains a stronger evidence margin.'],
-        },
-        risk: {
-          routeId: routed.routeId,
-          approved: true,
-          verdict: 'approve',
-          reasons: ['Defense remains inside the host-owned route fallback.'],
-          hardLimits: ['No order may be created.'],
-          invalidationConditions: ['A new route requires a new review.'],
-        },
+        proposal: councilProposal(routed, 'defensive_no_trade'),
+        risk: councilRisk(routed),
         tokenUsage: { calls: [], total: {}, unavailableCalls: 0 },
       },
     })
@@ -421,13 +474,13 @@ describe('P2 routed tactic workflow', () => {
     expect(malformed.engine.disposed).toBe(1)
   })
 
-  it('executes the registered zero-agent defense path from a fresh persisted strategic mirror', async () => {
+  it('runs the model council when hard-feasible tactics exist even if the scorecard recommends defense', async () => {
     for (const scorecard of [false, true]) {
       const fixture = await setupToolState({ scorecard })
-      const result = await executeTool(fixture)
+      const result = await executeAndSettleTool(fixture)
       expect(result.isError).toBe(false)
       if (result.isError) throw new Error('expected tactic tool success')
-      expect(result.value).toMatchObject({ agentsStarted: 0, decision: { scope: 'defense' } })
+      expect(result.value).toMatchObject({ agentsStarted: 5, decision: { scope: 'research' } })
     }
   })
 
@@ -447,26 +500,27 @@ describe('P2 routed tactic workflow', () => {
 
   it('renders both truncation forms and exposes compact presentation metadata', async () => {
     const tiny = await setupToolState({ maxResultChars: 5 })
-    const tinyResult = await executeTool(tiny)
+    const tinyResult = await executeAndSettleTool(tiny)
     expect((tinyResult.content[0] as { text: string }).text).toHaveLength(5)
 
     const bounded = await setupToolState({ maxResultChars: 40 })
-    const boundedResult = await executeTool(bounded)
+    const boundedResult = await executeAndSettleTool(bounded)
     expect((boundedResult.content[0] as { text: string }).text.endsWith('… [truncated]')).toBe(true)
 
     const full = await setupToolState()
-    const fullResult = await executeTool(full)
-    expect((fullResult.content[0] as { text: string }).text).toContain('deterministic:')
+    const fullResult = await executeAndSettleTool(full)
+    expect((fullResult.content[0] as { text: string }).text).toContain('advisoryTacticIds')
     const definition = full.ctx.tools.get('maoq_select_tactics')
-    expect(definition?.presentCall?.({})).toEqual({ card: 'generic', title: 'Select routed MAOQ tactics' })
+    expect(definition?.presentCall?.({})).toEqual({ card: 'generic', title: '动态研判完整 MAOQ 战法池' })
     expect(definition?.presentResult?.({}, { content: [], isError: false })).toEqual({ card: 'generic' })
 
     if (definition === undefined) throw new Error('maoq_select_tactics definition missing')
     const controller = new AbortController()
     controller.abort()
-    await expect(definition.execute({}, {
+    const aborted = definition.execute({}, {
       signal: controller.signal,
       agent: full.parent,
-    } as unknown as ToolRunContext)).resolves.toMatchObject({ agentsStarted: 0 })
+    } as unknown as ToolRunContext)
+    await expect(aborted).rejects.toThrow(/parent step aborted/)
   })
 })

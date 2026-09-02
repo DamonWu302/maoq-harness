@@ -23,10 +23,32 @@ function qualifiedRoute(): TacticRoutingRecord {
 }
 
 function proposal(route: TacticRoutingRecord) {
+  const specialists = ['big_bull_trend', 'short_sentiment'] as const
+  const reports = specialists.map((role, index) => ({
+    role,
+    verdict: index === 0 ? 'support' as const : 'conditional' as const,
+    preferredTacticIds: [index === 0 ? 'regime_signed_breakout_pullback' as const : 'openable_emotion_leader' as const],
+    analysis: `${role} finds a bounded opportunity.`,
+    supportingEvidenceRefs: route.advisoryUniverse.find(item => item.tacticId === (index === 0
+      ? 'regime_signed_breakout_pullback'
+      : 'openable_emotion_leader'))!.evidenceRefs,
+    counterEvidenceRefs: [],
+    confidence: 0.65,
+    invalidationConditions: ['The cited evidence reverses.'],
+  }))
   return {
     routeId: route.routeId,
+    selectedSpecialists: specialists,
+    specialistReports: reports,
+    marketPhase: 'Risk-on trend with startup emotion',
+    principalContradiction: 'Trend continuation versus early crowding.',
+    rewardedStyle: 'Liquid sector-confirmed leaders',
+    posture: 'probe' as const,
+    quantRouteDisposition: 'follow' as const,
+    quantRouteAssessment: 'The quantitative route and expert evidence align.',
     primaryTacticId: 'regime_signed_breakout_pullback' as const,
     secondaryTacticId: 'openable_emotion_leader' as const,
+    stockMissions: ['Find liquid leaders with sector confirmation and executable invalidation.'],
     thesis: 'Trend evidence leads while emotion leadership supplies a bounded secondary attack.',
     evidenceRefs: [
       ...route.slate.find(item => item.tacticId === 'regime_signed_breakout_pullback')!.evidenceRefs,
@@ -58,7 +80,7 @@ function routeWithScope(route: TacticRoutingRecord, scope: 'watch' | 'paper'): T
   return { ...scopedBody, routeId: contentHash(scopedBody) }
 }
 
-describe('bounded tactic commander', () => {
+describe('model-led tactic council', () => {
   it('preserves a routed research selection without creating paper authority', () => {
     const route = qualifiedRoute()
     const decision = createTacticCommanderDecision(route, proposal(route), risk(route))
@@ -92,8 +114,17 @@ describe('bounded tactic commander', () => {
     expect(route.slate.every(item => item.tacticId !== 'defensive_no_trade')).toBe(true)
     const decision = createTacticCommanderDecision(route, {
       routeId: route.routeId,
+      selectedSpecialists: proposal(route).selectedSpecialists,
+      specialistReports: proposal(route).specialistReports,
+      marketPhase: 'Qualified tactics face unusually high resistance.',
+      principalContradiction: 'Nominal qualification versus unfavorable payoff asymmetry.',
+      rewardedStyle: 'Cash and optionality',
+      posture: 'no_trade',
+      quantRouteDisposition: 'override',
+      quantRouteAssessment: 'The active slate is qualified but contradicted by its own routed evidence.',
       primaryTacticId: 'defensive_no_trade',
       secondaryTacticId: null,
+      stockMissions: ['Wait for a materially stronger evidence margin.'],
       thesis: 'The active routes remain qualified, but their combined resistance does not justify attack.',
       evidenceRefs: route.defensiveFallback.evidenceRefs,
       counterEvidenceRefs: route.slate.flatMap(item => item.evidenceRefs),
@@ -103,17 +134,23 @@ describe('bounded tactic commander', () => {
     expect(decision).toMatchObject({ scope: 'defense', finalPrimaryTacticId: 'defensive_no_trade' })
   })
 
-  it('rejects tactics and evidence outside the exact deterministic slate', () => {
+  it('allows an evidenced research-only override but rejects unknown evidence', () => {
     const route = qualifiedRoute()
-    expect(() => createTacticCommanderDecision(route, {
+    const advisory = route.advisoryUniverse.find(item => item.tacticId === 'sector_residual_strength')!
+    const overridden = createTacticCommanderDecision(route, {
       ...proposal(route),
       primaryTacticId: 'sector_residual_strength',
       secondaryTacticId: null,
-    }, risk(route))).toThrow(/outside deterministic route/)
+      quantRouteDisposition: 'override',
+      quantRouteAssessment: 'The scorecard lags a fresh residual-strength structure.',
+      evidenceRefs: advisory.evidenceRefs,
+      counterEvidenceRefs: route.slate[0]!.evidenceRefs,
+    }, risk(route))
+    expect(overridden).toMatchObject({ scope: 'research', maximumPaperPositionPct: 0, cashFloorPct: 100 })
     expect(() => createTacticCommanderDecision(route, {
       ...proposal(route),
       evidenceRefs: ['snapshot:unrouted#claim'],
-    }, risk(route))).toThrow(/outside its selected routed tactics/)
+    }, risk(route))).toThrow(/outside its selected advisory tactics/)
   })
 
   it('rejects incoherent defense and tampered route identities', () => {
@@ -144,6 +181,7 @@ describe('bounded tactic commander', () => {
   it('rejects every malformed proposal boundary', () => {
     const route = qualifiedRoute()
     const base = proposal(route)
+    const override = route.advisoryUniverse.find(item => item.tacticId === 'sector_residual_strength')!
     const invalid = [
       { ...base, routeId: '0'.repeat(64) },
       { ...base, routeId: 'not-a-hash' },
@@ -160,6 +198,18 @@ describe('bounded tactic commander', () => {
       { ...base, evidenceRefs: [' padded '] },
       { ...base, evidenceRefs: [base.evidenceRefs[0]!, base.evidenceRefs[0]!] },
       { ...base, invalidationConditions: [] },
+      { ...base, selectedSpecialists: ['big_bull_trend', 'big_bull_trend'] },
+      { ...base, specialistReports: base.specialistReports.slice(0, 1) },
+      { ...base, posture: 'reckless' },
+      { ...base, quantRouteDisposition: 'override' },
+      {
+        ...base,
+        primaryTacticId: 'sector_residual_strength',
+        secondaryTacticId: null,
+        evidenceRefs: override.evidenceRefs,
+        counterEvidenceRefs: [],
+        quantRouteDisposition: 'override',
+      },
     ]
     for (const item of invalid) {
       expect(() => createTacticCommanderDecision(

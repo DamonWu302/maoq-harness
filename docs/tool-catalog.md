@@ -1347,7 +1347,7 @@ Source: [`packages/workflow/tool-maoq-decision/src/index.ts`](../packages/workfl
 
 ### `maoq_select_tactics`
 
-Read the latest approved strategic state and bounded conditional scorecard, build a deterministic top-three route, then choose at most one primary and one secondary tactic under host validation and independent risk veto. It never scans full market history or places an order.
+Read the latest approved strategic state and conditional scorecard, treat the deterministic top three as quantitative advice, dynamically consult two experts, then choose one primary and optional secondary from the complete hard-feasible ten-tactic catalog under host validation and independent risk veto. It never scans full market history or places an order.
 
 ```json
 {
@@ -1559,7 +1559,11 @@ Run one fixed MAOQ tactic through quality-gated daily history, next-open A-share
       "description": "One fixed versioned research tactic.",
       "enum": [
         "regime_signed_breakout_pullback",
+        "platform_consolidation_second_advance",
+        "ah52_resistance_path",
         "openable_emotion_leader",
+        "first_divergence_core_repair",
+        "first_limit_delayed_price_discovery",
         "industry_relative_exhaustion_repair",
         "correlation_cluster_sector_rotation",
         "sector_residual_strength",

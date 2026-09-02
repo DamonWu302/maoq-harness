@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-02-maoq-model-led-tactic-council.md
+2026-09-02-maoq-model-led-tactic-council.md: 558146b4a9893d57320b8438432c95674cc9c922
+2026-09-02-maoq-model-led-tactic-council.zh.md: 4e6bdde184909e01eff93145a395ba2b4aa8ba60

@@ -25,7 +25,7 @@ The dynamic tactic commander turns the deterministic strategic state, a diverse 
 
 A full-period result for one tactic measures a weapon in isolation; it does not measure whether MAOQ identified the principal contradiction and chose the right weapon with information available at that time. The dynamic layer must therefore preserve fixed, auditable tactic implementations while evaluating and routing them conditionally by market regime, emotion cycle, sector structure, execution quality, and evidence uncertainty.
 
-The shared catalog aligns the six fixed research trials, eligibility evaluation, and the general council tactic enum. A host-owned conditional scorecard and deterministic router turn matured comparable-state evidence into a bounded top-three slate; `maoq_select_tactics` then runs constrained commander synthesis, host validation, and independent risk veto. Prequential replay can measure deterministic routing, but the historical range has no recorded model decisions, so it cannot yet measure value added by DSH synthesis and veto.
+The shared catalog aligns ten fixed research trials, eligibility evaluation, and the model-led council tactic enum. A host-owned conditional scorecard and deterministic router turn matured comparable-state evidence into a top-three quantitative recommendation, while the route also retains every hard-feasible catalog tactic as a bounded advisory universe. `maoq_select_tactics` dynamically selects two specialists, synthesizes a full-catalog battle plan, applies host validation, and requires an independent risk veto. Prequential replay can measure deterministic routing, but the historical range has no recorded model decisions, so it cannot yet measure value added by DSH synthesis and veto.
 
 -----
 
@@ -61,6 +61,7 @@ immutable daily snapshot
   -> unified tactic catalog and hard eligibility
   -> context-conditioned tactic scorecard
   -> deterministic top-three routing slate
+  -> complete hard-feasible advisory universe
   -> selected DSH specialists and commander synthesis
   -> host validation and independent risk veto
   -> tactic-specific stock ranking and next-session paper execution
@@ -97,7 +98,7 @@ The v2 implementation selects the narrowest evidence tier that reaches eight mat
 <a id="commander-contract"></a>
 ## Commander contract
 
-The DSH council resolves conflicts that deterministic scores do not settle: which contradiction is principal, whether a transition is underway, whether independent policy or news evidence confirms the sector path, and whether the advantage is clear enough to act. The commander receives a bounded top-three slate and may choose at most one primary tactic and one secondary tactic.
+The DSH council resolves conflicts that deterministic scores do not settle: which contradiction is principal, whether a transition is underway, whether independent policy or news evidence confirms the sector path, and whether the advantage is clear enough to act. The top-three slate is quantitative advice rather than the commander's world boundary. A planner selects exactly two relevant specialists from the short-sentiment, big-bull trend, short-fast, oversold-reversal, and sector-rotation registry; the commander may then choose at most one primary tactic and one secondary tactic from the complete hard-feasible advisory universe.
 
 The structured decision records the snapshot, strategic-state and router versions, principal contradiction, least-resistance battlefield, selected and rejected tactic IDs, score evidence, research or paper scope, risk budgets, cash weight, confidence, counter-evidence, transition conditions, and invalidation conditions. `tacticId` is an enum from the unified catalog rather than free-form prose.
 
@@ -147,7 +148,7 @@ These phases belong to P3.5 and do not replace the project-wide P0-P5 milestones
 
 ### P0 — One tactic truth and fail-closed use
 
-**Status: implemented.** `dsh-market-tactic-eligibility` owns the six active tactic IDs, `defensive_no_trade`, their versions, families, promotion status, context requirements, execution requirements, and risk policy. The tactic lab derives its research IDs and version map from that catalog, and the model-facing research tool consumes the derived ID list. The general council exposes the same IDs as an enum, and host validation rejects unknown tactics, mismatched `no_trade`, unknown actions, and a research tactic presented as `paper_trade`.
+**Status: implemented.** `dsh-market-tactic-eligibility` owns ten active tactic IDs, `defensive_no_trade`, their versions, families, promotion status, context requirements, execution requirements, and risk policy. The tactic lab derives its research IDs and version map from that catalog, and the model-facing research tool consumes the derived ID list. The model-led council exposes the same IDs as an enum, and host validation rejects unknown tactics, mismatched defense, invalid quantitative overrides, unknown actions, and a research tactic presented with paper authority.
 
 P0 exits when catalog identity and versions cannot drift across the eligibility evaluator, research lab, research tool, and council; invalid model output fails at the host parser; and a real Loader composition preserves a registered tactic through synthesis and veto. P0 does not claim conditional performance, top-three routing, or dynamic tactic selection.
 
@@ -159,7 +160,7 @@ P1 exits with content identities for every outcome, scorecard, and route; open-c
 
 ### P2 — DSH commander, veto, and prequential attribution
 
-**Status: implemented and not promoted.** `maoq_select_tactics` gives the DSH commander only the deterministic top-three slate, defensive fallback, and smallest sufficient evidence. The commander may choose one primary and one secondary tactic, while host validation owns scope and risk limits and an independent reviewer keeps final veto authority. Structured decisions, token use, route identity, and final veto are persisted for later attribution.
+**Status: implemented and not promoted.** `maoq_select_tactics` gives the DSH commander both the deterministic top-three quantitative recommendation and the complete hard-feasible advisory universe. A planner dynamically selects two independent specialists; the commander records market phase, principal contradiction, rewarded style, posture, stock missions, evidence, counter-evidence, confidence, invalidation, and whether it follows or overrides the quantitative route. An override requires explicit counter-evidence, and any route-external tactic is forced to research scope with zero paper authority. Host validation owns scope and risk limits, while an independent reviewer keeps final veto authority. Structured specialist reports, decisions, token use, route identity, and final veto are persisted for later attribution.
 
 The point-in-time replay from 2022-01-01 through 2025-12-31 covers 969 sessions, of which 967 are routable. The deterministic route selects defense on 929 sessions and breakout-pullback on 38. With 5 basis points of switching cost, it returns -3.14%, reaches 7.49% maximum drawdown, switches 66 times, and pays 3.30% in switching costs. The fixed breakout-pullback tactic returns 78.06% with 36.71% maximum drawdown, equal allocation returns -18.94%, and no-trade returns zero. The current router reduces drawdown, but excessive abstention and switching fail the paper-promotion criterion.
 
