@@ -14,13 +14,15 @@ export const TACTIC_OUTCOME_SCHEMA_VERSION = 1 as const
 /** Current incremental conditional-scorecard format. */
 export const TACTIC_SCORECARD_SCHEMA_VERSION = 1 as const
 /** Current fixed transforms, thresholds, and route-score identity. */
-export const TACTIC_ROUTER_VERSION = 'maoq-deterministic-tactic-router-v2' as const
+export const TACTIC_ROUTER_VERSION = 'maoq-deterministic-tactic-router-v3' as const
 /** Current context bucketing identity. */
 export const TACTIC_CONTEXT_VERSION = 'maoq-tactic-context-v1' as const
 /** Current host-owned bounded commander decision format. */
 export const TACTIC_COMMANDER_SCHEMA_VERSION = 1 as const
 /** Current commander scope, validation, and final-veto policy. */
 export const TACTIC_COMMANDER_POLICY_VERSION = 'maoq-bounded-tactic-commander-v1' as const
+/** Current deterministic post-route holding and switching policy. */
+export const TACTIC_TRANSITION_POLICY_VERSION = 'maoq-tactic-transition-v1' as const
 
 /** Bounded top-sector participation condition. */
 export type SectorStructureBand = 'broad' | 'balanced' | 'narrow'
@@ -191,6 +193,35 @@ export interface TacticRoutingRecord {
   readonly defensiveFallback: TacticRouteCandidate
   readonly rejected: readonly RejectedTacticRoute[]
   readonly cashFloorPct: number
+}
+
+/** Previous deterministic selection supplied to the stateless transition selector. */
+export interface TacticTransitionState {
+  readonly tacticId: TacticId
+  readonly heldRoutableSessions: number
+}
+
+/** Auditable reason for entering, retaining, switching, or leaving one routed tactic. */
+export type TacticTransitionReason =
+  | 'initial_selection'
+  | 'enter_from_defense'
+  | 'retain_leader'
+  | 'retain_minimum_hold'
+  | 'retain_score_margin'
+  | 'switch_challenger'
+  | 'incumbent_unavailable'
+
+/** Content-addressed deterministic selection after applying the transition policy to one route. */
+export interface TacticTransitionDecision {
+  readonly transitionPolicyVersion: typeof TACTIC_TRANSITION_POLICY_VERSION
+  readonly transitionId: string
+  readonly routeId: string
+  readonly priorTacticId: TacticId | null
+  readonly challengerTacticId: TacticId
+  readonly selectedTacticId: TacticId
+  readonly heldRoutableSessions: number
+  readonly scoreAdvantage: number | null
+  readonly reason: TacticTransitionReason
 }
 
 /** Model proposal constrained to one exact deterministic route. */

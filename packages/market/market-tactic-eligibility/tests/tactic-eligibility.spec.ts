@@ -74,13 +74,15 @@ function features(overrides: {
 }
 
 describe('P3 tactic eligibility', () => {
-  it('keeps active candidates in research even when their context fits', () => {
+  it('keeps every hard-feasible active candidate in research and tracks preferred-state fit separately', () => {
     const result = evaluateTacticEligibility(features())
     expect(result.researchCandidateIds).toEqual([
       'regime_signed_breakout_pullback',
       'openable_emotion_leader',
+      'industry_relative_exhaustion_repair',
       'correlation_cluster_sector_rotation',
       'sector_residual_strength',
+      'low_volatility_sector_leader',
     ])
     expect(result.eligibleTacticIds).toEqual(['defensive_no_trade'])
     expect(result.tactics.find(tactic => tactic.tacticId === 'openable_emotion_leader')?.eligibleSectorIds)
@@ -89,11 +91,32 @@ describe('P3 tactic eligibility', () => {
       .map(definition => definition.tacticVersion))
   })
 
-  it('matches industry-relative repair only to repair-like context', () => {
+  it('marks industry-relative repair as the preferred-state match in repair-like context', () => {
     const result = evaluateTacticEligibility(features({ market: 'repair', emotion: 'repair' }))
-    expect(result.researchCandidateIds).toEqual(['industry_relative_exhaustion_repair'])
+    expect(result.researchCandidateIds).toEqual(ACTIVE_TACTIC_IDS)
+    expect(result.tactics.find(tactic => tactic.tacticId === 'industry_relative_exhaustion_repair')?.contextFit)
+      .toBe(true)
     expect(result.tactics.find(tactic => tactic.tacticId === 'regime_signed_breakout_pullback')?.status)
-      .toBe('ineligible')
+      .toBe('research_only')
+  })
+
+  it('keeps preferred-state mismatch soft when hard market facts are usable', () => {
+    const result = evaluateTacticEligibility(features())
+    const repair = result.tactics.find(tactic => tactic.tacticId === 'industry_relative_exhaustion_repair')!
+    expect(repair).toMatchObject({
+      status: 'research_only',
+      contextFit: false,
+      eligibleSectorIds: ['sw-1'],
+    })
+    expect(repair.reasonCodes).toContain('STATE_MISMATCH:market_regime')
+    expect(repair.gates.find(gate => gate.gateId === 'market_regime')).toMatchObject({
+      kind: 'state_fit',
+      passed: false,
+    })
+    expect(repair.gates.find(gate => gate.gateId === 'positive_sector_battlefield')).toMatchObject({
+      kind: 'hard',
+      passed: true,
+    })
   })
 
   it('fails active tactics closed when strategic facts are unavailable', () => {

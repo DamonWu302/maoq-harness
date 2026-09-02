@@ -9,6 +9,7 @@ import {
   attributeMaturedTacticOutcome,
   createEmptyTacticScorecard,
   routeEligibleTactics,
+  selectTacticTransition,
   tacticConditionalMetrics,
   verifyTacticCommanderDecisionRecord,
   type ExecutionQualityBand,
@@ -17,6 +18,8 @@ import {
   type TacticCommanderDecisionRecord,
   type TacticRoutingRecord,
   type TacticScorecardRecord,
+  type TacticTransitionReason,
+  type TacticTransitionState,
 } from '@deepseek-ai/dsh-market-tactic-routing'
 import { deepFreeze } from '@deepseek-ai/dsh-util-values'
 import {
@@ -32,7 +35,7 @@ import type {
 import type { ResearchTacticId } from './signals.ts'
 
 /** Current prequential route, attribution, and switching-cost policy. */
-export const DYNAMIC_TACTIC_REPLAY_VERSION = 'maoq-dynamic-tactic-replay-v3' as const
+export const DYNAMIC_TACTIC_REPLAY_VERSION = 'maoq-dynamic-tactic-replay-v4' as const
 
 /** Predeclared historical comparison policy; changing it creates a new replay version. */
 export const DYNAMIC_TACTIC_REPLAY_POLICY = deepFreeze({ switchingCostBps: 5 })
@@ -42,6 +45,10 @@ export interface DynamicTacticReplayDay {
   readonly tradingDate: string
   readonly routeId: string
   readonly scorecardId: string
+  readonly routedTacticId: TacticId
+  readonly transitionId: string
+  readonly transitionReason: TacticTransitionReason
+  readonly heldRoutableSessions: number
   readonly deterministicTacticId: TacticId
   readonly deterministicEvidenceScope: TacticEvidenceScope | null
   readonly commanderDecisionId: string | null
@@ -77,6 +84,7 @@ export interface DynamicTacticReplayEvaluation {
     readonly fixed: Readonly<Record<ResearchTacticId, DynamicTacticReplayTrack>>
     readonly equalAllocation: DynamicTacticReplayTrack
     readonly defensiveNoTrade: DynamicTacticReplayTrack
+    readonly statelessRoute: DynamicTacticReplayTrack
     readonly deterministicRoute: DynamicTacticReplayTrack
     readonly commanderProposed: DynamicTacticReplayTrack
     readonly commanderFinal: DynamicTacticReplayTrack
@@ -271,26 +279,46 @@ export function evaluateDynamicTacticReplay(
   const pending = new Map<string, MaturedTacticOutcome[]>()
   const routes: TacticRoutingRecord[] = []
   const days: DynamicTacticReplayDay[] = []
+  const routedByDate = new Map<string, TacticId>()
   const deterministicByDate = new Map<string, TacticId>()
   const proposedByDate = new Map<string, TacticId>()
   const finalByDate = new Map<string, TacticId>()
+  let transitionState: TacticTransitionState = {
+    tacticId: 'defensive_no_trade',
+    heldRoutableSessions: 0,
+  }
   let usedCommanderDecisions = 0
   for (let index = 0; index < sessions; index += 1) {
     const features = suite.strategicFeatures[index] as NonNullable<typeof suite.strategicFeatures[number]>
     scorecard = advanceTacticScorecard(scorecard, pending.get(features.tradingDate) ?? [], features.cutoffTime)
-    if (!features.eligibleForInterpretation) continue
+    if (!features.eligibleForInterpretation) {
+      transitionState = { tacticId: 'defensive_no_trade', heldRoutableSessions: 0 }
+      continue
+    }
     if (features.sectorBattlefields.status !== 'ready'
-      || (features.sectorBattlefields.value[0]?.compositeScore ?? 0) <= 0) continue
+      || (features.sectorBattlefields.value[0]?.compositeScore ?? 0) <= 0) {
+      transitionState = { tacticId: 'defensive_no_trade', heldRoutableSessions: 0 }
+      continue
+    }
     const quality = executionQuality(scorecard)
     const route = routeEligibleTactics(features, evaluateTacticEligibility(features), scorecard, quality)
     routes.push(route)
-    const deterministic = (route.slate[0] as NonNullable<typeof route.slate[number]>).tacticId
-    const deterministicEvidenceScope = (route.slate[0] as NonNullable<typeof route.slate[number]>).evidenceScope
+    const routed = (route.slate[0] as NonNullable<typeof route.slate[number]>).tacticId
+    const transition = selectTacticTransition(route, transitionState)
+    transitionState = {
+      tacticId: transition.selectedTacticId,
+      heldRoutableSessions: transition.heldRoutableSessions,
+    }
+    const deterministic = transition.selectedTacticId
+    const deterministicEvidenceScope = deterministic === 'defensive_no_trade'
+      ? null
+      : route.slate.find(item => item.tacticId === deterministic)?.evidenceScope ?? null
     const recorded = decisionByRoute.get(route.routeId)
     const commander = recorded === undefined ? undefined : verifyTacticCommanderDecisionRecord(recorded, route)
     if (commander !== undefined) usedCommanderDecisions += 1
     const proposed = commander?.proposal.primaryTacticId ?? 'defensive_no_trade'
     const final = commander?.finalPrimaryTacticId ?? 'defensive_no_trade'
+    routedByDate.set(features.tradingDate, routed)
     deterministicByDate.set(features.tradingDate, deterministic)
     proposedByDate.set(features.tradingDate, proposed)
     finalByDate.set(features.tradingDate, final)
@@ -298,6 +326,10 @@ export function evaluateDynamicTacticReplay(
       tradingDate: features.tradingDate,
       routeId: route.routeId,
       scorecardId: route.scorecardId,
+      routedTacticId: routed,
+      transitionId: transition.transitionId,
+      transitionReason: transition.reason,
+      heldRoutableSessions: transition.heldRoutableSessions,
       deterministicTacticId: deterministic,
       deterministicEvidenceScope,
       commanderDecisionId: commander?.decisionId ?? null,
@@ -323,6 +355,7 @@ export function evaluateDynamicTacticReplay(
   const equalSelections = equalReturns.map(() => ACTIVE_TACTIC_IDS[0] as ActiveTacticId)
   const equalAllocation = track(equalReturns, equalSelections, 0)
   const defensiveNoTrade = track(equalReturns.map(() => 0), defensiveSelections, 0)
+  const statelessRoute = trackFromDecisionMap(suite, routedByDate, switchingCostBps)
   const deterministicRoute = trackFromDecisionMap(suite, deterministicByDate, switchingCostBps)
   const commanderProposed = trackFromDecisionMap(suite, proposedByDate, switchingCostBps)
   const commanderFinal = trackFromDecisionMap(suite, finalByDate, switchingCostBps)
@@ -333,6 +366,7 @@ export function evaluateDynamicTacticReplay(
     ])) as Record<ResearchTacticId, DynamicReplayReturnSeries>,
     equalAllocation: equalAllocation.series,
     defensiveNoTrade: defensiveNoTrade.series,
+    statelessRoute: statelessRoute.series,
     deterministicRoute: deterministicRoute.series,
     commanderProposed: commanderProposed.series,
     commanderFinal: commanderFinal.series,
@@ -356,6 +390,7 @@ export function evaluateDynamicTacticReplay(
       ])) as Record<ResearchTacticId, DynamicTacticReplayTrack>,
       equalAllocation: equalAllocation.summary,
       defensiveNoTrade: defensiveNoTrade.summary,
+      statelessRoute: statelessRoute.summary,
       deterministicRoute: deterministicRoute.summary,
       commanderProposed: commanderProposed.summary,
       commanderFinal: commanderFinal.summary,

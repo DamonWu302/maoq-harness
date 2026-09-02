@@ -14,11 +14,13 @@ The context key contains the versioned market regime, emotion cycle, top-sector 
 
 `TacticRoutingStore` persists outcomes in UTC availability-day partitions and scorecards by content identity. Incremental catch-up enumerates only calendar partitions between two explicit cutoffs and fails when the caller's maximum span is exceeded. The daily router consumes one exact scorecard identity and never scans outcome files or market bars.
 
-## Deterministic route
+## Deterministic route and transition
 
-The v2 router first applies P0 eligibility and exact catalog-version checks. It then selects the narrowest evidence tier with at least eight matured samples: exact context, market regime plus emotion cycle, or the same market regime. Evidence never crosses a market-regime boundary. An active tactic still needs a positive 95% expectation lower bound, positive doubled-cost expectation, at least 50% fill rate, and a positive score. The route records the chosen evidence scope and preserves each positive and negative score component separately. A change to thresholds, tiers, bands, decay, or weights requires a new router or context version.
+The v3 router first applies hard feasibility and exact catalog-version checks. Preferred market and emotion labels are a bounded state-fit prior rather than a prohibition. It then selects the narrowest evidence tier with at least eight matured samples: exact context, market regime plus emotion cycle, or the same market regime. Evidence never crosses a market-regime boundary. An active tactic still needs a positive 95% expectation lower bound, positive doubled-cost expectation, at least 50% fill rate, and a positive score. The route records the chosen evidence scope and preserves each positive and negative score component separately. A change to thresholds, tiers, bands, decay, or weights requires a new router or context version.
 
 Qualified tactics compete with `defensive_no_trade` in stable score and tactic-ID order. The slate contains at most three entries, while the defensive candidate remains separately addressable even when it falls below three positive active scores. Research and paper promotion remain explicit: research candidates have a zero paper-position ceiling. The record preserves current snapshot, eligibility engine, scorecard, router, context, score components, evidence references, rejected tactics, risk ceilings, and cash floor as replay identities.
+
+After routing, the transition policy enters from defense immediately and exits when the incumbent is absent. A discretionary active-to-active switch requires five routable holding sessions and a challenger advantage of at least 0.03. The transition decision is independently content-addressed and records its reason. Replay preserves both the raw route and transition-controlled selection; no future benchmark return enters either decision.
 
 ## Commander decision
 

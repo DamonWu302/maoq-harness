@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-02-maoq-regime-combat-policy.md
+2026-09-02-maoq-regime-combat-policy.md: 9adeae0e61de7efcf4c82b616ed34c3f6b273d6c
+2026-09-02-maoq-regime-combat-policy.zh.md: 69d024225e1ff2332a6d80e4120c2996ae760312

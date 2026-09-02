@@ -189,8 +189,12 @@ describe('dynamic tactic prequential replay', () => {
     const deterministic = evaluateDynamicTacticReplay(input)
     expect(deterministic.replayVersion).toBe(DYNAMIC_TACTIC_REPLAY_VERSION)
     expect(deterministic.days.slice(0, 8).every(day => day.deterministicTacticId === 'defensive_no_trade')).toBe(true)
+    expect(deterministic.days.slice(0, 8).every(day => day.routedTacticId === 'defensive_no_trade')).toBe(true)
     expect(deterministic.days.slice(0, 8).every(day => day.deterministicEvidenceScope === null)).toBe(true)
     expect(deterministic.days.some(day => day.deterministicEvidenceScope !== null)).toBe(true)
+    expect(deterministic.days.every(day => /^[a-f0-9]{64}$/u.test(day.transitionId))).toBe(true)
+    expect(deterministic.days.some(day => day.transitionReason === 'enter_from_defense')).toBe(true)
+    expect(deterministic.tracks.statelessRoute.observations).toBe(19)
     expect(deterministic.tracks.deterministicRoute.activeSessions).toBeGreaterThan(0)
     expect(deterministic.benchmarks['000001.SH']).toMatchObject({
       benchmarkId: '000001.SH',

@@ -35,6 +35,7 @@ Use this library after P0 eligibility and before model-assisted P2 synthesis. A 
 const outcome = attributeMaturedTacticOutcome(completed)
 const next = advanceTacticScorecard(previous, [outcome], cutoffTime)
 const route = routeEligibleTactics(features, eligibility, next)
+const transition = selectTacticTransition(route, previousTransitionState)
 const decision = createTacticCommanderDecision(route, proposal, risk)
 ```
 
@@ -50,7 +51,9 @@ Success returns immutable content-addressed records. Future-visible outcomes, in
 
 The routing context uses market regime, emotion cycle, top-sector structure, a state-derived volatility band, top-sector crowding, and a caller-supplied execution-quality band. Each cell keeps sufficient statistics, a recent-effectiveness exponential average, and the latest visibility timestamp. This permits incremental updates without retaining raw daily bars in the scorecard.
 
-The v2 router selects the narrowest evidence tier that reaches eight matured samples: exact context, then market regime plus emotion cycle, then the same market regime. It never borrows evidence across market regimes. Pooled return, risk, and execution metrics are recomputed from sufficient statistics; recent effectiveness is sample-weighted across cells. A broader tier receives a smaller context-alignment score. An active tactic still needs a positive 95% expectancy lower bound, positive doubled-cost expectancy, at least 50% fill rate, and a positive final score. Research tactics may enter a research slate but retain a zero paper-position ceiling.
+The v3 router selects the narrowest evidence tier that reaches eight matured samples: exact context, then market regime plus emotion cycle, then the same market regime. It never borrows evidence across market regimes. Hard-feasible tactics compete even outside their catalog preferred state; market and emotion fit contributes a bounded 0.15, 0.08, 0.04, or zero prior. Pooled return, risk, and execution metrics are recomputed from sufficient statistics; recent effectiveness is sample-weighted across cells. A broader tier receives a smaller context-alignment score. An active tactic still needs a positive 95% expectancy lower bound, positive doubled-cost expectancy, at least 50% fill rate, and a positive final score. Research tactics may enter a research slate but retain a zero paper-position ceiling.
+
+The versioned transition selector enters from defense when an active candidate qualifies and exits immediately when the incumbent disappears. It otherwise holds an active incumbent for at least five routable sessions and requires a 0.03 challenger score advantage before a discretionary switch. Its content-addressed record exposes the prior, challenger, selected tactic, hold count, score advantage, and reason. The daily replay reports both the raw stateless route and this transition-controlled route so switching cost is attributable rather than hidden.
 
 Commander validation derives scope and position ceilings from the selected routed candidates instead of accepting model-authored authority. `defensive_no_trade` is always selectable through the route fallback even when three active tactics fill the slate. A veto replaces the final selection with defense and cannot be represented as an approved active action.
 
@@ -82,6 +85,7 @@ None. A future consumer owns any selected route text added to model context.
 
 - **No forced participation** — the evidence ladder repairs exact-cell sparsity but does not manufacture an active route when same-regime evidence remains absent or negative.
 - **No cross-regime transfer** — evidence learned in a bull state cannot qualify a tactic in contraction, repair, rotation, or high-volatility divergence.
+- **Transition evidence remains development-only** — the 2022–2025 replay exercised only one minimum-hold override and no score-margin switch, so the fixed five-session and 0.03 parameters still require a sealed holdout.
 - **Outcome facts are supplied by execution or replay** — the library validates and attributes completed results but does not invent returns from strategic features.
 - **Historical model coverage is external** — the library validates supplied proposals and vetoes but does not generate historical model decisions; replay reports missing coverage without imputation.
 - **No live order authority** — a promoted route remains a paper risk ceiling, not a broker instruction.

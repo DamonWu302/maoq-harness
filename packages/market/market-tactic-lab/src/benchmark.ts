@@ -14,6 +14,7 @@ export interface DynamicReplayReturnSeriesSet {
   readonly fixed: Readonly<Record<ResearchTacticId, DynamicReplayReturnSeries>>
   readonly equalAllocation: DynamicReplayReturnSeries
   readonly defensiveNoTrade: DynamicReplayReturnSeries
+  readonly statelessRoute: DynamicReplayReturnSeries
   readonly deterministicRoute: DynamicReplayReturnSeries
   readonly commanderProposed: DynamicReplayReturnSeries
   readonly commanderFinal: DynamicReplayReturnSeries
@@ -60,6 +61,7 @@ export interface DynamicBenchmarkEvaluation {
     readonly fixed: Readonly<Record<ResearchTacticId, DynamicBenchmarkComparison>>
     readonly equalAllocation: DynamicBenchmarkComparison
     readonly defensiveNoTrade: DynamicBenchmarkComparison
+    readonly statelessRoute: DynamicBenchmarkComparison
     readonly deterministicRoute: DynamicBenchmarkComparison
     readonly commanderProposed: DynamicBenchmarkComparison
     readonly commanderFinal: DynamicBenchmarkComparison
@@ -176,6 +178,7 @@ export function evaluateDynamicBenchmarks(
     ...Object.values(tracks.fixed),
     tracks.equalAllocation,
     tracks.defensiveNoTrade,
+    tracks.statelessRoute,
     tracks.deterministicRoute,
     tracks.commanderProposed,
     tracks.commanderFinal,
@@ -209,6 +212,7 @@ export function evaluateDynamicBenchmarks(
         ])) as Readonly<Record<ResearchTacticId, DynamicBenchmarkComparison>>,
         equalAllocation: comparison(tracks.equalAllocation, returns, regimes),
         defensiveNoTrade: comparison(tracks.defensiveNoTrade, returns, regimes),
+        statelessRoute: comparison(tracks.statelessRoute, returns, regimes),
         deterministicRoute: comparison(tracks.deterministicRoute, returns, regimes),
         commanderProposed: comparison(tracks.commanderProposed, returns, regimes),
         commanderFinal: comparison(tracks.commanderFinal, returns, regimes),

@@ -7,7 +7,7 @@ import type {
 /** Current deterministic tactic eligibility schema. */
 export const TACTIC_ELIGIBILITY_SCHEMA_VERSION = 2 as const
 /** Current registry and gate implementation identity. */
-export const TACTIC_ELIGIBILITY_ENGINE_VERSION = 'maoq-tactic-eligibility-v3' as const
+export const TACTIC_ELIGIBILITY_ENGINE_VERSION = 'maoq-tactic-eligibility-v4' as const
 
 /** Stable IDs for every implemented tactic and the defensive fallback. */
 export type TacticId =
@@ -26,6 +26,8 @@ export type ActiveTacticId = Exclude<TacticId, 'defensive_no_trade'>
 export type TacticPromotionStatus = 'research' | 'paper' | 'eligible'
 /** Current deterministic eligibility outcome after promotion and context gates. */
 export type TacticEligibilityStatus = 'eligible' | 'watch_only' | 'research_only' | 'ineligible'
+/** Whether a failed gate blocks execution or only lowers preferred-state fit. */
+export type TacticGateKind = 'hard' | 'state_fit'
 /** Catalog-owned tactic family used to audit market-regime coverage. */
 export type TacticFamily = 'trend' | 'emotion' | 'reversal' | 'rotation' | 'relative_strength' | 'low_volatility' | 'defense'
 
@@ -50,6 +52,7 @@ export interface TacticDefinition {
 /** One deterministic, auditable gate evaluated from P2 strategic facts. */
 export interface TacticGateResult {
   readonly gateId: string
+  readonly kind: TacticGateKind
   readonly passed: boolean
   readonly actual: string
   readonly expected: string

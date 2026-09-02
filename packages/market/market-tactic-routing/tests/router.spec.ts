@@ -120,6 +120,25 @@ describe('deterministic tactic routing', () => {
       .toMatchObject({ reasons: ['missing_conditional_record'], evidenceScope: null })
   })
 
+  it('routes positive same-regime evidence outside a tactic preferred state with a zero prior', () => {
+    const features = strategicFeatures()
+    const context = deriveTacticRoutingContext(features)
+    const scorecard = advanceTacticScorecard(
+      createEmptyTacticScorecard('2026-01-01T00:00:00.000Z'),
+      outcomes('industry_relative_exhaustion_repair', 8, {
+        context,
+        netReturn: 0.04,
+        doubledCostNetReturn: 0.03,
+      }),
+      '2026-02-01T00:00:00.000Z',
+    )
+    const route = routeEligibleTactics(features, evaluateTacticEligibility(features), scorecard)
+    expect(route.slate[0]).toMatchObject({
+      tacticId: 'industry_relative_exhaustion_repair',
+      scoreComponents: { stateFit: 0 },
+    })
+  })
+
   it.each([
     [{ doubledCostNetReturn: -0.001 }, 'nonpositive_doubled_cost_expectancy'],
     [{ fillRate: 0.4 }, 'fill_rate_below_half'],

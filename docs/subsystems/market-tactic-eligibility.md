@@ -8,11 +8,11 @@ The market tactic eligibility subsystem is the deterministic boundary between P2
 
 Every `TacticDefinition` has a stable tactic ID, tactic version, family, promotion status, evidence grade, history requirement, maximum holding period, maximum paper position, entry and exit policies, invalidation policy, and execution requirements. The catalog contains six active candidates: regime-signed breakout/pullback, openable emotion leader, industry-relative exhaustion repair, correlation-cluster sector rotation, sector-residual strength, and low-volatility sector leadership. All six remain in `research`; defensive no-trade is `eligible`. The research lab and model-facing council consume these IDs and versions instead of declaring separate tactic maps.
 
-Promotion and context fit are independent. `research` plus matching context becomes `research_only`; `paper` becomes `watch_only`; only an `eligible` definition with passing gates can enter `eligibleTacticIds`. Model analysis cannot modify either field.
+Promotion and context fit are independent. A hard-feasible `research` definition becomes `research_only` even outside its preferred state; `contextFit` and mismatch reasons preserve the soft prior. `paper` becomes `watch_only`; only an `eligible` definition with passing hard gates can enter `eligibleTacticIds`. Model analysis cannot modify either field.
 
 ## Deterministic gates
 
-`evaluateTacticEligibility()` consumes one `StrategicFeatureRecord`. Active tactics first require ready market-regime, emotion-cycle, and sector-battlefield components. Each catalog definition owns its market-regime and emotion-cycle coverage, then applies a positive top-sector gate. Automated coverage requires at least one active tactic family for every market regime. Passing results expose at most three positively scored sector IDs; failures carry stable reason codes and exact P2 evidence references.
+`evaluateTacticEligibility()` consumes one `StrategicFeatureRecord`. Ready market-regime, emotion-cycle, and sector-battlefield components plus a positive top sector are hard gates. Each catalog definition's market-regime and emotion-cycle coverage is a preferred-state gate: mismatch is auditable but does not exclude a hard-feasible research candidate. Passing hard feasibility exposes at most three positively scored sector IDs; every gate records its kind, stable reason codes, and exact P2 evidence references.
 
 If any required component is unavailable, every active tactic fails closed. `defensive_no_trade` remains eligible with zero position and no-order execution requirements. This ensures that incomplete evidence cannot disappear merely because model prose is confident.
 

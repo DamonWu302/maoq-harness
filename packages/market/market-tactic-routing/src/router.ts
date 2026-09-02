@@ -26,7 +26,7 @@ import {
   type TacticScorecardRecord,
 } from './types.ts'
 
-/** Fixed v1 evidence thresholds; changes require a new router version. */
+/** Fixed v3 evidence thresholds; changes require a new router version. */
 export const TACTIC_ROUTER_POLICY = deepFreeze({
   minimumMaturedSamples: 8,
   fullConfidenceSamples: 32,
@@ -65,9 +65,10 @@ function components(
   metrics: TacticConditionalMetrics,
   context: TacticRoutingRecord['context'],
   evidenceScope: TacticEvidenceScope,
+  stateFit: number,
 ): TacticRouteScoreComponents {
   return {
-    stateFit: 0.15,
+    stateFit,
     conditionalExpectancy: rounded(clamp(metrics.expectancyLowerBound * 5, -0.5, 0.5)),
     contextAlignment: evidenceScope === 'exact_context' ? 0.1 : evidenceScope === 'regime_emotion' ? 0.06 : 0.03,
     recentEffectiveness: rounded(clamp(metrics.recentEffectiveness * 2, -0.2, 0.2)),
@@ -78,6 +79,15 @@ function components(
     uncertaintyPenalty: rounded(Math.max(0, TACTIC_ROUTER_POLICY.fullConfidenceSamples - metrics.sampleCount)
       / TACTIC_ROUTER_POLICY.fullConfidenceSamples * 0.15),
   }
+}
+
+function stateFit(definition: TacticDefinition, context: TacticRoutingRecord['context']): number {
+  const market = definition.eligibleMarketRegimes.includes(context.marketRegime)
+  const emotion = definition.eligibleEmotionCycles.includes(context.emotionCycle)
+  if (market && emotion) return 0.15
+  if (market) return 0.08
+  if (emotion) return 0.04
+  return 0
 }
 
 function totalScore(value: TacticRouteScoreComponents): number {
@@ -247,7 +257,7 @@ export function routeEligibleTactics(
       continue
     }
     const metrics = evidence.metrics
-    const scoreComponents = components(metrics, context, evidence.scope)
+    const scoreComponents = components(metrics, context, evidence.scope, stateFit(definition, context))
     const routeScore = totalScore(scoreComponents)
     const reasons: TacticRouteRejectionReason[] = [
       ...metrics.sampleCount < TACTIC_ROUTER_POLICY.minimumMaturedSamples ? ['insufficient_matured_sample' as const] : [],

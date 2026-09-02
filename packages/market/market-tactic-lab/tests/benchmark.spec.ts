@@ -37,6 +37,7 @@ function tracks(series: DynamicReplayReturnSeries): DynamicReplayReturnSeriesSet
     fixed: Object.fromEntries(ACTIVE_TACTIC_IDS.map(tacticId => [tacticId, series])) as DynamicReplayReturnSeriesSet['fixed'],
     equalAllocation: series,
     defensiveNoTrade: track(series.returns.map(() => 0), series.returns.map(() => false)),
+    statelessRoute: series,
     deterministicRoute: series,
     commanderProposed: series,
     commanderFinal: series,

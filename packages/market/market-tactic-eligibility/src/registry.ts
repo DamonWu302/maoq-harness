@@ -185,6 +185,7 @@ function labelGate(
 ): TacticGateResult {
   return {
     gateId,
+    kind: 'state_fit',
     passed: allowed.includes(actual),
     actual,
     expected: allowed.join('|'),
@@ -198,6 +199,7 @@ function availabilityGate(features: StrategicFeatureRecord): TacticGateResult {
     && features.sectorBattlefields.status === 'ready'
   return {
     gateId: 'strategic_components_ready',
+    kind: 'hard',
     passed: ready,
     actual: ready ? 'ready' : 'unavailable',
     expected: 'ready',
@@ -213,6 +215,7 @@ function sectorGate(features: StrategicFeatureRecord): TacticGateResult {
   if (features.sectorBattlefields.status === 'unavailable') {
     return {
       gateId: 'positive_sector_battlefield',
+      kind: 'hard',
       passed: false,
       actual: 'unavailable',
       expected: 'top-sector-composite-score>0',
@@ -222,6 +225,7 @@ function sectorGate(features: StrategicFeatureRecord): TacticGateResult {
   const top = features.sectorBattlefields.value[0]
   return {
     gateId: 'positive_sector_battlefield',
+    kind: 'hard',
     passed: top !== undefined && top.compositeScore > 0,
     actual: top === undefined ? 'none' : `${top.sectorId}:${top.compositeScore}`,
     expected: 'top-sector-composite-score>0',
@@ -269,11 +273,13 @@ function evaluateDefinition(definition: TacticDefinition, features: StrategicFea
     }
   }
   const gates = activeGates(definition as TacticDefinition & { readonly tacticId: ActiveTacticId }, features)
-  const contextFit = gates.every(gate => gate.passed)
-  const status = contextFit ? FIT_STATUS_BY_PROMOTION[definition.promotionStatus] : 'ineligible'
+  const hardFit = gates.filter(gate => gate.kind === 'hard').every(gate => gate.passed)
+  const contextFit = gates.filter(gate => gate.kind === 'state_fit').every(gate => gate.passed)
+  const status = hardFit ? FIT_STATUS_BY_PROMOTION[definition.promotionStatus] : 'ineligible'
   const reasonCodes = [
-    ...gates.filter(gate => !gate.passed).map(gate => `GATE_FAILED:${gate.gateId}`),
-    ...contextFit ? FIT_REASONS_BY_PROMOTION[definition.promotionStatus] : [],
+    ...gates.filter(gate => gate.kind === 'hard' && !gate.passed).map(gate => `GATE_FAILED:${gate.gateId}`),
+    ...gates.filter(gate => gate.kind === 'state_fit' && !gate.passed).map(gate => `STATE_MISMATCH:${gate.gateId}`),
+    ...hardFit ? FIT_REASONS_BY_PROMOTION[definition.promotionStatus] : [],
   ]
   return {
     tacticId: definition.tacticId,
@@ -281,7 +287,7 @@ function evaluateDefinition(definition: TacticDefinition, features: StrategicFea
     promotionStatus: definition.promotionStatus,
     status,
     contextFit,
-    eligibleSectorIds: contextFit && features.sectorBattlefields.status === 'ready'
+    eligibleSectorIds: hardFit && features.sectorBattlefields.status === 'ready'
       ? topSectorIds(features.sectorBattlefields.value)
       : [],
     reasonCodes,

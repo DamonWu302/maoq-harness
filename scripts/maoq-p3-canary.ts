@@ -160,9 +160,15 @@ function suiteEvaluationReport(result: ResearchTacticSuiteHistoryEvaluation): ob
 
 function dynamicEvaluationReport(result: ResearchTacticSuiteHistoryEvaluation): object {
   const replay = evaluateDynamicTacticReplay(result)
-  const routeSelections = Object.fromEntries([...new Set(replay.days.map(day => day.deterministicTacticId))]
+  const routeSelections = Object.fromEntries([...new Set(replay.days.map(day => day.routedTacticId))]
+    .sort()
+    .map(tacticId => [tacticId, replay.days.filter(day => day.routedTacticId === tacticId).length]))
+  const transitionSelections = Object.fromEntries([...new Set(replay.days.map(day => day.deterministicTacticId))]
     .sort()
     .map(tacticId => [tacticId, replay.days.filter(day => day.deterministicTacticId === tacticId).length]))
+  const transitionReasonCounts = Object.fromEntries([...new Set(replay.days.map(day => day.transitionReason))]
+    .sort()
+    .map(reason => [reason, replay.days.filter(day => day.transitionReason === reason).length]))
   const evidenceScopeSelections = Object.fromEntries(
     ['exact_context', 'regime_emotion', 'market_regime', 'defense'].map(scope => [
       scope,
@@ -188,6 +194,8 @@ function dynamicEvaluationReport(result: ResearchTacticSuiteHistoryEvaluation): 
     commanderDecisions: replay.commanderDecisions,
     commanderCoverage: replay.commanderCoverage,
     routeSelections,
+    transitionSelections,
+    transitionReasonCounts,
     evidenceScopeSelections,
     rejectionCounts,
     rejectedEvidenceScopeCounts,

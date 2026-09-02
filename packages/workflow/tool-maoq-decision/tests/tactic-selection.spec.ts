@@ -122,7 +122,7 @@ function route(active = true): TacticRoutingRecord {
     tradingDate: '2026-09-02',
     cutoffTime: '2026-09-02T19:15:00+08:00',
     currentSnapshotHash: 'a'.repeat(64),
-    eligibilityEngineVersion: 'maoq-tactic-eligibility-v3',
+    eligibilityEngineVersion: 'maoq-tactic-eligibility-v4',
     scorecardId: 'b'.repeat(64),
     context: {
       contextVersion: 'maoq-tactic-context-v1',
